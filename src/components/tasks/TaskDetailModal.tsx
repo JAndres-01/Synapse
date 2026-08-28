@@ -610,18 +610,18 @@ export function TaskDetailModal({
                       return (
                         <div key={root.id} className="space-y-2">
                           {/* Comentario Raíz */}
-                          <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 space-y-2">
+                          <div className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-2 shadow-sm">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300">
+                                <div className="w-6 h-6 rounded-full bg-indigo-950 border border-indigo-800/60 flex items-center justify-center text-[10px] font-bold text-indigo-300">
                                   {root.author?.full_name?.slice(0, 1) || 'A'}
                                 </div>
-                                <div>
+                                <div className="flex items-center gap-1.5">
                                   <span className="text-xs font-semibold text-zinc-200">
                                     {root.author?.full_name || 'Compañero'}
                                   </span>
                                   {isAuthorDelegate && (
-                                    <span className="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium">
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/50">
                                       Delegado
                                     </span>
                                   )}
@@ -644,11 +644,17 @@ export function TaskDetailModal({
                             {renderCommentAttachments(root)}
 
                             {/* Botón Responder */}
-                            <div className="pt-1 flex items-center justify-end">
+                            <div className="pt-1 flex items-center justify-between border-t border-zinc-900">
+                              {replies.length > 0 ? (
+                                <span className="text-[10px] font-semibold text-indigo-400 flex items-center gap-1">
+                                  <span>{replies.length} {replies.length === 1 ? 'respuesta' : 'respuestas'}</span>
+                                </span>
+                              ) : <span />}
+
                               <button
                                 type="button"
                                 onClick={() => setReplyingTo(root)}
-                                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
+                                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-zinc-900 transition-colors"
                               >
                                 <CornerDownRight className="w-3 h-3" />
                                 <span>Responder</span>
@@ -656,9 +662,9 @@ export function TaskDetailModal({
                             </div>
                           </div>
 
-                          {/* Hilos Anidados (Visual Tree Connector) */}
+                          {/* Hilos Anidados con Conectores Visuales */}
                           {replies.length > 0 && (
-                            <div className="pl-4 space-y-2 border-l-2 border-zinc-800 ml-3">
+                            <div className="relative pl-6 space-y-2 mt-1 ml-3 border-l-2 border-indigo-800/50">
                               {replies.map((reply) => {
                                 const isReplyDelegate =
                                   reply.author?.role === 'admin' ||
@@ -667,21 +673,26 @@ export function TaskDetailModal({
                                 return (
                                   <div
                                     key={reply.id}
-                                    className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-2 relative"
+                                    className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-1.5 relative shadow-sm"
                                   >
+                                    {/* Rama conectora curva hacia el hilo principal */}
+                                    <div className="absolute -left-6 top-4 w-4 h-3.5 border-b-2 border-l-2 border-indigo-600/70 rounded-bl-lg pointer-events-none" />
+
                                     <div className="flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2">
                                         <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-zinc-300">
                                           {reply.author?.full_name?.slice(0, 1) || 'A'}
                                         </div>
-                                        <span className="text-xs font-semibold text-zinc-200">
-                                          {reply.author?.full_name || 'Compañero'}
-                                        </span>
-                                        {isReplyDelegate && (
-                                          <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium">
-                                            Delegado
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-xs font-semibold text-zinc-200">
+                                            {reply.author?.full_name || 'Compañero'}
                                           </span>
-                                        )}
+                                          {isReplyDelegate && (
+                                            <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/40">
+                                              Delegado
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
 
                                       <span className="text-[10px] text-zinc-500 font-mono">
@@ -690,13 +701,24 @@ export function TaskDetailModal({
                                     </div>
 
                                     {reply.content && (
-                                      <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-1">
+                                      <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-0.5">
                                         {reply.content}
                                       </p>
                                     )}
 
                                     {/* Imágenes o Documentos adjuntos en respuesta */}
                                     {renderCommentAttachments(reply)}
+
+                                    <div className="pt-0.5 flex items-center justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => setReplyingTo(root)}
+                                        className="text-[10px] text-zinc-400 hover:text-indigo-300 font-medium flex items-center gap-1"
+                                      >
+                                        <CornerDownRight className="w-2.5 h-2.5" />
+                                        <span>Responder al hilo</span>
+                                      </button>
+                                    </div>
                                   </div>
                                 )
                               })}

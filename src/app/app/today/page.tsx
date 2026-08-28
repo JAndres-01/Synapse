@@ -273,25 +273,45 @@ export default function TodayPage() {
     fileName?: string | null,
     fileType?: AttachmentType | null
   ) => {
-    if (!user) return
+    const activeUserId = user?.id || (typeof window !== 'undefined' ? (() => {
+      try { return JSON.parse(localStorage.getItem('synapse_cached_user') || '{}')?.id } catch { return null }
+    })() : null)
+
+    if (!activeUserId) return
 
     try {
-      const { data: newComment, error } = await supabase
+      const payload = {
+        task_id: taskId,
+        author_id: activeUserId,
+        content,
+        parent_comment_id: parentCommentId || null,
+        image_url: imageUrl || null,
+        file_name: fileName || null,
+        file_type: fileType || null,
+      }
+
+      const { data: insertedComment, error } = await supabase
         .from('task_comments')
-        .insert({
-          task_id: taskId,
-          user_id: user.id,
-          content,
-          parent_id: parentCommentId || null,
-          image_url: imageUrl || null,
-          file_name: fileName || null,
-          file_type: fileType || null,
-        })
+        .insert(payload)
         .select('*, author:profiles(*)')
         .single()
 
-      if (error || !newComment) {
-        throw new Error(error?.message || 'Error publicando comentario')
+      if (error) {
+        console.error('Error supabase task_comments insert:', error)
+        throw error
+      }
+
+      const newComment: TaskComment = insertedComment
+        ? (insertedComment as unknown as TaskComment)
+        : ({
+            id: 'temp-' + Date.now(),
+            ...payload,
+            created_at: new Date().toISOString(),
+            author: profile || undefined,
+          } as unknown as TaskComment)
+
+      if (!newComment.author && profile) {
+        newComment.author = profile
       }
 
       setUrgentTasks((prev) =>
@@ -299,7 +319,7 @@ export default function TodayPage() {
           if (t.id === taskId) {
             return {
               ...t,
-              comments: [...(t.comments || []), newComment as TaskComment],
+              comments: [...(t.comments || []), newComment],
             }
           }
           return t
@@ -311,7 +331,7 @@ export default function TodayPage() {
           prev
             ? {
                 ...prev,
-                comments: [...(prev.comments || []), newComment as TaskComment],
+                comments: [...(prev.comments || []), newComment],
               }
             : null
         )

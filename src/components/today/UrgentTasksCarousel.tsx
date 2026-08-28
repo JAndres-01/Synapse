@@ -174,15 +174,15 @@ export function UrgentTasksCarousel({
             <div
               key={task.id}
               onClick={handleCardClick}
-              className={`min-w-[250px] max-w-[270px] p-3.5 rounded-2xl border transition-all shrink-0 flex flex-col justify-between cursor-pointer select-none space-y-2 relative shadow-sm ${
+              className={`min-w-[250px] max-w-[270px] p-3.5 rounded-2xl border transition-all shrink-0 flex flex-col justify-between cursor-pointer select-none space-y-2.5 relative shadow-sm ${
                 isCompleted
                   ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
                   : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
               }`}
             >
-              {/* Header: Tipo / Privada y Fecha con Color de Prioridad */}
+              {/* Header: Tipo / Privada y Fecha con Pill destacada */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 min-w-0">
                   {task.is_private ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400 shrink-0">
                       <Lock className="w-2.5 h-2.5" />
@@ -191,34 +191,22 @@ export function UrgentTasksCarousel({
                   ) : (
                     getTypeBadge(task.type)
                   )}
-
-                  {task.subject ? (
-                    <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-300 min-w-0 flex-1">
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
-                        style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
-                      />
-                      <span className="truncate">{task.subject.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] text-zinc-500 italic shrink-0">General</span>
-                  )}
                 </div>
 
                 <span
-                  className={`text-[10px] font-mono shrink-0 whitespace-nowrap text-right pl-1 ${dueInfo.colorClass}`}
+                  className={`text-[10px] font-mono shrink-0 px-2 py-0.5 rounded-md bg-zinc-950/90 border border-zinc-800/80 ${dueInfo.colorClass}`}
                 >
                   {dueInfo.text}
                 </span>
               </div>
 
-              {/* Contenido Principal: Checkbox Centrado y Título Simétrico */}
-              <div className="flex items-center gap-2.5 pt-0.5">
+              {/* Contenido Principal: Checkbox + Título + Materia */}
+              <div className="flex items-start gap-2.5">
                 <button
                   type="button"
                   onClick={handleCheck}
                   aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-                  className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                  className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${
                     isCompleted
                       ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
                       : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
@@ -227,14 +215,27 @@ export function UrgentTasksCarousel({
                   {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
                 </button>
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1">
                   <h4
-                    className={`text-xs font-semibold tracking-tight leading-snug line-clamp-2 ${
+                    className={`text-xs font-bold tracking-tight leading-snug line-clamp-2 ${
                       isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
                     }`}
                   >
                     {task.title}
                   </h4>
+
+                  {/* Materia con punto de color con espacio completo sin truncarse */}
+                  {task.subject ? (
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
+                        style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
+                      />
+                      <span className="truncate">{task.subject.name}</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-zinc-500 italic">General</span>
+                  )}
                 </div>
               </div>
 
@@ -256,8 +257,8 @@ export function UrgentTasksCarousel({
                   )}
 
                   {!task.is_private && commentsCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3 text-zinc-500" />
+                    <div className="flex items-center gap-1 text-zinc-400">
+                      <MessageSquare className="w-3 h-3 text-zinc-400" />
                       <span>{commentsCount}</span>
                     </div>
                   )}

@@ -212,19 +212,19 @@ export function UrgentTasksCarousel({
                 </span>
               </div>
 
-              {/* Contenido Principal: Checkbox Claro + Título */}
-              <div className="flex items-start gap-2.5 pt-0.5">
+              {/* Contenido Principal: Checkbox Centrado y Título Simétrico */}
+              <div className="flex items-center gap-2.5 pt-0.5">
                 <button
                   type="button"
                   onClick={handleCheck}
                   aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-                  className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+                  className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
                     isCompleted
                       ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
                       : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
                   }`}
                 >
-                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
                 </button>
 
                 <div className="flex-1 min-w-0">

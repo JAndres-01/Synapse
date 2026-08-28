@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-24 safe-area-bottom">
+    <div className="flex-1 flex flex-col min-h-screen pb-36 safe-area-bottom">
       {children}
       <FloatingIslandBar pendingTasksCount={pendingTasksCount} />
     </div>

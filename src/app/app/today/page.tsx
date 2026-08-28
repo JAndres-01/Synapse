@@ -303,6 +303,9 @@ export default function TodayPage() {
         onAddNotice={handleAddNotice}
         onAddComment={handleAddComment}
       />
+
+      {/* Espaciador para evitar solapamiento con la Floating Island Bar en iOS */}
+      <div className="h-12 shrink-0" />
     </div>
   )
 }

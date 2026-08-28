@@ -2,7 +2,7 @@
 
 import React from 'react'
 import type { Task } from '@/types/database'
-import { Check, Users, User, Rocket, FileText, ChevronRight } from 'lucide-react'
+import { Check, Users, User, Rocket, FileText, ChevronRight, CalendarRange } from 'lucide-react'
 import Link from 'next/link'
 import confetti from 'canvas-confetti'
 
@@ -39,10 +39,23 @@ export function UrgentTasksCarousel({
       if (isNaN(date.getTime())) return 'Fecha pendiente'
       const today = new Date()
       const isToday = date.toDateString() === today.toDateString()
-      const hours = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
-      if (isToday) return `Hoy • ${hours}`
-      return `${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })} • ${hours}`
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const isTomorrow = date.toDateString() === tomorrow.toDateString()
+
+      const hours = date.getHours()
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const formattedHour = hours % 12 || 12
+      const timeStr = `${formattedHour}:${minutes} ${ampm}`
+
+      if (isToday) return `Hoy • ${timeStr}`
+      if (isTomorrow) return `Mañana • ${timeStr}`
+
+      const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' })
+      const day = date.getDate()
+      return `${weekday} ${day} • ${timeStr}`
     } catch {
       return 'Fecha pendiente'
     }
@@ -52,8 +65,9 @@ export function UrgentTasksCarousel({
     <div className="space-y-2.5">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-          <span>Próximas Entregas</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400 font-mono">
+          <CalendarRange className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Tareas para esta semana</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400 font-mono font-bold">
             {tasks.length}
           </span>
         </h3>
@@ -68,7 +82,10 @@ export function UrgentTasksCarousel({
 
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
         {tasks.map((task) => {
-          const isCompleted = Array.isArray(task.user_status) && task.user_status.length > 0 && task.user_status[0]?.status === 'completed'
+          const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string }> }).user_task_status
+          const isCompleted = Array.isArray(statuses)
+            ? statuses.some((s) => s.status === 'completed')
+            : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
           const handleCheck = (e: React.MouseEvent) => {
             e.stopPropagation()
@@ -80,9 +97,7 @@ export function UrgentTasksCarousel({
                   origin: { y: 0.8 },
                   colors: ['#6366F1', '#10B981', '#ffffff'],
                 })
-              } catch {
-                // Ignore if confetti fails in some browser environments
-              }
+              } catch {}
             }
             onToggleTaskStatus(task.id, isCompleted ? 'completed' : 'pending')
           }
@@ -136,13 +151,13 @@ export function UrgentTasksCarousel({
                   type="button"
                   onClick={handleCheck}
                   aria-label="Marcar completada"
-                  className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                     isCompleted
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'border-zinc-700 hover:border-zinc-400 bg-zinc-900'
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                      : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
                   }`}
                 >
-                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </button>
               </div>
             </div>

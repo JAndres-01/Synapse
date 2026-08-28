@@ -8,7 +8,7 @@ import { LiveClassHeroCard } from '@/components/today/LiveClassHeroCard'
 import { UrgentTasksCarousel } from '@/components/today/UrgentTasksCarousel'
 import { DayScheduleTimeline } from '@/components/today/DayScheduleTimeline'
 import { offlineDB } from '@/lib/db'
-import { Loader2, RefreshCw, Calendar, ArrowRight } from 'lucide-react'
+import { Loader2, RefreshCw, Calendar, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 export default function TodayPage() {
@@ -172,6 +172,24 @@ export default function TodayPage() {
     )
   }
 
+  const now = new Date()
+  const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
+
+  const startOfWeek = new Date(now)
+  startOfWeek.setDate(now.getDate() - (currentDayOfWeek - 1))
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const endOfWeek = new Date(startOfWeek)
+  endOfWeek.setDate(startOfWeek.getDate() + 6)
+  endOfWeek.setHours(23, 59, 59, 999)
+
+  const tasksThisWeek = urgentTasks.filter((t) => {
+    if (t.is_private && t.created_by !== user?.id) return false
+    if (!t.due_date) return false
+    const dueDate = new Date(t.due_date)
+    return dueDate >= startOfWeek && dueDate <= endOfWeek
+  })
+
   return (
     <div className="flex flex-col space-y-5">
       {/* Header Principal */}
@@ -180,9 +198,9 @@ export default function TodayPage() {
           <span className="text-[11px] font-medium text-zinc-400 capitalize block">
             {todayDate}
           </span>
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2 mt-0.5">
-            <span>Hola, {profile?.full_name?.split(' ')[0] || 'Compañero'}</span>
-            <span className="text-base">👋</span>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>¡Hola, {profile?.full_name?.split(' ')[0] || 'Estudiante'}!</span>
+            <Sparkles className="w-4 h-4 text-amber-400" />
           </h1>
           <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
             {classroom?.name}
@@ -223,9 +241,9 @@ export default function TodayPage() {
       {/* 1. Hero Card en Tiempo Real (Las 4 Clases y Clase Activa) */}
       <LiveClassHeroCard schedulesToday={schedulesToday} />
 
-      {/* 2. Carrusel de Tareas Próximas */}
+      {/* 2. Carrusel de Tareas para Esta Semana (Lunes a Domingo) */}
       <UrgentTasksCarousel
-        tasks={urgentTasks}
+        tasks={tasksThisWeek}
         onToggleTaskStatus={handleToggleTaskStatus}
       />
 

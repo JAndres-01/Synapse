@@ -172,6 +172,18 @@ export function TaskDetailModal({
     return roots
   }, [comments])
 
+  useEffect(() => {
+    if (task) {
+      document.body.classList.add('body-scroll-lock')
+    } else {
+      document.body.classList.remove('body-scroll-lock')
+      setDragOffsetY(0)
+    }
+    return () => {
+      document.body.classList.remove('body-scroll-lock')
+    }
+  }, [task])
+
   if (!task) return null
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -572,7 +584,7 @@ export function TaskDetailModal({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
         onClick={() => {
           document.body.classList.remove('body-scroll-lock')
           onClose()

@@ -124,7 +124,7 @@ export function AssignScheduleModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0"
       onClick={onClose}
     >
       <div

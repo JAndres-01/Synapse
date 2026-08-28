@@ -38,10 +38,17 @@ body {
   position: relative;
 }
 
-/* Bloqueo de scroll cuando un modal está abierto */
+/* Bloqueo de scroll cuando un modal está abierto y ocultamiento de barra flotante */
 .body-scroll-lock {
   overflow: hidden !important;
   touch-action: none !important;
+}
+
+body.body-scroll-lock nav[aria-label="Navegación principal"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(40px) scale(0.95) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Contenedores con scroll horizontal fluido y natural */

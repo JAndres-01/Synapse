@@ -1,26 +1,23 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import type { Schedule, Notice } from '@/types/database'
+import type { Schedule } from '@/types/database'
 import { getCurrentClassState, type CurrentClassState } from '@/lib/schedule-utils'
 import {
   MapPin,
   User,
   Video,
   Sparkles,
-  AlertTriangle,
   Moon,
   Coffee,
 } from 'lucide-react'
 
 interface LiveClassHeroCardProps {
   schedulesToday?: Schedule[]
-  urgentNotice?: Notice | null
 }
 
 export function LiveClassHeroCard({
   schedulesToday = [],
-  urgentNotice,
 }: LiveClassHeroCardProps) {
   const [classState, setClassState] = useState<CurrentClassState>({
     status: 'no_classes',
@@ -44,47 +41,8 @@ export function LiveClassHeroCard({
     return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`
   }
 
-  // Lógica MIXTA de expiración de Aviso Urgente:
-  // Expira automáticamente al terminar la jornada escolar (1:00 PM) del día en que se publicó,
-  // o si pertenece a un día anterior.
-  const isUrgentActive = () => {
-    if (!urgentNotice || !urgentNotice.is_urgent) return false
-    try {
-      const noticeDate = new Date(urgentNotice.created_at)
-      const now = new Date()
-
-      // Si fue publicado en una fecha anterior, ya expiró
-      if (noticeDate.toDateString() !== now.toDateString()) {
-        return false
-      }
-
-      // Si la hora actual pasó de la 1:00 PM (13:00) y el aviso fue de la mañana escolar, expira
-      const currentMinutes = now.getHours() * 60 + now.getMinutes()
-      const schoolEndMinutes = 13 * 60 // 1:00 PM
-      const noticeMinutes = noticeDate.getHours() * 60 + noticeDate.getMinutes()
-
-      if (noticeMinutes <= schoolEndMinutes && currentMinutes > schoolEndMinutes) {
-        return false
-      }
-
-      return true
-    } catch {
-      return !!urgentNotice.is_urgent
-    }
-  }
-
-  const showUrgentBanner = isUrgentActive()
-
   return (
     <div className="relative overflow-hidden rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 shadow-xl transition-all">
-      {/* Banner de aviso urgente de Salón si está activo y no ha expirado */}
-      {showUrgentBanner && urgentNotice && (
-        <div className="mb-3 p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/60 flex items-center gap-2 text-amber-300 text-xs font-medium animate-fade-in">
-          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="truncate">{urgentNotice.content}</span>
-        </div>
-      )}
-
       {/* ESTADO 1: EN CURSO */}
       {status === 'active' && currentSchedule && (
         <div className="space-y-3">

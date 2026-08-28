@@ -3,11 +3,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
-import type { Schedule, Task, Notice, NoticeCategory } from '@/types/database'
+import type { Schedule, Task } from '@/types/database'
 import { LiveClassHeroCard } from '@/components/today/LiveClassHeroCard'
 import { UrgentTasksCarousel } from '@/components/today/UrgentTasksCarousel'
 import { DayScheduleTimeline } from '@/components/today/DayScheduleTimeline'
-import { DelegateNoticesFeed } from '@/components/today/DelegateNoticesFeed'
 import { offlineDB } from '@/lib/db'
 import { Loader2, RefreshCw, Calendar, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
@@ -16,7 +15,6 @@ export default function TodayPage() {
   const { user, profile, classroom } = useAuth()
   const [schedulesToday, setSchedulesToday] = useState<Schedule[]>([])
   const [urgentTasks, setUrgentTasks] = useState<Task[]>([])
-  const [notices, setNotices] = useState<Notice[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -71,24 +69,6 @@ export default function TodayPage() {
           }
         }
       }
-
-      // 3. Cargar Avisos con comentarios y autor
-      const { data: noticeData, error: noticeErr } = await supabase
-        .from('notices')
-        .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
-        .eq('classroom_id', classroom.id)
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (!noticeErr && noticeData) {
-        setNotices(noticeData as unknown as Notice[])
-        if (offlineDB && noticeData.length > 0) {
-          const validNotices = noticeData.filter((n) => !!n && !!n.id)
-          if (validNotices.length > 0) {
-            await offlineDB.notices.bulkPut(validNotices as unknown as Notice[])
-          }
-        }
-      }
     } catch (err) {
       console.error('Error cargando datos de hoy:', err)
       // Cargar desde caché offline si falla la red
@@ -106,12 +86,6 @@ export default function TodayPage() {
           .equals(classroom.id)
           .toArray()
         if (cachedTasks.length > 0) setUrgentTasks(cachedTasks)
-
-        const cachedNotices = await offlineDB.notices
-          .where('classroom_id')
-          .equals(classroom.id)
-          .toArray()
-        if (cachedNotices.length > 0) setNotices(cachedNotices)
       }
     } finally {
       setLoading(false)
@@ -124,22 +98,17 @@ export default function TodayPage() {
 
     if (!classroom) return
 
-    // Suscripción Realtime a nuevos avisos, comentarios y tareas
+    // Suscripción Realtime a tareas y horarios
     const channel = supabase
       .channel(`public:classroom_today:${classroom.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notices', filter: `classroom_id=eq.${classroom.id}` },
-        () => loadTodayData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notice_comments' },
-        () => loadTodayData()
-      )
-      .on(
-        'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `classroom_id=eq.${classroom.id}` },
+        () => loadTodayData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'schedules', filter: `classroom_id=eq.${classroom.id}` },
         () => loadTodayData()
       )
       .subscribe()
@@ -189,138 +158,11 @@ export default function TodayPage() {
     }
   }
 
-  // Publicar un nuevo aviso
-  const handleAddNotice = async (
-    content: string,
-    category: NoticeCategory,
-    isUrgent: boolean,
-    isPinned: boolean
-  ) => {
-    if (!classroom || !user) return
-
-    const { data: newNotice, error } = await supabase
-      .from('notices')
-      .insert({
-        classroom_id: classroom.id,
-        author_id: user.id,
-        content,
-        category,
-        is_urgent: isUrgent,
-        is_pinned: isPinned,
-      })
-      .select('*, author:profiles(*), comments:notice_comments(*)')
-      .single()
-
-    if (!error && newNotice) {
-      setNotices((prev) => [newNotice, ...prev])
-      if (offlineDB) {
-        await offlineDB.notices.put(newNotice)
-      }
-    } else {
-      loadTodayData()
-    }
-  }
-
-  // Editar aviso existente
-  const handleEditNotice = async (
-    noticeId: string,
-    content: string,
-    category: NoticeCategory,
-    isUrgent: boolean,
-    isPinned: boolean
-  ) => {
-    const { data: updated, error } = await supabase
-      .from('notices')
-      .update({
-        content,
-        category,
-        is_urgent: isUrgent,
-        is_pinned: isPinned,
-      })
-      .eq('id', noticeId)
-      .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
-      .single()
-
-    if (!error && updated) {
-      setNotices((prev) => prev.map((n) => (n.id === noticeId ? updated : n)))
-      if (offlineDB) {
-        await offlineDB.notices.put(updated)
-      }
-    } else {
-      loadTodayData()
-    }
-  }
-
-  // Eliminar aviso
-  const handleDeleteNotice = async (noticeId: string) => {
-    const { error } = await supabase.from('notices').delete().eq('id', noticeId)
-    if (!error) {
-      setNotices((prev) => prev.filter((n) => n.id !== noticeId))
-      if (offlineDB) {
-        await offlineDB.notices.delete(noticeId)
-      }
-    }
-  }
-
-  // Fijar / Desfijar aviso
-  const handleTogglePinNotice = async (noticeId: string, currentPinned: boolean) => {
-    const newPinned = !currentPinned
-    const { data: updated, error } = await supabase
-      .from('notices')
-      .update({ is_pinned: newPinned })
-      .eq('id', noticeId)
-      .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
-      .single()
-
-    if (!error && updated) {
-      setNotices((prev) => prev.map((n) => (n.id === noticeId ? updated : n)))
-      if (offlineDB) {
-        await offlineDB.notices.put(updated)
-      }
-    } else {
-      loadTodayData()
-    }
-  }
-
-  // Comentar en un aviso
-  const handleAddComment = async (noticeId: string, content: string) => {
-    if (!user) return
-
-    const { data: newComment, error } = await supabase
-      .from('notice_comments')
-      .insert({
-        notice_id: noticeId,
-        author_id: user.id,
-        content,
-      })
-      .select('*, author:profiles(*)')
-      .single()
-
-    if (!error && newComment) {
-      setNotices((prev) =>
-        prev.map((n) => {
-          if (n.id === noticeId) {
-            return {
-              ...n,
-              comments: [...(n.comments || []), newComment],
-            }
-          }
-          return n
-        })
-      )
-    } else {
-      loadTodayData()
-    }
-  }
-
   const todayDate = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
-
-  // Buscar si hay aviso urgente activo para mostrar en el Hero Card
-  const urgentNotice = notices.find((n) => n.is_urgent)
 
   if (loading) {
     return (
@@ -379,10 +221,7 @@ export default function TodayPage() {
       )}
 
       {/* 1. Hero Card en Tiempo Real (Las 4 Clases y Clase Activa) */}
-      <LiveClassHeroCard
-        schedulesToday={schedulesToday}
-        urgentNotice={urgentNotice}
-      />
+      <LiveClassHeroCard schedulesToday={schedulesToday} />
 
       {/* 2. Carrusel de Tareas Próximas */}
       <UrgentTasksCarousel
@@ -392,18 +231,6 @@ export default function TodayPage() {
 
       {/* 3. Cronograma de las 4 Clases de Hoy */}
       <DayScheduleTimeline schedulesToday={schedulesToday} />
-
-      {/* 4. Canal Oficial de Avisos de Delegados */}
-      <DelegateNoticesFeed
-        notices={notices}
-        currentUserId={user?.id || ''}
-        isAdmin={isAdmin}
-        onAddNotice={handleAddNotice}
-        onEditNotice={handleEditNotice}
-        onDeleteNotice={handleDeleteNotice}
-        onTogglePinNotice={handleTogglePinNotice}
-        onAddComment={handleAddComment}
-      />
     </div>
   )
 }

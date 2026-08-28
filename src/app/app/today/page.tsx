@@ -29,6 +29,7 @@ export default function TodayPage() {
 
   const supabase = createClient()
   const channelRef = useRef<any>(null)
+  const pendingStatusMutationsRef = useRef<Record<string, { status: TaskStatus; timestamp: number }>>({})
   const isAdmin =
     classroom?.created_by === user?.id ||
     profile?.role === 'admin' ||
@@ -130,7 +131,27 @@ export default function TodayPage() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        const sorted = sortTasksChronologically(taskData as unknown as Task[])
+        const mergedTasks = (taskData as unknown as Task[]).map((t) => {
+          const pending = pendingStatusMutationsRef.current[t.id]
+          if (pending && Date.now() - pending.timestamp < 4000 && user) {
+            const filtered = (t.user_status || []).filter((s) => s.user_id !== user.id)
+            return {
+              ...t,
+              user_status: [
+                ...filtered,
+                {
+                  id: 'pending-mut-' + t.id,
+                  user_id: user.id,
+                  task_id: t.id,
+                  status: pending.status,
+                  completed_at: pending.status === 'completed' ? new Date().toISOString() : null,
+                },
+              ],
+            }
+          }
+          return t
+        })
+        const sorted = sortTasksChronologically(mergedTasks)
         setUrgentTasks(sorted)
         memoryCache.tasks = sorted
 
@@ -239,6 +260,9 @@ export default function TodayPage() {
     const newStatus: TaskStatus = currentStatus === 'completed' ? 'pending' : 'completed'
     const nowIso = new Date().toISOString()
 
+    // Registrar mutación activa en ref para evitar que llamadas de red obsoletas desmarquen la tarea
+    pendingStatusMutationsRef.current[taskId] = { status: newStatus, timestamp: Date.now() }
+
     // Actualización optimista en interfaz y en caché
     setUrgentTasks((prev) => {
       const updated = prev.map((t) => {
@@ -285,8 +309,15 @@ export default function TodayPage() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('tasks_updated'))
       }
+      // Limpiar bloqueo tras confirmar tiempo de propagación
+      setTimeout(() => {
+        if (pendingStatusMutationsRef.current[taskId]?.timestamp) {
+          delete pendingStatusMutationsRef.current[taskId]
+        }
+      }, 2500)
     } catch (err) {
       console.error('Error actualizando estado de tarea:', err)
+      delete pendingStatusMutationsRef.current[taskId]
       loadTodayData()
     }
   }

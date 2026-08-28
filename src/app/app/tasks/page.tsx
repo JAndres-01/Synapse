@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import type { Task, Subject, TaskType, Schedule, AttachmentType, TaskAttachment, TaskComment } from '@/types/database'
+import type { Task, Subject, TaskType, TaskStatus, Schedule, AttachmentType, TaskAttachment, TaskComment } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
@@ -67,6 +67,7 @@ function TasksPageContent() {
 
   const supabase = createClient()
   const channelRef = useRef<any>(null)
+  const pendingStatusMutationsRef = useRef<Record<string, { status: TaskStatus; timestamp: number }>>({})
   const isAdmin =
     classroom?.created_by === user?.id ||
     profile?.role === 'admin' ||
@@ -183,7 +184,27 @@ function TasksPageContent() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        const sorted = sortTasksChronologically(taskData as Task[])
+        const mergedTasks = (taskData as Task[]).map((t) => {
+          const pending = pendingStatusMutationsRef.current[t.id]
+          if (pending && Date.now() - pending.timestamp < 4000 && user) {
+            const filtered = (t.user_status || []).filter((s) => s.user_id !== user.id)
+            return {
+              ...t,
+              user_status: [
+                ...filtered,
+                {
+                  id: 'pending-mut-' + t.id,
+                  user_id: user.id,
+                  task_id: t.id,
+                  status: pending.status,
+                  completed_at: pending.status === 'completed' ? new Date().toISOString() : null,
+                },
+              ],
+            }
+          }
+          return t
+        })
+        const sorted = sortTasksChronologically(mergedTasks)
         setTasks(sorted)
         memoryCache.tasks = sorted
 
@@ -277,6 +298,9 @@ function TasksPageContent() {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
     const nowIso = new Date().toISOString()
 
+    // Registrar mutación activa en ref para evitar que llamadas de red obsoletas desmarquen la tarea
+    pendingStatusMutationsRef.current[taskId] = { status: newStatus, timestamp: Date.now() }
+
     // Actualización optimista instantánea
     setTasks((prev) =>
       prev.map((t) => {
@@ -333,8 +357,14 @@ function TasksPageContent() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('tasks_updated'))
       }
+      setTimeout(() => {
+        if (pendingStatusMutationsRef.current[taskId]?.timestamp) {
+          delete pendingStatusMutationsRef.current[taskId]
+        }
+      }, 2500)
     } catch (err) {
       console.error('Error actualizando estado:', err)
+      delete pendingStatusMutationsRef.current[taskId]
       loadTasksData()
     }
   }

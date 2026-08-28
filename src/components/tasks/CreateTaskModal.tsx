@@ -557,25 +557,43 @@ export function CreateTaskModal({
                 ) : (
                   <div className="space-y-2.5">
                     {/* Lista de Días con sus Clases */}
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {scheduleMatrix.map((dayData) => {
-                        const hasClasses = dayData.schedules.length > 0
+                    {(() => {
+                      const todayDayOfWeek = new Date().getDay() || 7 // 1=Lun ... 7=Dom
 
-                        return (
-                          <div
-                            key={dayData.day}
-                            className={`p-1.5 rounded-xl border flex flex-col items-center gap-1.5 min-h-[140px] ${
-                              hasClasses
-                                ? 'bg-zinc-950/80 border-zinc-800/90'
-                                : 'bg-zinc-950/30 border-zinc-900 opacity-40'
-                            }`}
-                          >
-                            <span className="text-[10px] font-bold text-zinc-300 uppercase">
-                              {dayData.short}
-                            </span>
+                      return (
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {scheduleMatrix.map((dayData) => {
+                            const hasClasses = dayData.schedules.length > 0
+                            const isCurrentDay = dayData.day === todayDayOfWeek
 
-                            {/* 4 Bloques diarios */}
-                            <div className="w-full space-y-1 flex-1 flex flex-col justify-start">
+                            return (
+                              <div
+                                key={dayData.day}
+                                className={`p-1.5 rounded-xl border flex flex-col items-center gap-1.5 min-h-[140px] transition-all relative ${
+                                  isCurrentDay
+                                    ? 'bg-indigo-950/20 border-indigo-500/60 ring-1 ring-indigo-500/30'
+                                    : hasClasses
+                                    ? 'bg-zinc-950/80 border-zinc-800/90'
+                                    : 'bg-zinc-950/30 border-zinc-900 opacity-40'
+                                }`}
+                              >
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span
+                                    className={`text-[10px] font-bold uppercase ${
+                                      isCurrentDay ? 'text-indigo-300 font-extrabold' : 'text-zinc-300'
+                                    }`}
+                                  >
+                                    {dayData.short}
+                                  </span>
+                                  {isCurrentDay && (
+                                    <span className="text-[7px] font-extrabold px-1 py-0.2 rounded bg-indigo-600 text-white uppercase tracking-wider shadow-sm">
+                                      Hoy
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* 4 Bloques diarios */}
+                                <div className="w-full space-y-1 flex-1 flex flex-col justify-start">
                               {SCHEDULE_BLOCKS.map((blockDef) => {
                                 const sched = dayData.schedules.find(
                                   (s) => s.block_number === blockDef.block
@@ -622,6 +640,8 @@ export function CreateTaskModal({
                         )
                       })}
                     </div>
+                  )
+                })()}
 
                     {/* Resumen del Preset Seleccionado */}
                     {selectedScheduleSlot && (

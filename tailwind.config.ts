@@ -17,8 +17,23 @@ const config: Config = {
         }
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "Inter", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "SF Pro Display",
+          "SF Pro Text",
+          "SF Pro",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: [
+          "SF Mono",
+          "ui-monospace",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "monospace",
+        ],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",

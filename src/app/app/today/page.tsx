@@ -540,7 +540,7 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="flex flex-col space-y-5">
+    <div className="flex flex-col space-y-3.5">
       {/* Header Principal */}
       <header className="flex items-center justify-between pt-1">
         <div>

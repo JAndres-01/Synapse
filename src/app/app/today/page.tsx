@@ -234,9 +234,9 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-5 safe-area-top space-y-5">
+    <div className="flex flex-col space-y-5">
       {/* Header Principal */}
-      <header className="flex items-center justify-between pt-3">
+      <header className="flex items-center justify-between pt-1">
         <div>
           <span className="text-[11px] font-medium text-zinc-400 capitalize block">
             {todayDate}

@@ -42,9 +42,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-5 safe-area-top space-y-6">
+    <div className="flex flex-col space-y-6">
       {/* Header */}
-      <header className="pt-3">
+      <header className="pt-1">
         <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
           <Settings className="w-5 h-5 text-indigo-400" />
           <span>Salón & Ajustes</span>

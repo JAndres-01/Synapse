@@ -5,8 +5,8 @@ import { Calendar } from 'lucide-react'
 
 export default function SchedulePage() {
   return (
-    <div className="flex-1 flex flex-col p-5 safe-area-top">
-      <header className="pt-3 pb-5">
+    <div className="flex flex-col space-y-4">
+      <header className="pt-1 pb-4">
         <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
           <Calendar className="w-5 h-5 text-indigo-400" />
           <span>Horario de Clases</span>

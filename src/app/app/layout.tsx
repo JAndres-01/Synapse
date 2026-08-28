@@ -63,8 +63,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col pb-20">
-      {children}
+    <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto relative overflow-hidden bg-zinc-950">
+      {/* Contenedor scrolleable con margen superior seguro para Dynamic Island/Notch y despeje inferior */}
+      <div className="flex-1 overflow-y-auto overscroll-y-contain px-5 pt-8 pb-24 no-scrollbar">
+        {children}
+      </div>
+      {/* Barra de navegación anclada fija sobre el marco */}
       <FloatingIslandBar pendingTasksCount={pendingTasksCount} />
     </div>
   )

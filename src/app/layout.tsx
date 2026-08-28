@@ -28,13 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" className="dark h-full">
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="/icons/icon.svg" />
       </head>
-      <body className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-zinc-800 selection:text-white">
+      <body className="h-[100dvh] w-full overflow-hidden bg-zinc-950 text-zinc-100 antialiased selection:bg-zinc-800 selection:text-white">
         <AuthProvider>
-          <main className="max-w-md mx-auto min-h-screen relative flex flex-col bg-zinc-950 border-x border-zinc-900/50 shadow-2xl">
+          <main className="max-w-md mx-auto h-[100dvh] relative flex flex-col bg-zinc-950 border-x border-zinc-900/50 shadow-2xl overflow-hidden">
             {children}
           </main>
         </AuthProvider>

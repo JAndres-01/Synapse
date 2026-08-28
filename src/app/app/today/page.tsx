@@ -10,7 +10,7 @@ import { DayScheduleTimeline } from '@/components/today/DayScheduleTimeline'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { offlineDB } from '@/lib/db'
-import { memoryCache } from '@/lib/cache'
+import { memoryCache, sortTasksChronologically } from '@/lib/cache'
 import { Loader2, RefreshCw, Calendar, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
@@ -69,8 +69,9 @@ export default function TodayPage() {
             .equals(classroom.id)
             .toArray()
           if (cachedTasks.length > 0) {
-            setUrgentTasks(cachedTasks)
-            memoryCache.tasks = cachedTasks
+            const sorted = sortTasksChronologically(cachedTasks)
+            setUrgentTasks(sorted)
+            memoryCache.tasks = sorted
           }
         }
 
@@ -128,10 +129,11 @@ export default function TodayPage() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        setUrgentTasks(taskData as unknown as Task[])
-        memoryCache.tasks = taskData as unknown as Task[]
-        if (offlineDB && taskData.length > 0) {
-          const validTasks = taskData.filter((t) => !!t && !!t.id)
+        const sorted = sortTasksChronologically(taskData as unknown as Task[])
+        setUrgentTasks(sorted)
+        memoryCache.tasks = sorted
+        if (offlineDB && sorted.length > 0) {
+          const validTasks = sorted.filter((t) => !!t && !!t.id)
           if (validTasks.length > 0) {
             await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
           }

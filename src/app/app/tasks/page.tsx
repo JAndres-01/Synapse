@@ -9,7 +9,7 @@ import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { offlineDB } from '@/lib/db'
-import { memoryCache } from '@/lib/cache'
+import { memoryCache, sortTasksChronologically } from '@/lib/cache'
 import {
   CheckSquare,
   Plus,
@@ -76,26 +76,39 @@ function TasksPageContent() {
   const searchParams = useSearchParams()
   const taskIdParam = searchParams ? searchParams.get('taskId') : null
 
-  // 1. Carga instantánea desde Dexie IndexedDB (0ms)
+  // 1. Carga instantánea desde Dexie IndexedDB (0ms) SOLO si memoryCache está vacío
   useEffect(() => {
     if (!classroom) return
 
     const loadCachedInstantly = async () => {
       if (!offlineDB) return
       try {
-        const [cachedTasks, cachedSubjects, cachedSchedules] = await Promise.all([
-          offlineDB.tasks.where('classroom_id').equals(classroom.id).toArray(),
-          offlineDB.subjects.where('classroom_id').equals(classroom.id).toArray(),
-          offlineDB.schedules.where('classroom_id').equals(classroom.id).toArray(),
-        ])
-
-        if (cachedTasks.length > 0) setTasks(cachedTasks)
-        if (cachedSubjects.length > 0) setSubjects(cachedSubjects)
-        if (cachedSchedules.length > 0) setSchedules(cachedSchedules)
-
-        if (cachedTasks.length > 0 || cachedSubjects.length > 0) {
-          setLoading(false)
+        if (memoryCache.tasks.length === 0) {
+          const cachedTasks = await offlineDB.tasks.where('classroom_id').equals(classroom.id).toArray()
+          if (cachedTasks.length > 0) {
+            const sorted = sortTasksChronologically(cachedTasks)
+            setTasks(sorted)
+            memoryCache.tasks = sorted
+          }
         }
+
+        if (memoryCache.subjects.length === 0) {
+          const cachedSubjects = await offlineDB.subjects.where('classroom_id').equals(classroom.id).toArray()
+          if (cachedSubjects.length > 0) {
+            setSubjects(cachedSubjects)
+            memoryCache.subjects = cachedSubjects
+          }
+        }
+
+        if (memoryCache.schedules.length === 0) {
+          const cachedSchedules = await offlineDB.schedules.where('classroom_id').equals(classroom.id).toArray()
+          if (cachedSchedules.length > 0) {
+            setSchedules(cachedSchedules)
+            memoryCache.schedules = cachedSchedules
+          }
+        }
+
+        setLoading(false)
       } catch (err) {
         console.error('Error cargando caché de tareas:', err)
       }
@@ -169,11 +182,13 @@ function TasksPageContent() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        setTasks(taskData as Task[])
-        if (offlineDB && taskData.length > 0) {
-          const validTasks = taskData.filter((t) => !!t && !!t.id)
+        const sorted = sortTasksChronologically(taskData as Task[])
+        setTasks(sorted)
+        memoryCache.tasks = sorted
+        if (offlineDB && sorted.length > 0) {
+          const validTasks = sorted.filter((t) => !!t && !!t.id)
           if (validTasks.length > 0) {
-            await offlineDB.tasks.bulkPut(validTasks as Task[])
+            await offlineDB.tasks.bulkPut(validTasks)
           }
         }
       }
@@ -477,39 +492,43 @@ function TasksPageContent() {
     }
   }
 
-  // Filtrado de Tareas
-  const filteredTasks = tasks.filter((t) => {
-    // 1. Filtro por Ámbito
-    if (activeTab === 'classroom') {
-      if (t.is_private) return false
-    } else {
-      if (!t.is_private) return false
-      if (t.created_by !== user?.id) return false
-    }
+  // Filtrado y Ordenamiento Determinista de Tareas (0ms layout shifts)
+  const filteredTasks = React.useMemo(() => {
+    const list = tasks.filter((t) => {
+      // 1. Filtro por Ámbito
+      if (activeTab === 'classroom') {
+        if (t.is_private) return false
+      } else {
+        if (!t.is_private) return false
+        if (t.created_by !== user?.id) return false
+      }
 
-    // 2. Filtro por Estado y Retención de 7 Días
-    const completed = isTaskCompleted(t, user?.id)
+      // 2. Filtro por Estado y Retención de 7 Días
+      const completed = isTaskCompleted(t, user?.id)
 
-    if (completed) {
-      const completedDate = getTaskCompletedDate(t, user?.id)
-      if (completedDate) {
-        const timeDiff = Date.now() - completedDate.getTime()
-        if (timeDiff > SEVEN_DAYS_MS) {
-          return false
+      if (completed) {
+        const completedDate = getTaskCompletedDate(t, user?.id)
+        if (completedDate) {
+          const timeDiff = Date.now() - completedDate.getTime()
+          if (timeDiff > SEVEN_DAYS_MS) {
+            return false
+          }
         }
       }
-    }
 
-    if (statusFilter === 'pending' && completed) return false
-    if (statusFilter === 'completed' && !completed) return false
+      if (statusFilter === 'pending' && completed) return false
+      if (statusFilter === 'completed' && !completed) return false
 
-    // 3. Filtro por Materia
-    if (selectedSubjectId !== 'all') {
-      if (t.subject_id !== selectedSubjectId) return false
-    }
+      // 3. Filtro por Materia
+      if (selectedSubjectId !== 'all') {
+        if (t.subject_id !== selectedSubjectId) return false
+      }
 
-    return true
-  })
+      return true
+    })
+
+    return sortTasksChronologically(list)
+  }, [tasks, activeTab, user?.id, statusFilter, selectedSubjectId])
 
   // Contadores para las pestañas principales
   const classroomTasksCount = tasks.filter(

@@ -40,7 +40,7 @@ interface CreateTaskModalProps {
 const MAX_TITLE_LENGTH = 100
 const MAX_DESC_LENGTH = 300
 
-// Calcular la fecha exacta de la próxima ocurrencia de un día de la semana (1=Lun ... 5=Vie)
+// Calcular la fecha exacta de la próxima ocurrencia de un día de la semana (1=Lun ... 5=Vie) sin desfase UTC
 function getNextOccurrenceOfWeekday(targetDay: number, classTimeStr?: string): { dateStr: string; label: string } {
   const now = new Date()
   const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
@@ -63,7 +63,11 @@ function getNextOccurrenceOfWeekday(targetDay: number, classTimeStr?: string): {
   const target = new Date(now)
   target.setDate(now.getDate() + daysToAdd)
 
-  const dateStr = target.toISOString().split('T')[0]
+  const y = target.getFullYear()
+  const m = String(target.getMonth() + 1).padStart(2, '0')
+  const d = String(target.getDate()).padStart(2, '0')
+  const dateStr = `${y}-${m}-${d}`
+
   const label = target.toLocaleDateString('es-ES', {
     weekday: 'long',
     day: 'numeric',
@@ -101,7 +105,10 @@ export function CreateTaskModal({
   const getTomorrowDate = () => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
-    return d.toISOString().split('T')[0]
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
   }
 
   const [dueDate, setDueDate] = useState(getTomorrowDate())
@@ -186,7 +193,12 @@ export function CreateTaskModal({
 
     try {
       setLoading(true)
-      const combinedDateTime = `${dueDate}T${dueTime}:00`
+
+      // Convertir fecha y hora local exactamente a ISO UTC para la base de datos
+      const [year, month, day] = dueDate.split('-').map(Number)
+      const [hour, minute] = dueTime.split(':').map(Number)
+      const localDate = new Date(year, month - 1, day, hour, minute, 0)
+      const combinedDateTime = localDate.toISOString()
 
       await onSaveTask({
         title: title.trim(),

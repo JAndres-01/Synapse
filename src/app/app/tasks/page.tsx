@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
@@ -66,6 +66,7 @@ function TasksPageContent() {
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
   const supabase = createClient()
+  const channelRef = useRef<any>(null)
   const isAdmin =
     classroom?.created_by === user?.id ||
     profile?.role === 'admin' ||
@@ -207,14 +208,25 @@ function TasksPageContent() {
     }
   }, [classroom, user, supabase])
 
-  // Carga inicial y suscripción Realtime en vivo
+  // Carga inicial y suscripción Realtime en vivo (Broadcast + Postgres Changes + Polling de respaldo)
   useEffect(() => {
     loadTasksData()
 
     if (!classroom) return
 
+    const channelName = `classroom_room_${classroom.id}`
     const channel = supabase
-      .channel(`public:tasks_page:${classroom.id}`)
+      .channel(channelName, {
+        config: {
+          broadcast: { ack: false, self: false },
+        },
+      })
+      .on('broadcast', { event: 'comment_added' }, () => {
+        loadTasksData()
+      })
+      .on('broadcast', { event: 'tasks_updated' }, () => {
+        loadTasksData()
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `classroom_id=eq.${classroom.id}` },
@@ -237,8 +249,19 @@ function TasksPageContent() {
       )
       .subscribe()
 
+    channelRef.current = channel
+
+    // Polling de respaldo cada 4 segundos cuando la pestaña esté activa para garantizar tiempo real 100%
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadTasksData()
+      }
+    }, 4000)
+
     return () => {
+      clearInterval(interval)
       supabase.removeChannel(channel)
+      channelRef.current = null
     }
   }, [classroom, loadTasksData, supabase])
 
@@ -562,6 +585,12 @@ function TasksPageContent() {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('tasks_updated'))
         }
+
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'comment_added',
+          payload: { taskId },
+        })
       }
     } catch (err) {
       console.error('Error insertando comentario en Supabase:', err)

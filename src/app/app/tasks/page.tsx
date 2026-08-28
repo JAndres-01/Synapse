@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subject, TaskType, Schedule } from '@/types/database'
+import type { Task, Subject, TaskType, Schedule, AttachmentType, TaskAttachment } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
@@ -106,6 +106,7 @@ export default function TasksPage() {
         .select(`
           *,
           subject:subjects(*),
+          attachments:task_attachments(*),
           user_status:user_task_status(*),
           comments:task_comments(*, author:profiles(*))
         `)
@@ -120,6 +121,7 @@ export default function TasksPage() {
           .select(`
             *,
             subject:subjects(*),
+            attachments:task_attachments(*),
             user_status:user_task_status(*)
           `)
           .eq('classroom_id', classroom.id)
@@ -264,6 +266,7 @@ export default function TasksPage() {
     type: TaskType
     due_date: string
     is_private: boolean
+    attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
   }) => {
     if (!classroom || !user) return
 
@@ -284,10 +287,28 @@ export default function TasksPage() {
     const { data: newTask, error } = await supabase
       .from('tasks')
       .insert(payload)
-      .select('*, subject:subjects(*), user_status:user_task_status(*)')
+      .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*)')
       .single()
 
     if (!error && newTask) {
+      if (taskData.attachments && taskData.attachments.length > 0) {
+        const attachPayload = taskData.attachments.map((att) => ({
+          task_id: newTask.id,
+          uploaded_by: user.id,
+          file_type: att.file_type,
+          file_url: att.file_url,
+          file_name: att.file_name,
+        }))
+        const { data: savedAttachments } = await supabase
+          .from('task_attachments')
+          .insert(attachPayload)
+          .select('*')
+
+        if (savedAttachments) {
+          ;(newTask as unknown as Task).attachments = savedAttachments as unknown as TaskAttachment[]
+        }
+      }
+
       setTasks((prev) => [newTask as unknown as Task, ...prev])
       if (offlineDB) {
         await offlineDB.tasks.put(newTask as unknown as Task)
@@ -310,6 +331,7 @@ export default function TasksPage() {
       type: TaskType
       due_date: string
       is_private: boolean
+      attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
     }
   ) => {
     if (!user) return
@@ -327,10 +349,34 @@ export default function TasksPage() {
       .from('tasks')
       .update(payload)
       .eq('id', taskId)
-      .select('*, subject:subjects(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
+      .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
       .single()
 
     if (!error && updated) {
+      if (taskData.attachments) {
+        await supabase.from('task_attachments').delete().eq('task_id', taskId)
+
+        if (taskData.attachments.length > 0) {
+          const attachPayload = taskData.attachments.map((att) => ({
+            task_id: taskId,
+            uploaded_by: user.id,
+            file_type: att.file_type,
+            file_url: att.file_url,
+            file_name: att.file_name,
+          }))
+          const { data: updatedAttachments } = await supabase
+            .from('task_attachments')
+            .insert(attachPayload)
+            .select('*')
+
+          if (updatedAttachments) {
+            ;(updated as unknown as Task).attachments = updatedAttachments as unknown as TaskAttachment[]
+          }
+        } else {
+          ;(updated as unknown as Task).attachments = []
+        }
+      }
+
       setTasks((prev) => prev.map((t) => (t.id === taskId ? (updated as unknown as Task) : t)))
       if (selectedTaskForDetail?.id === taskId) {
         setSelectedTaskForDetail(updated as unknown as Task)

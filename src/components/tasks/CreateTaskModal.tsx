@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Subject, Schedule, TaskType, Task } from '@/types/database'
+import type { Subject, Schedule, TaskType, Task, AttachmentType, TaskAttachment } from '@/types/database'
 import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
 import {
   X,
@@ -19,7 +19,17 @@ import {
   CalendarCheck,
   Check,
   Pencil,
+  Paperclip,
+  Image as ImageIcon,
+  AlertCircle,
 } from 'lucide-react'
+
+export interface AttachedFileItem {
+  id?: string
+  file_name: string
+  file_url: string
+  file_type: AttachmentType
+}
 
 interface CreateTaskModalProps {
   isOpen: boolean
@@ -36,6 +46,7 @@ interface CreateTaskModalProps {
     type: TaskType
     due_date: string
     is_private: boolean
+    attachments?: AttachedFileItem[]
   }) => Promise<void>
   onUpdateTask?: (
     taskId: string,
@@ -46,12 +57,16 @@ interface CreateTaskModalProps {
       type: TaskType
       due_date: string
       is_private: boolean
+      attachments?: AttachedFileItem[]
     }
   ) => Promise<void>
 }
 
 const MAX_TITLE_LENGTH = 100
 const MAX_DESC_LENGTH = 300
+const MAX_ATTACHMENTS = 5
+const MAX_FILE_SIZE_MB = 5
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 // Calcular la fecha exacta de la próxima ocurrencia de un día de la semana (1=Lun ... 5=Vie) sin desfase UTC
 function getNextOccurrenceOfWeekday(targetDay: number, classTimeStr?: string): { dateStr: string; label: string } {
@@ -106,6 +121,9 @@ export function CreateTaskModal({
   const [description, setDescription] = useState('')
   const [subjectId, setSubjectId] = useState<string>('')
   const [type, setType] = useState<TaskType>('individual')
+  const [attachments, setAttachments] = useState<AttachedFileItem[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Modo de selección de fecha: 'preset' (Horario Semanal) vs 'manual' (Fecha y Hora manual)
   const [scheduleMode, setScheduleMode] = useState<'preset' | 'manual'>('preset')
@@ -145,6 +163,20 @@ export function CreateTaskModal({
       setMode(initialTask.is_private ? 'private' : 'classroom')
       setScheduleMode('manual')
       setSelectedScheduleSlot(null)
+      setFileError(null)
+
+      if (initialTask.attachments && initialTask.attachments.length > 0) {
+        setAttachments(
+          initialTask.attachments.map((a) => ({
+            id: a.id,
+            file_name: a.file_name,
+            file_url: a.file_url,
+            file_type: a.file_type,
+          }))
+        )
+      } else {
+        setAttachments([])
+      }
 
       if (initialTask.due_date) {
         try {
@@ -171,6 +203,8 @@ export function CreateTaskModal({
       setTitle('')
       setDescription('')
       setType('individual')
+      setAttachments([])
+      setFileError(null)
       setScheduleMode('preset')
       setSelectedScheduleSlot(null)
       setDueDate(getTomorrowDate())
@@ -236,6 +270,53 @@ export function CreateTaskModal({
     })
   }
 
+  // Manejar adjuntar archivos
+  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setFileError(null)
+
+    if (attachments.length + files.length > MAX_ATTACHMENTS) {
+      setFileError(`Puedes adjuntar un máximo de ${MAX_ATTACHMENTS} archivos.`)
+      return
+    }
+
+    Array.from(files).forEach((file) => {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setFileError(`El archivo "${file.name}" supera el límite de ${MAX_FILE_SIZE_MB}MB.`)
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const fileUrl = event.target?.result as string
+        const isImage = file.type.startsWith('image/')
+        const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf')
+        const fileType: AttachmentType = isImage ? 'image' : isPdf ? 'pdf' : 'link'
+
+        setAttachments((prev) => [
+          ...prev,
+          {
+            file_name: file.name,
+            file_url: fileUrl,
+            file_type: fileType,
+          },
+        ])
+      }
+      reader.readAsDataURL(file)
+    })
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const removeAttachment = (indexToRemove: number) => {
+    setAttachments((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+    setFileError(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -256,6 +337,7 @@ export function CreateTaskModal({
         type,
         due_date: combinedDateTime,
         is_private: mode === 'private',
+        attachments,
       }
 
       if (initialTask && onUpdateTask) {
@@ -266,6 +348,7 @@ export function CreateTaskModal({
 
       setTitle('')
       setDescription('')
+      setAttachments([])
       onClose()
     } catch (err) {
       console.error('Error guardando tarea:', err)
@@ -337,7 +420,7 @@ export function CreateTaskModal({
               </h2>
               <p className="text-[11px] text-zinc-400">
                 {initialTask
-                  ? 'Modifica los datos y horario de entrega'
+                  ? 'Modifica los datos, adjuntos y horario de entrega'
                   : mode === 'classroom'
                   ? 'Visible para todos los alumnos del salón'
                   : 'Solo visible para ti (notas y pendientes privados)'}
@@ -685,6 +768,77 @@ export function CreateTaskModal({
               placeholder="Escribe detalles del formato de entrega, rúbrica o recordatorios..."
               className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
             />
+          </div>
+
+          {/* ========================================================================= */}
+          {/* SECCIÓN DE ARCHIVOS E IMÁGENES ADJUNTAS                                   */}
+          {/* ========================================================================= */}
+          <div className="space-y-2 pt-1 border-t border-zinc-800/80">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Archivos y Fotos Adjuntas ({attachments.length}/{MAX_ATTACHMENTS})</span>
+              </label>
+
+              {attachments.length < MAX_ATTACHMENTS && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                >
+                  <Plus className="w-3 h-3 stroke-[2.5]" />
+                  <span>Adjuntar</span>
+                </button>
+              )}
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFilePick}
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              className="hidden"
+            />
+
+            {fileError && (
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-400 bg-amber-950/40 p-2 rounded-xl border border-amber-800/50">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{fileError}</span>
+              </div>
+            )}
+
+            {attachments.length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                {attachments.map((att, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 shrink-0 group"
+                  >
+                    {att.file_type === 'image' ? (
+                      <ImageIcon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    ) : (
+                      <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    )}
+                    <span className="max-w-[120px] truncate text-[11px] font-medium">
+                      {att.file_name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(idx)}
+                      title="Eliminar archivo"
+                      className="text-zinc-500 hover:text-red-400 transition-colors p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-zinc-500 italic">
+                Puedes adjuntar guías PDF, rúbricas o fotos de pizarrones (hasta 5MB c/u).
+              </p>
+            )}
           </div>
 
           {/* Botón Guardar / Publicar */}

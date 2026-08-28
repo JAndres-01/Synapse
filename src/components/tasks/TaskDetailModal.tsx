@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Task, TaskComment, Profile } from '@/types/database'
+import type { Task, TaskComment, Profile, TaskAttachment } from '@/types/database'
 import {
   X,
   Clock,
@@ -18,6 +18,9 @@ import {
   Loader2,
   AlertTriangle,
   Pencil,
+  Paperclip,
+  Download,
+  ExternalLink,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
@@ -249,6 +252,8 @@ export function TaskDetailModal({
   const getReplies = (parentId: string) =>
     comments.filter((c) => c.parent_comment_id === parentId)
 
+  const attachments = task.attachments || []
+
   return (
     <>
       <div
@@ -383,6 +388,71 @@ export function TaskDetailModal({
               ) : (
                 <div className="pt-2.5 border-t border-zinc-800/80">
                   <p className="text-xs text-zinc-600 italic">Sin notas adicionales.</p>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* MATERIAL Y ARCHIVOS ADJUNTOS DE LA TAREA                                  */}
+              {/* ========================================================================= */}
+              {attachments.length > 0 && (
+                <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                    <Paperclip className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Archivos y Recursos Adjuntos ({attachments.length})</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {attachments.map((att, idx) => {
+                      if (att.file_type === 'image') {
+                        return (
+                          <div
+                            key={att.id || idx}
+                            onClick={() => setSelectedImageForLightbox(att.file_url)}
+                            className="p-2 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center gap-2.5 cursor-pointer hover:border-zinc-700 transition-colors active:scale-[0.99]"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={att.file_url}
+                              alt={att.file_name}
+                              className="w-10 h-10 object-cover rounded-lg shrink-0 border border-zinc-800"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-zinc-200 truncate">
+                                {att.file_name}
+                              </p>
+                              <span className="text-[10px] text-indigo-400 font-medium">
+                                Ver en pantalla completa
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <a
+                          key={att.id || idx}
+                          href={att.file_url}
+                          download={att.file_name}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center gap-2.5 hover:border-zinc-700 transition-colors active:scale-[0.99]"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-amber-950/60 border border-amber-800/60 flex items-center justify-center text-amber-400 shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-zinc-200 truncate">
+                              {att.file_name}
+                            </p>
+                            <span className="text-[10px] text-zinc-400 flex items-center gap-1">
+                              Descargar / Abrir documento
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </span>
+                          </div>
+                        </a>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -662,7 +732,7 @@ export function TaskDetailModal({
             <div>
               <h4 className="text-sm font-bold text-white">¿Eliminar esta tarea?</h4>
               <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-                Esta acción no se puede deshacer. Se eliminarán sus notas, hilos de discusión y fotos de apuntes.
+                Esta acción no se puede deshacer. Se eliminarán sus notas, archivos adjuntos, hilos de discusión y fotos de apuntes.
               </p>
             </div>
 

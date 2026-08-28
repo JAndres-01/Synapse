@@ -21,6 +21,7 @@ export default function TodayPage() {
   const [refreshing, setRefreshing] = useState(false)
 
   const supabase = createClient()
+  const isAdmin = classroom?.created_by === user?.id || profile?.role === 'admin' || (profile?.role as string) === 'delegate'
 
   // Obtener día actual (1=Lunes ... 7=Domingo en nuestra BD)
   const getTodayDayOfWeek = () => {
@@ -45,7 +46,6 @@ export default function TodayPage() {
 
       if (!schedErr && scheduleData) {
         setSchedulesToday(scheduleData as unknown as Schedule[])
-        // Guardar en caché offline si hay registros válidos
         if (offlineDB && scheduleData.length > 0) {
           const validRecords = scheduleData.filter((s) => !!s && !!s.id)
           if (validRecords.length > 0) {
@@ -78,7 +78,7 @@ export default function TodayPage() {
         .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
         .eq('classroom_id', classroom.id)
         .order('created_at', { ascending: false })
-        .limit(15)
+        .limit(20)
 
       if (!noticeErr && noticeData) {
         setNotices(noticeData as unknown as Notice[])
@@ -122,14 +122,19 @@ export default function TodayPage() {
   useEffect(() => {
     loadTodayData()
 
-    // Suscripción Realtime a nuevos avisos y tareas
     if (!classroom) return
 
+    // Suscripción Realtime a nuevos avisos, comentarios y tareas
     const channel = supabase
       .channel(`public:classroom_today:${classroom.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notices', filter: `classroom_id=eq.${classroom.id}` },
+        () => loadTodayData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notice_comments' },
         () => loadTodayData()
       )
       .on(
@@ -185,18 +190,94 @@ export default function TodayPage() {
   }
 
   // Publicar un nuevo aviso
-  const handleAddNotice = async (content: string, category: NoticeCategory, isUrgent: boolean) => {
+  const handleAddNotice = async (
+    content: string,
+    category: NoticeCategory,
+    isUrgent: boolean,
+    isPinned: boolean
+  ) => {
     if (!classroom || !user) return
 
-    const { error } = await supabase.from('notices').insert({
-      classroom_id: classroom.id,
-      author_id: user.id,
-      content,
-      category,
-      is_urgent: isUrgent,
-    })
+    const { data: newNotice, error } = await supabase
+      .from('notices')
+      .insert({
+        classroom_id: classroom.id,
+        author_id: user.id,
+        content,
+        category,
+        is_urgent: isUrgent,
+        is_pinned: isPinned,
+      })
+      .select('*, author:profiles(*), comments:notice_comments(*)')
+      .single()
 
+    if (!error && newNotice) {
+      setNotices((prev) => [newNotice, ...prev])
+      if (offlineDB) {
+        await offlineDB.notices.put(newNotice)
+      }
+    } else {
+      loadTodayData()
+    }
+  }
+
+  // Editar aviso existente
+  const handleEditNotice = async (
+    noticeId: string,
+    content: string,
+    category: NoticeCategory,
+    isUrgent: boolean,
+    isPinned: boolean
+  ) => {
+    const { data: updated, error } = await supabase
+      .from('notices')
+      .update({
+        content,
+        category,
+        is_urgent: isUrgent,
+        is_pinned: isPinned,
+      })
+      .eq('id', noticeId)
+      .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
+      .single()
+
+    if (!error && updated) {
+      setNotices((prev) => prev.map((n) => (n.id === noticeId ? updated : n)))
+      if (offlineDB) {
+        await offlineDB.notices.put(updated)
+      }
+    } else {
+      loadTodayData()
+    }
+  }
+
+  // Eliminar aviso
+  const handleDeleteNotice = async (noticeId: string) => {
+    const { error } = await supabase.from('notices').delete().eq('id', noticeId)
     if (!error) {
+      setNotices((prev) => prev.filter((n) => n.id !== noticeId))
+      if (offlineDB) {
+        await offlineDB.notices.delete(noticeId)
+      }
+    }
+  }
+
+  // Fijar / Desfijar aviso
+  const handleTogglePinNotice = async (noticeId: string, currentPinned: boolean) => {
+    const newPinned = !currentPinned
+    const { data: updated, error } = await supabase
+      .from('notices')
+      .update({ is_pinned: newPinned })
+      .eq('id', noticeId)
+      .select('*, author:profiles(*), comments:notice_comments(*, author:profiles(*))')
+      .single()
+
+    if (!error && updated) {
+      setNotices((prev) => prev.map((n) => (n.id === noticeId ? updated : n)))
+      if (offlineDB) {
+        await offlineDB.notices.put(updated)
+      }
+    } else {
       loadTodayData()
     }
   }
@@ -205,13 +286,29 @@ export default function TodayPage() {
   const handleAddComment = async (noticeId: string, content: string) => {
     if (!user) return
 
-    const { error } = await supabase.from('notice_comments').insert({
-      notice_id: noticeId,
-      author_id: user.id,
-      content,
-    })
+    const { data: newComment, error } = await supabase
+      .from('notice_comments')
+      .insert({
+        notice_id: noticeId,
+        author_id: user.id,
+        content,
+      })
+      .select('*, author:profiles(*)')
+      .single()
 
-    if (!error) {
+    if (!error && newComment) {
+      setNotices((prev) =>
+        prev.map((n) => {
+          if (n.id === noticeId) {
+            return {
+              ...n,
+              comments: [...(n.comments || []), newComment],
+            }
+          }
+          return n
+        })
+      )
+    } else {
       loadTodayData()
     }
   }
@@ -222,8 +319,8 @@ export default function TodayPage() {
     month: 'long',
   })
 
-  // Buscar si hay aviso urgente de cambio de aula para mostrar en el Hero Card
-  const urgentClassNotice = notices.find((n) => n.is_urgent && n.category === 'cambio_aula')
+  // Buscar si hay aviso urgente activo para mostrar en el Hero Card
+  const urgentNotice = notices.find((n) => n.is_urgent)
 
   if (loading) {
     return (
@@ -261,15 +358,15 @@ export default function TodayPage() {
         </button>
       </header>
 
-      {/* Banner de Salón Nuevo (si es delegado y aún no tiene materias) */}
-      {profile?.role === 'admin' && schedulesToday.length === 0 && (
+      {/* Banner de Salón Nuevo (si es delegado y aún no tiene clases hoy) */}
+      {isAdmin && schedulesToday.length === 0 && (
         <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50 space-y-2">
           <div className="flex items-center gap-2 text-indigo-300 font-semibold text-xs">
             <Calendar className="w-4 h-4 text-indigo-400" />
             <span>Configura el horario de tu salón</span>
           </div>
           <p className="text-[11px] text-zinc-300 leading-relaxed">
-            Eres delegado de este salón. Ve a la pestaña **Horario** para añadir las materias del semestre y configurar los 4 bloques diarios.
+            Eres delegado de este salón. Ve a la pestaña **Horario** para añadir las materias del semestre y configurar las 4 clases diarias.
           </p>
           <Link
             href="/app/schedule"
@@ -281,10 +378,10 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* 1. Hero Card en Tiempo Real (Los 4 Bloques y Clase Activa) */}
+      {/* 1. Hero Card en Tiempo Real (Las 4 Clases y Clase Activa) */}
       <LiveClassHeroCard
         schedulesToday={schedulesToday}
-        urgentNotice={urgentClassNotice}
+        urgentNotice={urgentNotice}
       />
 
       {/* 2. Carrusel de Tareas Próximas */}
@@ -293,14 +390,18 @@ export default function TodayPage() {
         onToggleTaskStatus={handleToggleTaskStatus}
       />
 
-      {/* 3. Cronograma de los 4 Bloques de Hoy */}
+      {/* 3. Cronograma de las 4 Clases de Hoy */}
       <DayScheduleTimeline schedulesToday={schedulesToday} />
 
       {/* 4. Canal Oficial de Avisos de Delegados */}
       <DelegateNoticesFeed
         notices={notices}
         currentUserId={user?.id || ''}
+        isAdmin={isAdmin}
         onAddNotice={handleAddNotice}
+        onEditNotice={handleEditNotice}
+        onDeleteNotice={handleDeleteNotice}
+        onTogglePinNotice={handleTogglePinNotice}
         onAddComment={handleAddComment}
       />
     </div>

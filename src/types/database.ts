@@ -109,6 +109,7 @@ export interface Notice {
   category: NoticeCategory
   content: string
   is_urgent: boolean
+  is_pinned?: boolean
   created_at: string
   author?: Profile
   comments?: NoticeComment[]

@@ -44,10 +44,41 @@ export function LiveClassHeroCard({
     return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`
   }
 
+  // Lógica MIXTA de expiración de Aviso Urgente:
+  // Expira automáticamente al terminar la jornada escolar (1:00 PM) del día en que se publicó,
+  // o si pertenece a un día anterior.
+  const isUrgentActive = () => {
+    if (!urgentNotice || !urgentNotice.is_urgent) return false
+    try {
+      const noticeDate = new Date(urgentNotice.created_at)
+      const now = new Date()
+
+      // Si fue publicado en una fecha anterior, ya expiró
+      if (noticeDate.toDateString() !== now.toDateString()) {
+        return false
+      }
+
+      // Si la hora actual pasó de la 1:00 PM (13:00) y el aviso fue de la mañana escolar, expira
+      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+      const schoolEndMinutes = 13 * 60 // 1:00 PM
+      const noticeMinutes = noticeDate.getHours() * 60 + noticeDate.getMinutes()
+
+      if (noticeMinutes <= schoolEndMinutes && currentMinutes > schoolEndMinutes) {
+        return false
+      }
+
+      return true
+    } catch {
+      return !!urgentNotice.is_urgent
+    }
+  }
+
+  const showUrgentBanner = isUrgentActive()
+
   return (
     <div className="relative overflow-hidden rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 shadow-xl transition-all">
-      {/* Banner de aviso urgente de Salón si existe */}
-      {urgentNotice && (
+      {/* Banner de aviso urgente de Salón si está activo y no ha expirado */}
+      {showUrgentBanner && urgentNotice && (
         <div className="mb-3 p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/60 flex items-center gap-2 text-amber-300 text-xs font-medium animate-fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="truncate">{urgentNotice.content}</span>
@@ -60,7 +91,7 @@ export function LiveClassHeroCard({
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-[11px] font-semibold text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>EN CURSO • BLOQUE {currentSchedule.block_number}</span>
+              <span>EN CURSO • CLASE {currentSchedule.block_number}</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-400">
               Termina en {minutesRemaining} min
@@ -70,8 +101,8 @@ export function LiveClassHeroCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: currentSchedule.subject?.color || '#3B82F6' }}
+                className="w-2.5 h-2.5 rounded-full shrink-0 border border-zinc-700"
+                style={{ backgroundColor: currentSchedule.subject?.color || '#FFFFFF' }}
               />
               <h2 className="text-base font-bold text-white tracking-tight truncate">
                 {currentSchedule.subject?.name || 'Materia'}
@@ -113,7 +144,7 @@ export function LiveClassHeroCard({
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-[11px] font-medium text-zinc-300">
               <Coffee className="w-3.5 h-3.5 text-zinc-400" />
-              <span>PRÓXIMA CLASE • BLOQUE {nextSchedule.block_number}</span>
+              <span>PRÓXIMA • CLASE {nextSchedule.block_number}</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-400">
               Comienza en {minutesUntilNext} min
@@ -123,8 +154,8 @@ export function LiveClassHeroCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: nextSchedule.subject?.color || '#3B82F6' }}
+                className="w-2.5 h-2.5 rounded-full shrink-0 border border-zinc-700"
+                style={{ backgroundColor: nextSchedule.subject?.color || '#FFFFFF' }}
               />
               <h2 className="text-sm font-semibold text-zinc-100 truncate">
                 {nextSchedule.subject?.name || 'Materia'}
@@ -181,7 +212,7 @@ export function LiveClassHeroCard({
             </h3>
             <p className="text-[11px] text-zinc-500 mt-0.5">
               {status === 'day_ended'
-                ? 'Los 4 bloques de hoy han terminado. ¡Buen descanso!'
+                ? 'Las 4 clases de hoy han terminado. ¡Buen descanso!'
                 : 'Aprovecha para revisar tus tareas o preparar la semana.'}
             </p>
           </div>

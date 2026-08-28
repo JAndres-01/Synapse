@@ -103,9 +103,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-zinc-800 relative">
-      {/* Contenedor Principal Centrado y Ajustado a Mobile First */}
-      <main className="w-full max-w-md mx-auto px-4 pt-4 pb-28 flex-1 flex flex-col">
+    <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 flex flex-col selection:bg-zinc-800 relative">
+      {/* Contenedor Principal Centrado Mobile First con margen inferior amplio para no chocar con la barra flotante */}
+      <main className="w-full max-w-md mx-auto px-4 pt-4 pb-36 flex-1 flex flex-col">
         {children}
       </main>
 

@@ -333,24 +333,26 @@ export function CreateTaskModal({
               />
             </div>
 
-            {/* Materia Asociada */}
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                Materia Asociada
-              </label>
-              <select
-                value={subjectId}
-                onChange={(e) => setSubjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark] box-border"
-              >
-                <option value="">(Sin materia / General)</option>
-                {subjects.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.name} {sub.code ? `(${sub.code})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Materia Asociada: Solo visible en modo Manual (en modo Horario se elige directamente en la clase) */}
+            {scheduleMode === 'manual' && (
+              <div className="animate-fade-in">
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                  Materia Asociada
+                </label>
+                <select
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark] box-border"
+                >
+                  <option value="">(Sin materia / General)</option>
+                  {subjects.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name} {sub.code ? `(${sub.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Tipo de Tarea */}
             <div>

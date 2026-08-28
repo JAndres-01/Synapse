@@ -49,7 +49,6 @@ export function CreateTaskModal({
   const [subjectId, setSubjectId] = useState<string>('')
   const [type, setType] = useState<TaskType>('individual')
 
-  // Fecha y hora por defecto: Mañana a las 23:59
   const getTomorrowDate = () => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
@@ -66,7 +65,6 @@ export function CreateTaskModal({
   const dragStartYRef = useRef(0)
 
   useEffect(() => {
-    // Si no es admin, forzar siempre modo 'private'
     if (!isAdmin) {
       setMode('private')
     } else {
@@ -141,11 +139,11 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-x-hidden touch-pan-y"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl transition-transform"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -187,8 +185,8 @@ export function CreateTaskModal({
 
         {/* Indicador / Selector de Ámbito */}
         {isAdmin ? (
-          /* Delegado: Puede alternar entre "Del Salón" y "Mi Pendiente" */
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800">
+          /* Delegado: Selector de 2 opciones */
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
             <button
               type="button"
               onClick={() => setMode('classroom')}
@@ -216,8 +214,8 @@ export function CreateTaskModal({
             </button>
           </div>
         ) : (
-          /* Alumno: Panel fijo "Mi Pendiente" con candado y estilo consistente */
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
+          /* Alumno: Panel fijo "Mis Pendientes" */
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
             <div className="flex items-center gap-2">
               <span className="p-1.5 rounded-lg bg-amber-950/50 border border-amber-800/50 text-amber-400">
                 <Lock className="w-3.5 h-3.5" />
@@ -237,7 +235,7 @@ export function CreateTaskModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3.5 w-full">
           {/* Título de la tarea con contador */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -283,7 +281,7 @@ export function CreateTaskModal({
             <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
               Tipo de Entrega
             </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5 w-full">
               <button
                 type="button"
                 onClick={() => setType('individual')}
@@ -338,38 +336,36 @@ export function CreateTaskModal({
             </div>
           </div>
 
-          {/* Fecha y Hora de Entrega (Diseño Blindado para iOS Safari WebKit) */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="space-y-1">
-              <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-zinc-500" />
-                <span>Fecha Límite</span>
+          {/* Fecha y Hora de Entrega (En Filas Individuales para Pantallas Móviles) */}
+          <div className="space-y-3 w-full">
+            {/* 1. Fecha Límite */}
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Fecha Límite de Entrega</span>
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  required
-                  className="w-full h-11 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
-                />
-              </div>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+                className="w-full h-11 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+              />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-zinc-500" />
+            {/* 2. Hora Límite */}
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-zinc-400" />
                 <span>Hora Límite</span>
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  required
-                  className="w-full h-11 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
-                />
-              </div>
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+                required
+                className="w-full h-11 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+              />
             </div>
           </div>
 
@@ -402,7 +398,7 @@ export function CreateTaskModal({
           <button
             type="submit"
             disabled={loading || !title.trim()}
-            className="w-full py-3 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+            className="w-full py-3.5 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />

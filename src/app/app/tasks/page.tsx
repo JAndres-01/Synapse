@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Sparkles,
   ChevronDown,
-  Filter,
 } from 'lucide-react'
 
 export default function TasksPage() {
@@ -45,8 +44,6 @@ export default function TasksPage() {
     (profile?.role as string) === 'delegate'
 
   // Determinar si puede crear tareas en la pestaña activa
-  // En "Del Salón": solo delegados/admins
-  // En "Mis Pendientes": cualquier usuario
   const canCreateInActiveTab = activeTab === 'private' || isAdmin
 
   // Cargar Tareas y Materias
@@ -88,7 +85,6 @@ export default function TasksPage() {
       }
     } catch (err) {
       console.error('Error cargando tareas:', err)
-      // Carga desde caché offline
       if (offlineDB && classroom) {
         const cached = await offlineDB.tasks
           .where('classroom_id')
@@ -107,7 +103,6 @@ export default function TasksPage() {
 
     if (!classroom) return
 
-    // Suscripción Realtime a cambios en tareas y comentarios
     const channel = supabase
       .channel(`public:tasks_room:${classroom.id}`)
       .on(
@@ -127,7 +122,6 @@ export default function TasksPage() {
     }
   }, [classroom, loadTasksData, supabase])
 
-  // Mantener sincronizado el modal de detalle si la tarea cambia
   useEffect(() => {
     if (selectedTaskForDetail) {
       const updated = tasks.find((t) => t.id === selectedTaskForDetail.id)
@@ -135,7 +129,6 @@ export default function TasksPage() {
     }
   }, [tasks, selectedTaskForDetail])
 
-  // Alternar estado completada / pendiente
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     if (!user) return
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
@@ -176,7 +169,6 @@ export default function TasksPage() {
     }
   }
 
-  // Guardar nueva tarea (Personal o del Salón)
   const handleSaveTask = async (taskData: {
     title: string
     description?: string
@@ -212,7 +204,6 @@ export default function TasksPage() {
     }
   }
 
-  // Eliminar tarea
   const handleDeleteTask = async (taskId: string) => {
     const { error } = await supabase.from('tasks').delete().eq('id', taskId)
     if (!error) {
@@ -223,7 +214,6 @@ export default function TasksPage() {
     }
   }
 
-  // Agregar comentario o foto de apunte a una tarea
   const handleAddComment = async (
     taskId: string,
     content: string,
@@ -261,11 +251,8 @@ export default function TasksPage() {
     }
   }
 
-  // =========================================================================
   // Filtrado de Tareas
-  // =========================================================================
   const filteredTasks = tasks.filter((t) => {
-    // 1. Filtro por Ámbito:
     if (activeTab === 'classroom') {
       if (t.is_private) return false
     } else {
@@ -273,7 +260,6 @@ export default function TasksPage() {
       if (t.created_by !== user?.id) return false
     }
 
-    // 2. Filtro por Estado:
     const isCompleted =
       Array.isArray(t.user_status) &&
       t.user_status.length > 0 &&
@@ -282,7 +268,6 @@ export default function TasksPage() {
     if (statusFilter === 'pending' && isCompleted) return false
     if (statusFilter === 'completed' && !isCompleted) return false
 
-    // 3. Filtro por Materia:
     if (selectedSubjectId !== 'all' && t.subject_id !== selectedSubjectId) {
       return false
     }
@@ -290,7 +275,7 @@ export default function TasksPage() {
     return true
   })
 
-  // Estadísticas rápidas
+  // Estadísticas
   const pendingCount = tasks.filter((t) => {
     const isScopeMatch =
       activeTab === 'classroom'
@@ -309,47 +294,33 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex flex-col space-y-4">
-      {/* Header Principal */}
-      <header className="flex items-center justify-between gap-2 pt-1">
-        <div>
+    <div className="flex flex-col space-y-4 relative min-h-full pb-20">
+      {/* Header Principal con posición fija y estable (Nunca mueve el texto) */}
+      <header className="flex items-center justify-between pt-1">
+        <div className="flex-1 min-w-0 pr-2">
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-indigo-400" />
-            <span>Tareas & Entregas</span>
+            <CheckSquare className="w-5 h-5 text-indigo-400 shrink-0" />
+            <span className="truncate">Tareas & Entregas</span>
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-0.5 truncate">
             {pendingCount === 0
               ? '¡Estás al día con tus entregas! 🎉'
               : `Tienes ${pendingCount} ${pendingCount === 1 ? 'entrega pendiente' : 'entregas pendientes'}`}
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setRefreshing(true)
-              loadTasksData()
-            }}
-            disabled={refreshing}
-            aria-label="Actualizar tareas"
-            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
-          </button>
-
-          {/* Botón Crear Tarea: solo si está en Mis Pendientes O es delegado */}
-          {canCreateInActiveTab && (
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              className="h-9 px-3 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setRefreshing(true)
+            loadTasksData()
+          }}
+          disabled={refreshing}
+          aria-label="Actualizar tareas"
+          className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50 shrink-0"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+        </button>
       </header>
 
       {/* 1. Selector de Panel Principal: "Del Salón" vs "Mis Pendientes" */}
@@ -383,7 +354,6 @@ export default function TasksPage() {
 
       {/* 2. Barra Unificada de Filtros: Estados + Dropdown de Materia */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        {/* Filtro por Estado: Pendientes / Completadas / Todas */}
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -422,7 +392,6 @@ export default function TasksPage() {
           </button>
         </div>
 
-        {/* Dropdown Compacto de Materia (Filtro Limpio y Elegante) */}
         {subjects.length > 0 && (
           <div className="relative">
             <select
@@ -443,7 +412,7 @@ export default function TasksPage() {
       </div>
 
       {/* 3. Lista de Tareas */}
-      <div className="space-y-3 pb-8">
+      <div className="space-y-3">
         {filteredTasks.length === 0 ? (
           <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 text-center space-y-3">
             <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-400 mx-auto">
@@ -491,7 +460,20 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* 4. Modal para Crear Tarea */}
+      {/* 4. Botón Flotante (FAB) para Crear Tarea sin mover el texto del Header */}
+      {canCreateInActiveTab && (
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          aria-label={activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}
+          className="fixed bottom-20 right-5 z-40 px-4 py-3 rounded-2xl bg-white text-zinc-950 font-bold text-xs flex items-center gap-2 shadow-2xl shadow-black/80 hover:bg-zinc-100 active:scale-95 transition-all border border-zinc-200"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>
+        </button>
+      )}
+
+      {/* 5. Modal para Crear Tarea */}
       <CreateTaskModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -501,7 +483,7 @@ export default function TasksPage() {
         onSaveTask={handleSaveTask}
       />
 
-      {/* 5. Modal de Detalle de Tarea con Hilos & Fotos de Apuntes */}
+      {/* 6. Modal de Detalle de Tarea con Hilos & Fotos de Apuntes */}
       <TaskDetailModal
         task={selectedTaskForDetail}
         onClose={() => setSelectedTaskForDetail(null)}

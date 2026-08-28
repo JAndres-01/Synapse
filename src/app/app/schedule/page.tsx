@@ -16,6 +16,7 @@ import {
   CalendarDays,
   BookOpen,
   Loader2,
+  RefreshCw,
 } from 'lucide-react'
 
 export default function SchedulePage() {
@@ -23,6 +24,7 @@ export default function SchedulePage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [activeView, setActiveView] = useState<'day' | 'week'>('day')
 
   // Día seleccionado por defecto: día de la semana actual (1..5) o Lunes (1) si es fin de semana
@@ -44,14 +46,18 @@ export default function SchedulePage() {
   })
 
   const supabase = createClient()
-  const isAdmin = classroom?.created_by === user?.id || profile?.role === 'admin' || (profile?.role as string) === 'delegate'
+  const isAdmin =
+    classroom?.created_by === user?.id ||
+    profile?.role === 'admin' ||
+    (profile?.role as string) === 'delegate'
 
-  const loadData = useCallback(async () => {
+  // 1. Carga instantánea desde Dexie IndexedDB (0ms)
+  useEffect(() => {
     if (!classroom) return
 
-    try {
-      // 1. Cargar desde caché local Dexie (Offline-First)
-      if (offlineDB) {
+    const loadCachedInstantly = async () => {
+      if (!offlineDB) return
+      try {
         const [cachedSubjects, cachedSchedules] = await Promise.all([
           offlineDB.subjects.where('classroom_id').equals(classroom.id).toArray(),
           offlineDB.schedules.where('classroom_id').equals(classroom.id).toArray(),
@@ -59,9 +65,23 @@ export default function SchedulePage() {
 
         if (cachedSubjects.length > 0) setSubjects(cachedSubjects)
         if (cachedSchedules.length > 0) setSchedules(cachedSchedules)
-      }
 
-      // 2. Fetch fresco desde Supabase
+        if (cachedSubjects.length > 0 || cachedSchedules.length > 0) {
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Error cargando caché de horarios:', err)
+      }
+    }
+
+    loadCachedInstantly()
+  }, [classroom])
+
+  // 2. Carga fresca y revalidación en segundo plano desde Supabase
+  const loadData = useCallback(async () => {
+    if (!classroom) return
+
+    try {
       const [subjectsRes, schedulesRes] = await Promise.all([
         supabase
           .from('subjects')
@@ -77,21 +97,25 @@ export default function SchedulePage() {
 
       if (subjectsRes.data) {
         setSubjects(subjectsRes.data)
-        if (offlineDB) {
+        if (offlineDB && subjectsRes.data.length > 0) {
           await offlineDB.subjects.bulkPut(subjectsRes.data)
         }
       }
 
       if (schedulesRes.data) {
         setSchedules(schedulesRes.data)
-        if (offlineDB) {
-          await offlineDB.schedules.bulkPut(schedulesRes.data)
+        if (offlineDB && schedulesRes.data.length > 0) {
+          const validRecords = schedulesRes.data.filter((s) => !!s && !!s.id)
+          if (validRecords.length > 0) {
+            await offlineDB.schedules.bulkPut(validRecords)
+          }
         }
       }
     } catch (err) {
-      console.error('Error cargando horarios:', err)
+      console.error('Error sincronizando horarios:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [classroom, supabase])
 
@@ -119,6 +143,11 @@ export default function SchedulePage() {
       supabase.removeChannel(channel)
     }
   }, [classroom, loadData, supabase])
+
+  const handleManualRefresh = () => {
+    setRefreshing(true)
+    loadData()
+  }
 
   // Handlers para el delegado
   const handleSaveSubject = async (data: Partial<Subject>) => {
@@ -211,7 +240,6 @@ export default function SchedulePage() {
         .single()
 
       if (!error && inserted) {
-        // Asignar objeto de subject si no vino en el join
         const scheduleWithSubject = inserted.subject
           ? inserted
           : { ...inserted, subject: subjectObj }
@@ -236,7 +264,7 @@ export default function SchedulePage() {
     }
   }
 
-  if (loading && subjects.length === 0) {
+  if (loading && subjects.length === 0 && schedules.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -258,17 +286,28 @@ export default function SchedulePage() {
           </p>
         </div>
 
-        {/* Botón Administrar Materias (para delegados) */}
-        {isAdmin && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowSubjectsModal(true)}
-            className="py-1.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition-colors shadow-sm shrink-0"
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            aria-label="Actualizar horario"
+            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
           >
-            <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Materias</span>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
-        )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowSubjectsModal(true)}
+              className="py-1.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition-colors shadow-sm shrink-0"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Materias</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Switch de Vista: Día a Día vs Resumen Semanal */}

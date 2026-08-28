@@ -19,22 +19,59 @@ export default function TodayPage() {
   const [refreshing, setRefreshing] = useState(false)
 
   const supabase = createClient()
-  const isAdmin = classroom?.created_by === user?.id || profile?.role === 'admin' || (profile?.role as string) === 'delegate'
+  const isAdmin =
+    classroom?.created_by === user?.id ||
+    profile?.role === 'admin' ||
+    (profile?.role as string) === 'delegate'
 
   // Obtener día actual (1=Lunes ... 7=Domingo en nuestra BD)
   const getTodayDayOfWeek = () => {
     const day = new Date().getDay()
-    return day === 0 ? 7 : day // Si es domingo, mapear a 7
+    return day === 0 ? 7 : day
   }
 
-  // Cargar datos de la jornada
+  // 1. Carga instantánea desde Dexie IndexedDB (0ms)
+  useEffect(() => {
+    if (!classroom) return
+
+    const loadCachedInstantly = async () => {
+      if (!offlineDB) return
+      try {
+        const todayNum = getTodayDayOfWeek()
+        const [cachedSchedules, cachedTasks] = await Promise.all([
+          offlineDB.schedules
+            .where('classroom_id')
+            .equals(classroom.id)
+            .filter((s) => s.day_of_week === todayNum)
+            .toArray(),
+          offlineDB.tasks
+            .where('classroom_id')
+            .equals(classroom.id)
+            .toArray(),
+        ])
+
+        if (cachedSchedules.length > 0) setSchedulesToday(cachedSchedules)
+        if (cachedTasks.length > 0) setUrgentTasks(cachedTasks)
+
+        if (cachedSchedules.length > 0 || cachedTasks.length > 0) {
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Error cargando caché de hoy:', err)
+      }
+    }
+
+    loadCachedInstantly()
+  }, [classroom])
+
+  // 2. Carga fresca y revalidación en segundo plano desde Supabase
   const loadTodayData = useCallback(async () => {
     if (!classroom) return
 
     try {
       const todayNum = getTodayDayOfWeek()
 
-      // 1. Cargar Horarios de hoy con información de materias
+      // A. Cargar Horarios de hoy con información de materias
       const { data: scheduleData, error: schedErr } = await supabase
         .from('schedules')
         .select('*, subject:subjects(*)')
@@ -52,7 +89,7 @@ export default function TodayPage() {
         }
       }
 
-      // 2. Cargar Tareas próximas
+      // B. Cargar Tareas próximas
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
         .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*)')
@@ -70,23 +107,7 @@ export default function TodayPage() {
         }
       }
     } catch (err) {
-      console.error('Error cargando datos de hoy:', err)
-      // Cargar desde caché offline si falla la red
-      if (offlineDB && classroom) {
-        const todayNum = getTodayDayOfWeek()
-        const cachedSchedules = await offlineDB.schedules
-          .where('classroom_id')
-          .equals(classroom.id)
-          .filter((s) => s.day_of_week === todayNum)
-          .toArray()
-        if (cachedSchedules.length > 0) setSchedulesToday(cachedSchedules)
-
-        const cachedTasks = await offlineDB.tasks
-          .where('classroom_id')
-          .equals(classroom.id)
-          .toArray()
-        if (cachedTasks.length > 0) setUrgentTasks(cachedTasks)
-      }
+      console.error('Error sincronizando datos de hoy:', err)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -167,14 +188,6 @@ export default function TodayPage() {
     month: 'long',
   })
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-      </div>
-    )
-  }
-
   const now = new Date()
   const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
 
@@ -192,6 +205,14 @@ export default function TodayPage() {
     const dueDate = new Date(t.due_date)
     return dueDate >= startOfWeek && dueDate <= endOfWeek
   })
+
+  if (loading && urgentTasks.length === 0 && schedulesToday.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col space-y-5">

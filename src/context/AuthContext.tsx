@@ -27,10 +27,46 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [classroom, setClassroom] = useState<Classroom | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const saved = localStorage.getItem('synapse_cached_user')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const saved = localStorage.getItem('synapse_cached_profile')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  const [classroom, setClassroom] = useState<Classroom | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const saved = localStorage.getItem('synapse_active_classroom')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  // Si ya tenemos usuario y salón en caché, no bloqueamos la interfaz con spinner
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const hasUser = !!localStorage.getItem('synapse_cached_user')
+      return !hasUser
+    } catch {
+      return true
+    }
+  })
 
   const supabase = createClient()
 
@@ -38,6 +74,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser = targetUser !== undefined ? targetUser : user
     if (!currentUser) {
       setProfile(null)
+      try {
+        localStorage.removeItem('synapse_cached_profile')
+      } catch {}
       return
     }
 
@@ -50,6 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data && !error) {
         setProfile(data as Profile)
+        try {
+          localStorage.setItem('synapse_cached_profile', JSON.stringify(data))
+        } catch {}
         if (offlineDB) {
           await offlineDB.profile.put(data as Profile)
         }
@@ -67,6 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentUser = targetUser !== undefined ? targetUser : user
     if (!currentUser) {
       setClassroom(null)
+      try {
+        localStorage.removeItem('synapse_active_classroom')
+      } catch {}
       return
     }
 
@@ -125,10 +170,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(activeUser)
 
         if (activeUser) {
+          try {
+            localStorage.setItem('synapse_cached_user', JSON.stringify(activeUser))
+          } catch {}
           await Promise.all([
             refreshProfile(activeUser),
             refreshClassroom(activeUser),
           ])
+        } else {
+          try {
+            localStorage.removeItem('synapse_cached_user')
+            localStorage.removeItem('synapse_cached_profile')
+          } catch {}
         }
       } catch (err) {
         console.error('Error inicializando sesión:', err)
@@ -145,6 +198,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(activeUser)
 
         if (activeUser) {
+          try {
+            localStorage.setItem('synapse_cached_user', JSON.stringify(activeUser))
+          } catch {}
           await Promise.all([
             refreshProfile(activeUser),
             refreshClassroom(activeUser),
@@ -152,6 +208,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null)
           setClassroom(null)
+          try {
+            localStorage.removeItem('synapse_cached_user')
+            localStorage.removeItem('synapse_cached_profile')
+            localStorage.removeItem('synapse_active_classroom')
+          } catch {}
         }
         setLoading(false)
       }
@@ -172,9 +233,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (offlineDB) {
       try {
         await offlineDB.profile.clear()
+        await offlineDB.tasks.clear()
+        await offlineDB.schedules.clear()
+        await offlineDB.subjects.clear()
       } catch {}
     }
     try {
+      localStorage.removeItem('synapse_cached_user')
+      localStorage.removeItem('synapse_cached_profile')
       localStorage.removeItem('synapse_active_classroom')
     } catch {}
     window.location.href = '/auth'
@@ -197,4 +263,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}

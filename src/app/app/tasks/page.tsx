@@ -75,6 +75,34 @@ function TasksPageContent() {
   const searchParams = useSearchParams()
   const taskIdParam = searchParams ? searchParams.get('taskId') : null
 
+  // 1. Carga instantánea desde Dexie IndexedDB (0ms)
+  useEffect(() => {
+    if (!classroom) return
+
+    const loadCachedInstantly = async () => {
+      if (!offlineDB) return
+      try {
+        const [cachedTasks, cachedSubjects, cachedSchedules] = await Promise.all([
+          offlineDB.tasks.where('classroom_id').equals(classroom.id).toArray(),
+          offlineDB.subjects.where('classroom_id').equals(classroom.id).toArray(),
+          offlineDB.schedules.where('classroom_id').equals(classroom.id).toArray(),
+        ])
+
+        if (cachedTasks.length > 0) setTasks(cachedTasks)
+        if (cachedSubjects.length > 0) setSubjects(cachedSubjects)
+        if (cachedSchedules.length > 0) setSchedules(cachedSchedules)
+
+        if (cachedTasks.length > 0 || cachedSubjects.length > 0) {
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Error cargando caché de tareas:', err)
+      }
+    }
+
+    loadCachedInstantly()
+  }, [classroom])
+
   // Abrir automáticamente el modal de detalle si viene taskId en la URL
   useEffect(() => {
     if (taskIdParam && tasks.length > 0) {
@@ -90,7 +118,7 @@ function TasksPageContent() {
     }
   }, [taskIdParam, tasks])
 
-  // Cargar Tareas, Materias y Horarios
+  // 2. Cargar Tareas, Materias y Horarios desde Supabase
   const loadTasksData = useCallback(async () => {
     if (!classroom || !user) return
 
@@ -104,6 +132,9 @@ function TasksPageContent() {
 
       if (subjectData) {
         setSubjects(subjectData as Subject[])
+        if (offlineDB && subjectData.length > 0) {
+          await offlineDB.subjects.bulkPut(subjectData as Subject[])
+        }
       }
 
       // 2. Cargar Horarios de la semana para el preset
@@ -114,12 +145,16 @@ function TasksPageContent() {
         .order('block_number', { ascending: true })
 
       if (scheduleData) {
-        setSchedules(scheduleData as unknown as Schedule[])
+        setSchedules(scheduleData as Schedule[])
+        if (offlineDB && scheduleData.length > 0) {
+          const validScheds = scheduleData.filter((s) => !!s && !!s.id)
+          if (validScheds.length > 0) {
+            await offlineDB.schedules.bulkPut(validScheds as Schedule[])
+          }
+        }
       }
 
-      // 3. Cargar Tareas con fallback inteligente
-      let loadedTasks: Task[] = []
-
+      // 3. Cargar Tareas con sus relaciones
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
         .select(`
@@ -133,81 +168,43 @@ function TasksPageContent() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        loadedTasks = taskData as unknown as Task[]
-      } else {
-        const { data: fallbackData } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            subject:subjects(*),
-            attachments:task_attachments(*),
-            user_status:user_task_status(*)
-          `)
-          .eq('classroom_id', classroom.id)
-          .order('due_date', { ascending: true })
-
-        if (fallbackData) {
-          loadedTasks = fallbackData as unknown as Task[]
-        }
-      }
-
-      // 4. Limpieza de tareas completadas hace más de 7 días
-      const now = Date.now()
-      const expiredTaskIds: string[] = []
-
-      const activeTasks = loadedTasks.filter((t) => {
-        const isComp = isTaskCompleted(t, user.id)
-        if (!isComp) return true
-        const compDate = getTaskCompletedDate(t, user.id)
-        if (compDate && now - compDate.getTime() > SEVEN_DAYS_MS) {
-          expiredTaskIds.push(t.id)
-          return false
-        }
-        return true
-      })
-
-      setTasks(activeTasks)
-
-      if (offlineDB && activeTasks.length > 0) {
-        const validTasks = activeTasks.filter((t) => !!t && !!t.id)
-        if (validTasks.length > 0) {
-          await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
-        }
-      }
-
-      // Eliminar registros expirados de más de 7 días en segundo plano
-      if (expiredTaskIds.length > 0) {
-        for (const expId of expiredTaskIds) {
-          supabase.from('tasks').delete().eq('id', expId).eq('created_by', user.id).then(() => {})
-          supabase.from('user_task_status').delete().eq('task_id', expId).eq('user_id', user.id).then(() => {})
-          offlineDB?.tasks.delete(expId)
+        setTasks(taskData as Task[])
+        if (offlineDB && taskData.length > 0) {
+          const validTasks = taskData.filter((t) => !!t && !!t.id)
+          if (validTasks.length > 0) {
+            await offlineDB.tasks.bulkPut(validTasks as Task[])
+          }
         }
       }
     } catch (err) {
-      console.error('Error cargando tareas:', err)
-      if (offlineDB && classroom) {
-        const cached = await offlineDB.tasks
-          .where('classroom_id')
-          .equals(classroom.id)
-          .toArray()
-        if (cached.length > 0) setTasks(cached)
-      }
+      console.error('Error sincronizando tareas:', err)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }, [classroom, user, supabase])
 
+  // Carga inicial y suscripción Realtime en vivo
   useEffect(() => {
     loadTasksData()
 
     if (!classroom) return
 
     const channel = supabase
-      .channel(`public:tasks_room:${classroom.id}`)
+      .channel(`public:tasks_page:${classroom.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `classroom_id=eq.${classroom.id}` },
+        () => loadTasksData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_task_status' },
+        () => loadTasksData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_attachments' },
         () => loadTasksData()
       )
       .on(
@@ -222,29 +219,25 @@ function TasksPageContent() {
     }
   }, [classroom, loadTasksData, supabase])
 
-  useEffect(() => {
-    if (selectedTaskForDetail) {
-      const updated = tasks.find((t) => t.id === selectedTaskForDetail.id)
-      if (updated) setSelectedTaskForDetail(updated)
-    }
-  }, [tasks, selectedTaskForDetail])
+  // Pull to Refresh manual
+  const handleManualRefresh = () => {
+    setRefreshing(true)
+    loadTasksData()
+  }
 
-  // Alternar completada / pendiente
+  // Alternar completado / pendiente de una tarea
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     if (!user) return
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
     const nowIso = new Date().toISOString()
 
-    // Actualización optimista inmediata
+    // Actualización optimista instantánea
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          const currentStatuses = t.user_status || []
-          const filtered = currentStatuses.filter((s) => s.user_id !== user.id)
           return {
             ...t,
             user_status: [
-              ...filtered,
               {
                 id: 'temp-' + Date.now(),
                 user_id: user.id,
@@ -258,6 +251,25 @@ function TasksPageContent() {
         return t
       })
     )
+
+    if (selectedTaskForDetail?.id === taskId) {
+      setSelectedTaskForDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              user_status: [
+                {
+                  id: 'temp-' + Date.now(),
+                  user_id: user.id,
+                  task_id: taskId,
+                  status: newStatus,
+                  completed_at: newStatus === 'completed' ? nowIso : null,
+                },
+              ],
+            }
+          : null
+      )
+    }
 
     try {
       await supabase.from('user_task_status').upsert(
@@ -273,11 +285,12 @@ function TasksPageContent() {
         window.dispatchEvent(new Event('tasks_updated'))
       }
     } catch (err) {
-      console.error('Error actualizando estado de tarea:', err)
+      console.error('Error actualizando estado:', err)
       loadTasksData()
     }
   }
 
+  // Guardar nueva tarea (Del Salón o Mis Pendientes)
   const handleSaveTask = async (taskData: {
     title: string
     description?: string
@@ -289,58 +302,50 @@ function TasksPageContent() {
   }) => {
     if (!classroom || !user) return
 
-    const payload: Record<string, unknown> = {
-      classroom_id: classroom.id,
-      created_by: user.id,
-      title: taskData.title,
-      description: taskData.description || null,
-      type: taskData.type,
-      due_date: taskData.due_date,
-      is_private: taskData.is_private,
-    }
+    try {
+      const { data: newTask, error } = await supabase
+        .from('tasks')
+        .insert({
+          classroom_id: classroom.id,
+          created_by: user.id,
+          subject_id: taskData.subject_id || null,
+          title: taskData.title,
+          description: taskData.description || null,
+          type: taskData.type,
+          due_date: taskData.due_date || null,
+          is_private: taskData.is_private,
+        })
+        .select('*, subject:subjects(*)')
+        .single()
 
-    if (taskData.subject_id) {
-      payload.subject_id = taskData.subject_id
-    }
+      if (error || !newTask) {
+        throw new Error(error?.message || 'No se pudo crear la tarea')
+      }
 
-    const { data: newTask, error } = await supabase
-      .from('tasks')
-      .insert(payload)
-      .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*)')
-      .single()
-
-    if (!error && newTask) {
       if (taskData.attachments && taskData.attachments.length > 0) {
-        const attachPayload = taskData.attachments.map((att) => ({
+        const rowsToInsert = taskData.attachments.map((att) => ({
           task_id: newTask.id,
           uploaded_by: user.id,
           file_type: att.file_type,
           file_url: att.file_url,
           file_name: att.file_name,
         }))
-        const { data: savedAttachments } = await supabase
-          .from('task_attachments')
-          .insert(attachPayload)
-          .select('*')
 
-        if (savedAttachments) {
-          ;(newTask as unknown as Task).attachments = savedAttachments as unknown as TaskAttachment[]
-        }
+        await supabase.from('task_attachments').insert(rowsToInsert)
       }
 
-      setTasks((prev) => [newTask as unknown as Task, ...prev])
-      if (offlineDB) {
-        await offlineDB.tasks.put(newTask as unknown as Task)
-      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('tasks_updated'))
       }
-    } else {
-      console.error('Error insertando tarea:', error)
-      loadTasksData()
+
+      await loadTasksData()
+    } catch (err) {
+      console.error('Error creando tarea:', err)
+      throw err
     }
   }
 
+  // Actualizar tarea existente (Editar)
   const handleUpdateTask = async (
     taskId: string,
     taskData: {
@@ -349,82 +354,71 @@ function TasksPageContent() {
       subject_id?: string | null
       type: TaskType
       due_date: string
-      is_private: boolean
       attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
     }
   ) => {
     if (!user) return
 
-    const payload: Record<string, unknown> = {
-      title: taskData.title,
-      description: taskData.description || null,
-      type: taskData.type,
-      due_date: taskData.due_date,
-      is_private: taskData.is_private,
-      subject_id: taskData.subject_id || null,
-    }
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: taskData.title,
+          description: taskData.description || null,
+          subject_id: taskData.subject_id || null,
+          type: taskData.type,
+          due_date: taskData.due_date || null,
+        })
+        .eq('id', taskId)
 
-    const { data: updated, error } = await supabase
-      .from('tasks')
-      .update(payload)
-      .eq('id', taskId)
-      .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
-      .single()
+      if (error) throw error
 
-    if (!error && updated) {
-      if (taskData.attachments) {
+      if (taskData.attachments && taskData.attachments.length > 0) {
         await supabase.from('task_attachments').delete().eq('task_id', taskId)
 
-        if (taskData.attachments.length > 0) {
-          const attachPayload = taskData.attachments.map((att) => ({
-            task_id: taskId,
-            uploaded_by: user.id,
-            file_type: att.file_type,
-            file_url: att.file_url,
-            file_name: att.file_name,
-          }))
-          const { data: updatedAttachments } = await supabase
-            .from('task_attachments')
-            .insert(attachPayload)
-            .select('*')
+        const rowsToInsert = taskData.attachments.map((att) => ({
+          task_id: taskId,
+          uploaded_by: user.id,
+          file_type: att.file_type,
+          file_url: att.file_url,
+          file_name: att.file_name,
+        }))
 
-          if (updatedAttachments) {
-            ;(updated as unknown as Task).attachments = updatedAttachments as unknown as TaskAttachment[]
-          }
-        } else {
-          ;(updated as unknown as Task).attachments = []
-        }
+        await supabase.from('task_attachments').insert(rowsToInsert)
       }
 
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? (updated as unknown as Task) : t)))
-      if (selectedTaskForDetail?.id === taskId) {
-        setSelectedTaskForDetail(updated as unknown as Task)
-      }
-      if (offlineDB) {
-        await offlineDB.tasks.put(updated as unknown as Task)
-      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('tasks_updated'))
       }
-    } else {
-      console.error('Error actualizando tarea:', error)
+
+      await loadTasksData()
+    } catch (err) {
+      console.error('Error actualizando tarea:', err)
+      throw err
+    }
+  }
+
+  // Eliminar tarea permanentemente
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+      setSelectedTaskForDetail(null)
+
+      await supabase.from('tasks').delete().eq('id', taskId)
+      if (offlineDB) {
+        await offlineDB.tasks.delete(taskId)
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
+    } catch (err) {
+      console.error('Error eliminando tarea:', err)
       loadTasksData()
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
-    const { error } = await supabase.from('tasks').delete().eq('id', taskId)
-    if (!error) {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId))
-      if (offlineDB) {
-        await offlineDB.tasks.delete(taskId)
-      }
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('tasks_updated'))
-      }
-    }
-  }
-
+  // Agregar comentario en hilo de discusión
   const handleAddComment = async (
     taskId: string,
     content: string,
@@ -435,43 +429,56 @@ function TasksPageContent() {
   ) => {
     if (!user) return
 
-    const { data: newComment, error } = await supabase
-      .from('task_comments')
-      .insert({
-        task_id: taskId,
-        author_id: user.id,
-        content: content || '',
-        parent_comment_id: parentCommentId || null,
-        image_url: imageUrl || null,
-      })
-      .select('*, author:profiles(*)')
-      .single()
+    try {
+      const { data: newComment, error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          content,
+          parent_id: parentCommentId || null,
+          image_url: imageUrl || null,
+          file_name: fileName || null,
+          file_type: fileType || null,
+        })
+        .select('*, author:profiles(*)')
+        .single()
 
-    if (!error && newComment) {
-      if (fileName) {
-        ;(newComment as unknown as TaskComment).file_name = fileName
+      if (error || !newComment) {
+        throw new Error(error?.message || 'Error publicando comentario')
       }
-      if (fileType) {
-        ;(newComment as unknown as TaskComment).file_type = fileType
-      }
+
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id === taskId) {
             return {
               ...t,
-              comments: [...(t.comments || []), newComment as unknown as TaskComment],
+              comments: [...(t.comments || []), newComment as TaskComment],
             }
           }
           return t
         })
       )
-    } else {
-      loadTasksData()
+
+      if (selectedTaskForDetail?.id === taskId) {
+        setSelectedTaskForDetail((prev) =>
+          prev
+            ? {
+                ...prev,
+                comments: [...(prev.comments || []), newComment as TaskComment],
+              }
+            : null
+        )
+      }
+    } catch (err) {
+      console.error('Error agregando comentario:', err)
+      throw err
     }
   }
 
   // Filtrado de Tareas
   const filteredTasks = tasks.filter((t) => {
+    // 1. Filtro por Ámbito
     if (activeTab === 'classroom') {
       if (t.is_private) return false
     } else {
@@ -479,37 +486,40 @@ function TasksPageContent() {
       if (t.created_by !== user?.id) return false
     }
 
-    const isCompleted = isTaskCompleted(t, user?.id)
+    // 2. Filtro por Estado y Retención de 7 Días
+    const completed = isTaskCompleted(t, user?.id)
 
-    // Regla de 7 días: Si ya pasaron 7 días desde que se completó, no mostrarla
-    if (isCompleted) {
-      const compDate = getTaskCompletedDate(t, user?.id)
-      if (compDate && Date.now() - compDate.getTime() > SEVEN_DAYS_MS) {
-        return false
+    if (completed) {
+      const completedDate = getTaskCompletedDate(t, user?.id)
+      if (completedDate) {
+        const timeDiff = Date.now() - completedDate.getTime()
+        if (timeDiff > SEVEN_DAYS_MS) {
+          return false
+        }
       }
     }
 
-    if (statusFilter === 'pending' && isCompleted) return false
-    if (statusFilter === 'completed' && !isCompleted) return false
+    if (statusFilter === 'pending' && completed) return false
+    if (statusFilter === 'completed' && !completed) return false
 
-    if (selectedSubjectId !== 'all' && t.subject_id !== selectedSubjectId) {
-      return false
+    // 3. Filtro por Materia
+    if (selectedSubjectId !== 'all') {
+      if (t.subject_id !== selectedSubjectId) return false
     }
 
     return true
   })
 
-  // Estadísticas
-  const pendingCount = tasks.filter((t) => {
-    const isScopeMatch =
-      activeTab === 'classroom'
-        ? !t.is_private
-        : t.is_private && t.created_by === user?.id
-    const isComp = isTaskCompleted(t, user?.id)
-    return isScopeMatch && !isComp
-  }).length
+  // Contadores para las pestañas principales
+  const classroomTasksCount = tasks.filter(
+    (t) => !t.is_private && !isTaskCompleted(t, user?.id)
+  ).length
 
-  if (loading) {
+  const privateTasksCount = tasks.filter(
+    (t) => t.is_private && t.created_by === user?.id && !isTaskCompleted(t, user?.id)
+  ).length
+
+  if (loading && tasks.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -518,37 +528,32 @@ function TasksPageContent() {
   }
 
   return (
-    <div className="flex flex-col space-y-4 relative min-h-full pb-20">
+    <div className="flex flex-col space-y-4 pb-20">
       {/* Header Principal */}
       <header className="flex items-center justify-between pt-1">
-        <div className="flex-1 min-w-0 pr-2">
+        <div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-indigo-400 shrink-0" />
-            <span className="truncate">Tareas & Entregas</span>
+            <CheckSquare className="w-5 h-5 text-indigo-400" />
+            <span>Tareas & Entregas</span>
           </h1>
-          <p className="text-xs text-zinc-400 mt-0.5 truncate">
-            {pendingCount === 0
-              ? '¡Estás al día con tus entregas! 🎉'
-              : `Tienes ${pendingCount} ${pendingCount === 1 ? 'entrega pendiente' : 'entregas pendientes'}`}
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Organiza entregas grupales y gestiona tus notas privadas
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => {
-            setRefreshing(true)
-            loadTasksData()
-          }}
+          onClick={handleManualRefresh}
           disabled={refreshing}
           aria-label="Actualizar tareas"
-          className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50 shrink-0"
+          className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
         </button>
       </header>
 
-      {/* 1. Selector de Panel Principal: "Del Salón" vs "Mis Pendientes" */}
-      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800/80">
+      {/* 1. Selector de Ámbito: Tareas del Salón vs Mis Pendientes */}
+      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-zinc-950 border border-zinc-800">
         <button
           type="button"
           onClick={() => setActiveTab('classroom')}
@@ -558,8 +563,13 @@ function TasksPageContent() {
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <School className="w-4 h-4 text-indigo-400" />
+          <School className="w-3.5 h-3.5 text-indigo-400" />
           <span>Del Salón</span>
+          {classroomTasksCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 text-[10px] font-mono">
+              {classroomTasksCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -573,87 +583,74 @@ function TasksPageContent() {
         >
           <Lock className="w-3.5 h-3.5 text-amber-400" />
           <span>Mis Pendientes</span>
+          {privateTasksCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-mono">
+              {privateTasksCount}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* 2. Barra Unificada de Filtros: Estados + Dropdown de Materia */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('pending')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              statusFilter === 'pending'
-                ? 'bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 font-semibold'
-                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Pendientes
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('completed')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              statusFilter === 'completed'
-                ? 'bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 font-semibold'
-                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Completadas
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              statusFilter === 'all'
-                ? 'bg-zinc-800 border border-zinc-700 text-white font-semibold'
-                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Todas
-          </button>
+      {/* 2. Barra de Filtros: Estados y Materia */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 shrink-0">
+          {(['pending', 'completed', 'all'] as const).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setStatusFilter(st)}
+              className={`py-1 px-2.5 rounded-lg text-[11px] font-medium transition-all ${
+                statusFilter === st
+                  ? 'bg-zinc-800 text-white shadow-xs font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {st === 'pending'
+                ? 'Pendientes'
+                : st === 'completed'
+                ? 'Completadas'
+                : 'Todas'}
+            </button>
+          ))}
         </div>
 
-        {subjects.length > 0 && (
-          <div className="relative">
-            <select
-              value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="h-8 pl-2.5 pr-7 rounded-xl text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 appearance-none [color-scheme:dark] max-w-[150px] truncate"
-            >
-              <option value="all">Todas las materias</option>
-              {subjects.map((sub) => (
-                <option key={sub.id} value={sub.id}>
-                  {sub.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        )}
+        {/* Filtro por Materia */}
+        <div className="relative shrink-0">
+          <select
+            value={selectedSubjectId}
+            onChange={(e) => setSelectedSubjectId(e.target.value)}
+            className="appearance-none text-[11px] py-1.5 pl-2.5 pr-6 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 font-medium"
+          >
+            <option value="all">Todas las materias</option>
+            {subjects.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-3 h-3 text-zinc-500 absolute right-2 top-2.5 pointer-events-none" />
+        </div>
       </div>
 
-      {/* 3. Lista de Tareas */}
-      <div className="space-y-3">
+      {/* 3. Lista de Tareas Filtradas */}
+      <div className="space-y-2.5">
         {filteredTasks.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 text-center space-y-3">
-            <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-400 mx-auto">
-              <Sparkles className="w-5 h-5" />
+          <div className="p-8 rounded-2xl bg-zinc-950/60 border border-zinc-900 text-center space-y-3">
+            <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-500">
+              <Sparkles className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-zinc-200">
+              <p className="text-xs font-semibold text-zinc-300">
+                {statusFilter === 'completed'
+                  ? 'No hay tareas completadas recientemente'
+                  : activeTab === 'classroom'
+                  ? 'No hay tareas asignadas para el salón'
+                  : 'No tienes pendientes personales guardados'}
+              </p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
                 {activeTab === 'classroom'
-                  ? 'No hay tareas del salón con estos filtros'
-                  : 'No tienes pendientes personales'}
-              </h3>
-              <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
-                {activeTab === 'classroom'
-                  ? isAdmin
-                    ? 'Como delegado, puedes publicar entregas grupales, proyectos o exámenes.'
-                    : 'Tus delegados publicarán las tareas grupales y evaluaciones oficiales aquí.'
-                  : 'Crea tus propias notas y recordatorios de estudio que solo tú podrás ver.'}
+                  ? 'Tus delegados publicarán las tareas grupales y evaluaciones aquí.'
+                  : 'Crea notas privadas, tareas de estudio o recordatorios personales.'}
               </p>
             </div>
 
@@ -687,7 +684,7 @@ function TasksPageContent() {
         )}
       </div>
 
-      {/* 4. Botón Flotante (FAB) para Crear Tarea */}
+      {/* 4. Botón Flotante para Crear Tarea / Pendiente */}
       {canCreateInActiveTab && (
         <button
           type="button"
@@ -695,8 +692,7 @@ function TasksPageContent() {
             setTaskToEdit(null)
             setShowCreateModal(true)
           }}
-          aria-label={activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}
-          className="fixed bottom-[104px] right-5 z-40 px-4 py-3 rounded-2xl bg-white text-zinc-950 font-bold text-xs flex items-center gap-2 shadow-2xl shadow-black/90 hover:bg-zinc-100 active:scale-95 transition-all border border-zinc-200"
+          className="fixed bottom-20 right-4 z-30 py-2.5 px-4 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-950/60 border border-indigo-400/40 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>
@@ -752,4 +748,3 @@ export default function TasksPage() {
     </React.Suspense>
   )
 }
-

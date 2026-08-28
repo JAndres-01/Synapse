@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,9 +33,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-zinc-800 selection:text-white">
-        <main className="max-w-md mx-auto min-h-screen relative flex flex-col bg-zinc-950 border-x border-zinc-900/50 shadow-2xl">
-          {children}
-        </main>
+        <AuthProvider>
+          <main className="max-w-md mx-auto min-h-screen relative flex flex-col bg-zinc-950 border-x border-zinc-900/50 shadow-2xl">
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

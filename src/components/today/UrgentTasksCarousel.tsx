@@ -10,9 +10,6 @@ import {
   FileText,
   ChevronRight,
   CalendarRange,
-  Paperclip,
-  Image as ImageIcon,
-  MessageSquare,
   Lock,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -143,9 +140,6 @@ export function UrgentTasksCarousel({
             : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
           const dueInfo = formatDueDate(task.due_date, isCompleted)
-          const commentsCount = task.comments?.length || 0
-          const photosCount = (task.comments || []).filter((c) => !!c.image_url).length
-          const attachmentsCount = task.attachments?.length || 0
 
           const handleCheck = (e: React.MouseEvent) => {
             e.stopPropagation()
@@ -239,32 +233,6 @@ export function UrgentTasksCarousel({
                   </h4>
                 </div>
               </div>
-
-              {/* Footer: Indicadores compactos */}
-              {(attachmentsCount > 0 || (!task.is_private && (photosCount > 0 || commentsCount > 0))) && (
-                <div className="flex items-center gap-2.5 pt-1.5 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-medium">
-                  {attachmentsCount > 0 && (
-                    <div className="flex items-center gap-1 text-indigo-300 font-medium">
-                      <Paperclip className="w-3 h-3 text-indigo-400" />
-                      <span>{attachmentsCount}</span>
-                    </div>
-                  )}
-
-                  {!task.is_private && photosCount > 0 && (
-                    <div className="flex items-center gap-1 text-emerald-400">
-                      <ImageIcon className="w-3 h-3" />
-                      <span>{photosCount}</span>
-                    </div>
-                  )}
-
-                  {!task.is_private && commentsCount > 0 && (
-                    <div className="flex items-center gap-1 text-zinc-400">
-                      <MessageSquare className="w-3 h-3 text-zinc-400" />
-                      <span>{commentsCount}</span>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )
         })}

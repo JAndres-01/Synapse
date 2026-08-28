@@ -650,7 +650,7 @@ export default function TasksPage() {
                 <Plus className="w-3.5 h-3.5" />
                 <span>
                   {activeTab === 'classroom'
-                    ? 'Publicar Tarea Oficial'
+                    ? 'Publicar Tarea'
                     : 'Crear mi Primer Pendiente'}
                 </span>
               </button>

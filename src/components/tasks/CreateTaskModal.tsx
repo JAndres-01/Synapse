@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Subject, TaskType } from '@/types/database'
+import type { Subject, Schedule, TaskType } from '@/types/database'
+import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
 import {
   X,
   Plus,
@@ -14,12 +15,16 @@ import {
   Lock,
   School,
   Clock,
+  Sparkles,
+  CalendarCheck,
+  Check,
 } from 'lucide-react'
 
 interface CreateTaskModalProps {
   isOpen: boolean
   onClose: () => void
   subjects: Subject[]
+  schedules?: Schedule[]
   defaultMode: 'classroom' | 'private'
   isAdmin: boolean
   onSaveTask: (taskData: {
@@ -35,10 +40,44 @@ interface CreateTaskModalProps {
 const MAX_TITLE_LENGTH = 100
 const MAX_DESC_LENGTH = 300
 
+// Calcular la fecha exacta de la próxima ocurrencia de un día de la semana (1=Lun ... 5=Vie)
+function getNextOccurrenceOfWeekday(targetDay: number, classTimeStr?: string): { dateStr: string; label: string } {
+  const now = new Date()
+  const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
+
+  let daysToAdd = targetDay - currentDayOfWeek
+  if (daysToAdd < 0) {
+    daysToAdd += 7
+  } else if (daysToAdd === 0) {
+    // Si es hoy, verificar si la hora de la clase ya pasó
+    if (classTimeStr) {
+      const [h, m] = classTimeStr.split(':').map(Number)
+      const classMinutes = h * 60 + m
+      const currentMinutes = now.getHours() * 60 + now.getMinutes()
+      if (currentMinutes >= classMinutes) {
+        daysToAdd = 7 // Ya pasó la clase de hoy, programar para la próxima semana
+      }
+    }
+  }
+
+  const target = new Date(now)
+  target.setDate(now.getDate() + daysToAdd)
+
+  const dateStr = target.toISOString().split('T')[0]
+  const label = target.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+  return { dateStr, label }
+}
+
 export function CreateTaskModal({
   isOpen,
   onClose,
   subjects,
+  schedules = [],
   defaultMode,
   isAdmin,
   onSaveTask,
@@ -48,6 +87,16 @@ export function CreateTaskModal({
   const [description, setDescription] = useState('')
   const [subjectId, setSubjectId] = useState<string>('')
   const [type, setType] = useState<TaskType>('individual')
+
+  // Modo de selección de fecha: 'preset' (Horario Semanal) vs 'manual' (Fecha y Hora manual)
+  const [scheduleMode, setScheduleMode] = useState<'preset' | 'manual'>('preset')
+  const [selectedScheduleSlot, setSelectedScheduleSlot] = useState<{
+    day: number
+    block: number
+    subjectName: string
+    time: string
+    dateLabel: string
+  } | null>(null)
 
   const getTomorrowDate = () => {
     const d = new Date()
@@ -59,7 +108,7 @@ export function CreateTaskModal({
   const [dueTime, setDueTime] = useState('23:59')
   const [loading, setLoading] = useState(false)
 
-  // Gestos táctiles EXCLUSIVAMENTE para la zona superior marcada en rojo
+  // Gestos táctiles EXCLUSIVOS para el encabezado superior
   const [dragOffsetY, setDragOffsetY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
@@ -110,6 +159,27 @@ export function CreateTaskModal({
     }
   }
 
+  // Preset: Seleccionar una clase del horario semanal
+  const handleSelectSchedulePreset = (schedule: Schedule, blockDef: { block: number; startTime: string }) => {
+    const { dateStr, label } = getNextOccurrenceOfWeekday(schedule.day_of_week, blockDef.startTime)
+    const timeFormatted = schedule.start_time ? schedule.start_time.slice(0, 5) : blockDef.startTime
+
+    setDueDate(dateStr)
+    setDueTime(timeFormatted)
+    if (schedule.subject_id) {
+      setSubjectId(schedule.subject_id)
+    }
+
+    const dayObj = DAYS_OF_WEEK.find((d) => d.day === schedule.day_of_week)
+    setSelectedScheduleSlot({
+      day: schedule.day_of_week,
+      block: blockDef.block,
+      subjectName: schedule.subject?.name || 'Materia',
+      time: timeFormatted,
+      dateLabel: `${dayObj?.name || ''}, ${label}`,
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -129,6 +199,7 @@ export function CreateTaskModal({
 
       setTitle('')
       setDescription('')
+      setSelectedScheduleSlot(null)
       onClose()
     } catch (err) {
       console.error('Error guardando tarea:', err)
@@ -143,7 +214,7 @@ export function CreateTaskModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[92vh] overflow-hidden flex flex-col shadow-2xl transition-transform"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -151,7 +222,7 @@ export function CreateTaskModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ========================================================================= */}
-        {/* ÁREA DE ARRASTRE SUPERIOR (ZONA MARCADA EN ROJO POR EL USUARIO)           */}
+        {/* ÁREA DE ARRASTRE SUPERIOR EXCLUSIVA                                       */}
         {/* ========================================================================= */}
         <div
           className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
@@ -187,7 +258,7 @@ export function CreateTaskModal({
         </div>
 
         {/* ========================================================================= */}
-        {/* CUERPO DEL FORMULARIO CON SCROLL SEGURO Y PROTECCIÓN CONTRA OVERFLOW       */}
+        {/* CUERPO DEL FORMULARIO                                                     */}
         {/* ========================================================================= */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3.5 pr-0.5 overscroll-contain">
           {/* Indicador / Selector de Ámbito */}
@@ -341,37 +412,163 @@ export function CreateTaskModal({
               </div>
             </div>
 
-            {/* Fecha Límite */}
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Fecha Límite de Entrega</span>
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
-              />
+            {/* ========================================================================= */}
+            {/* PRESET DE ASIGNACIÓN POR HORARIO SEMANAL vs FECHA MANUAL                   */}
+            {/* ========================================================================= */}
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <CalendarCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Programación de Entrega</span>
+                </label>
+
+                {/* Alternador Preset Horario vs Manual */}
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('preset')}
+                    className={`px-2 py-1 rounded-md transition-all ${
+                      scheduleMode === 'preset'
+                        ? 'bg-zinc-800 text-indigo-300 font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    Por Horario
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('manual')}
+                    className={`px-2 py-1 rounded-md transition-all ${
+                      scheduleMode === 'manual'
+                        ? 'bg-zinc-800 text-white font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+
+              {scheduleMode === 'preset' ? (
+                /* PRESET 1: MATRIZ SEMANAL DE CLASES (5 DÍAS) */
+                <div className="space-y-2.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90">
+                  <span className="text-[10px] text-zinc-400 block">
+                    Toca la clase en la que se entregará esta tarea:
+                  </span>
+
+                  {schedules.length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic py-2 text-center">
+                      Aún no hay clases configuradas en el horario semanal.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1 no-scrollbar">
+                      {DAYS_OF_WEEK.map((d) => {
+                        const daySchedules = schedules.filter((s) => s.day_of_week === d.day)
+                        if (daySchedules.length === 0) return null
+
+                        return (
+                          <div key={d.day} className="space-y-1">
+                            <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 px-1">
+                              {d.name}
+                            </span>
+
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {daySchedules.map((sched) => {
+                                const blockDef = SCHEDULE_BLOCKS.find((b) => b.block === sched.block_number) || {
+                                  block: sched.block_number,
+                                  startTime: sched.start_time?.slice(0, 5) || '07:00',
+                                }
+                                const isSelected =
+                                  selectedScheduleSlot?.day === sched.day_of_week &&
+                                  selectedScheduleSlot?.block === sched.block_number
+
+                                return (
+                                  <button
+                                    key={sched.id}
+                                    type="button"
+                                    onClick={() => handleSelectSchedulePreset(sched, blockDef)}
+                                    className={`p-2 rounded-xl border text-left transition-all relative ${
+                                      isSelected
+                                        ? 'bg-indigo-950/80 border-indigo-500 shadow-sm'
+                                        : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-0.5">
+                                      <span className="font-mono">Clase {sched.block_number}</span>
+                                      <span className="font-mono">{blockDef.startTime}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
+                                        style={{ backgroundColor: sched.subject?.color || '#FFFFFF' }}
+                                      />
+                                      <span className="text-xs font-semibold text-zinc-100 truncate">
+                                        {sched.subject?.name || 'Materia'}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Resumen del Preset Seleccionado */}
+                  {selectedScheduleSlot && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center justify-between text-xs animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                        <div>
+                          <span className="text-[11px] text-indigo-200 block font-semibold">
+                            {selectedScheduleSlot.subjectName}
+                          </span>
+                          <span className="text-[10px] text-indigo-400 font-mono">
+                            {selectedScheduleSlot.dateLabel} • {selectedScheduleSlot.time}
+                          </span>
+                        </div>
+                      </div>
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* PRESET 2: FECHA Y HORA MANUAL */
+                <div className="space-y-3 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90">
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Fecha Límite de Entrega</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>Hora Límite</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={dueTime}
+                      onChange={(e) => setDueTime(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Hora Límite */}
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Hora Límite</span>
-              </label>
-              <input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
-              />
-            </div>
-
-            {/* Descripción / Instrucciones adicionales con Límite de Caracteres */}
+            {/* Descripción / Notas adicionales con Límite de Caracteres */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[11px] font-medium text-zinc-400">

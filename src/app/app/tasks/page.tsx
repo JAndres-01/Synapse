@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subject, TaskType } from '@/types/database'
+import type { Task, Subject, TaskType, Schedule } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
@@ -23,6 +23,7 @@ export default function TasksPage() {
   const { user, profile, classroom } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -46,7 +47,7 @@ export default function TasksPage() {
   // Determinar si puede crear tareas en la pestaña activa
   const canCreateInActiveTab = activeTab === 'private' || isAdmin
 
-  // Cargar Tareas y Materias
+  // Cargar Tareas, Materias y Horarios
   const loadTasksData = useCallback(async () => {
     if (!classroom || !user) return
 
@@ -60,6 +61,17 @@ export default function TasksPage() {
 
       if (subjectData) {
         setSubjects(subjectData as Subject[])
+      }
+
+      // 2. Cargar Horarios de la semana para el preset
+      const { data: scheduleData } = await supabase
+        .from('schedules')
+        .select('*, subject:subjects(*)')
+        .eq('classroom_id', classroom.id)
+        .order('block_number', { ascending: true })
+
+      if (scheduleData) {
+        setSchedules(scheduleData as unknown as Schedule[])
       }
 
       // 2. Cargar Tareas con sus materias, estado de usuario y comentarios con autores
@@ -478,6 +490,7 @@ export default function TasksPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         subjects={subjects}
+        schedules={schedules}
         defaultMode={activeTab}
         isAdmin={isAdmin}
         onSaveTask={handleSaveTask}

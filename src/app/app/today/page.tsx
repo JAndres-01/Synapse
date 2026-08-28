@@ -229,8 +229,15 @@ export default function TodayPage() {
         onToggleTaskStatus={handleToggleTaskStatus}
       />
 
-      {/* 3. Cronograma de las 4 Clases de Hoy */}
-      <DayScheduleTimeline schedulesToday={schedulesToday} />
+      {/* 3. Cronograma de las 4 Clases de Hoy con Tareas Integradas */}
+      <DayScheduleTimeline
+        schedulesToday={schedulesToday}
+        tasksToday={urgentTasks.filter((t) => {
+          if (!t.due_date) return false
+          return new Date(t.due_date).toDateString() === new Date().toDateString()
+        })}
+        onToggleTaskStatus={handleToggleTaskStatus}
+      />
     </div>
   )
 }

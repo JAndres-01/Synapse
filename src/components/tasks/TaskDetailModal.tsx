@@ -510,9 +510,8 @@ export function TaskDetailModal({
                     reply.author?.role === 'admin' ||
                     (reply.author?.role as string) === 'delegate'
 
-                  const isReplyingToSubUser =
-                    reply.replyToName &&
-                    reply.replyToName !== root.author?.full_name
+                  const replyTargetName =
+                    reply.replyToName || root.author?.full_name || 'Compañero'
 
                   return (
                     <div key={reply.id} className="flex items-start gap-2.5">
@@ -530,23 +529,16 @@ export function TaskDetailModal({
                               Delegado
                             </span>
                           )}
-                          {isReplyingToSubUser && (
-                            <span className="text-[11px] text-zinc-500 font-normal flex items-center gap-1">
-                              <span className="text-zinc-600">▶</span>
-                              <strong className="text-zinc-400 font-medium">
-                                @{reply.replyToName?.split(' ')[0]}
-                              </strong>
-                            </span>
-                          )}
+                          <span className="text-[11px] text-zinc-400 font-normal flex items-center gap-1">
+                            <span className="text-zinc-500 text-[10px]">▶</span>
+                            <strong className="text-zinc-300 font-medium">
+                              @{replyTargetName.split(' ')[0]}
+                            </strong>
+                          </span>
                         </div>
 
                         {reply.content && (
                           <p className="text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed">
-                            {isReplyingToSubUser && (
-                              <span className="text-indigo-400 font-semibold mr-1.5">
-                                @{reply.replyToName?.split(' ')[0]}
-                              </span>
-                            )}
                             {reply.content}
                           </p>
                         )}

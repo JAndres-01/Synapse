@@ -243,9 +243,13 @@ export default function TodayPage() {
     setUrgentTasks((prev) => {
       const updated = prev.map((t) => {
         if (t.id === taskId) {
+          const filtered = (t.user_status || []).filter((s) => s.user_id !== user.id)
           return {
             ...t,
-            user_status: [{ id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso }],
+            user_status: [
+              ...filtered,
+              { id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso },
+            ],
           }
         }
         return t
@@ -255,14 +259,17 @@ export default function TodayPage() {
     })
 
     if (selectedTaskForDetail?.id === taskId) {
-      setSelectedTaskForDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              user_status: [{ id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso }],
-            }
-          : null
-      )
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null
+        const filtered = (prev.user_status || []).filter((s) => s.user_id !== user.id)
+        return {
+          ...prev,
+          user_status: [
+            ...filtered,
+            { id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso },
+          ],
+        }
+      })
     }
 
     try {
@@ -646,6 +653,7 @@ export default function TodayPage() {
       {/* 2. Carrusel de Tareas para Esta Semana (Lunes a Domingo) */}
       <UrgentTasksCarousel
         tasks={tasksThisWeek}
+        currentUserId={currentUserId}
         onToggleTaskStatus={handleToggleTaskStatus}
         onOpenDetail={(task) => setSelectedTaskForDetail(task)}
       />
@@ -654,6 +662,7 @@ export default function TodayPage() {
       <DayScheduleTimeline
         schedulesToday={schedulesToday}
         tasksToday={tasksTodayForTimeline}
+        currentUserId={currentUserId}
         onToggleTaskStatus={handleToggleTaskStatus}
         onOpenDetail={(task) => setSelectedTaskForDetail(task)}
       />

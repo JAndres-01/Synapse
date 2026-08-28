@@ -281,9 +281,11 @@ function TasksPageContent() {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
+          const filtered = (t.user_status || []).filter((s) => s.user_id !== user.id)
           return {
             ...t,
             user_status: [
+              ...filtered,
               {
                 id: 'temp-' + Date.now(),
                 user_id: user.id,
@@ -299,22 +301,23 @@ function TasksPageContent() {
     )
 
     if (selectedTaskForDetail?.id === taskId) {
-      setSelectedTaskForDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              user_status: [
-                {
-                  id: 'temp-' + Date.now(),
-                  user_id: user.id,
-                  task_id: taskId,
-                  status: newStatus,
-                  completed_at: newStatus === 'completed' ? nowIso : null,
-                },
-              ],
-            }
-          : null
-      )
+      setSelectedTaskForDetail((prev) => {
+        if (!prev) return null
+        const filtered = (prev.user_status || []).filter((s) => s.user_id !== user.id)
+        return {
+          ...prev,
+          user_status: [
+            ...filtered,
+            {
+              id: 'temp-' + Date.now(),
+              user_id: user.id,
+              task_id: taskId,
+              status: newStatus,
+              completed_at: newStatus === 'completed' ? nowIso : null,
+            },
+          ],
+        }
+      })
     }
 
     try {
@@ -904,6 +907,7 @@ function TasksPageContent() {
             <TaskCard
               key={task.id}
               task={task}
+              currentUserId={user?.id}
               onToggleStatus={handleToggleTaskStatus}
               onOpenDetail={(t) => setSelectedTaskForDetail(t)}
             />

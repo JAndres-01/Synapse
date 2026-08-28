@@ -18,12 +18,14 @@ import confetti from 'canvas-confetti'
 
 interface UrgentTasksCarouselProps {
   tasks?: Task[]
+  currentUserId?: string | null
   onToggleTaskStatus: (taskId: string, currentStatus: string) => Promise<void>
   onOpenDetail?: (task: Task) => void
 }
 
 export function UrgentTasksCarousel({
   tasks = [],
+  currentUserId,
   onToggleTaskStatus,
   onOpenDetail,
 }: UrgentTasksCarouselProps) {
@@ -134,9 +136,9 @@ export function UrgentTasksCarousel({
 
       <div className="flex gap-2.5 items-start overflow-x-auto no-scrollbar pb-1 -mx-5 px-5 scroll-horizontal">
         {tasks.map((task) => {
-          const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string }> }).user_task_status
+          const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string; user_id?: string }> }).user_task_status
           const isCompleted = Array.isArray(statuses)
-            ? statuses.some((s) => s.status === 'completed')
+            ? statuses.some((s) => (!currentUserId || s.user_id === currentUserId) && s.status === 'completed')
             : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
           const dueInfo = formatDueDate(task.due_date, isCompleted)

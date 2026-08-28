@@ -17,14 +17,15 @@ import confetti from 'canvas-confetti'
 
 interface TaskCardProps {
   task: Task
+  currentUserId?: string | null
   onToggleStatus: (taskId: string, currentStatus: string) => Promise<void>
   onOpenDetail: (task: Task) => void
 }
 
-export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) {
-  const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string }> }).user_task_status
+export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: TaskCardProps) {
+  const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string; user_id?: string }> }).user_task_status
   const isCompleted = Array.isArray(statuses)
-    ? statuses.some((s) => s.status === 'completed')
+    ? statuses.some((s) => (!currentUserId || s.user_id === currentUserId) && s.status === 'completed')
     : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
   const getTypeBadge = (type: string) => {

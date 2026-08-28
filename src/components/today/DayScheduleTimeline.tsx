@@ -10,6 +10,7 @@ import confetti from 'canvas-confetti'
 interface DayScheduleTimelineProps {
   schedulesToday?: Schedule[]
   tasksToday?: Task[]
+  currentUserId?: string | null
   onToggleTaskStatus?: (taskId: string, currentStatus: string) => Promise<void>
   onOpenDetail?: (task: Task) => void
 }
@@ -17,6 +18,7 @@ interface DayScheduleTimelineProps {
 export function DayScheduleTimeline({
   schedulesToday = [],
   tasksToday = [],
+  currentUserId,
   onToggleTaskStatus,
   onOpenDetail,
 }: DayScheduleTimelineProps) {
@@ -120,10 +122,10 @@ export function DayScheduleTimeline({
                       {tasks.map((task) => {
                         const statuses =
                           task.user_status ||
-                          (task as unknown as { user_task_status?: Array<{ status: string }> })
+                          (task as unknown as { user_task_status?: Array<{ status: string; user_id?: string }> })
                             .user_task_status
                         const isCompleted = Array.isArray(statuses)
-                          ? statuses.some((s) => s.status === 'completed')
+                          ? statuses.some((s) => (!currentUserId || s.user_id === currentUserId) && s.status === 'completed')
                           : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
                         const handleCheck = (e: React.MouseEvent) => {

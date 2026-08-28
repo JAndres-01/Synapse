@@ -49,6 +49,11 @@ interface CommentAttachment {
   fileType: AttachmentType
 }
 
+interface CommentNode extends TaskComment {
+  children: CommentNode[]
+  parentAuthorName?: string
+}
+
 function formatTaskDate(dateStr?: string) {
   if (!dateStr) return 'Sin fecha límite'
   try {
@@ -136,6 +141,31 @@ export function TaskDetailModal({
       document.body.classList.remove('body-scroll-lock')
     }
   }, [task])
+
+  const comments = task?.comments || []
+
+  // Estructura de Árbol Jerárquico para Comentarios e Hilos (Incondicional en el top para cumplir reglas de hooks)
+  const commentTree = React.useMemo(() => {
+    const map = new Map<string, CommentNode>()
+    const roots: CommentNode[] = []
+
+    comments.forEach((c) => {
+      map.set(c.id, { ...c, children: [] })
+    })
+
+    comments.forEach((c) => {
+      const node = map.get(c.id)!
+      if (c.parent_comment_id && map.has(c.parent_comment_id)) {
+        const parent = map.get(c.parent_comment_id)!
+        node.parentAuthorName = parent.author?.full_name || 'Compañero'
+        parent.children.push(node)
+      } else {
+        roots.push(node)
+      }
+    })
+
+    return roots
+  }, [comments])
 
   if (!task) return null
 
@@ -295,36 +325,6 @@ export function TaskDetailModal({
         )
     }
   }
-
-  // Estructura de Árbol Jerárquico para Comentarios e Hilos
-  interface CommentNode extends TaskComment {
-    children: CommentNode[]
-    parentAuthorName?: string
-  }
-
-  const comments = task.comments || []
-
-  const commentTree = React.useMemo(() => {
-    const map = new Map<string, CommentNode>()
-    const roots: CommentNode[] = []
-
-    comments.forEach((c) => {
-      map.set(c.id, { ...c, children: [] })
-    })
-
-    comments.forEach((c) => {
-      const node = map.get(c.id)!
-      if (c.parent_comment_id && map.has(c.parent_comment_id)) {
-        const parent = map.get(c.parent_comment_id)!
-        node.parentAuthorName = parent.author?.full_name || 'Compañero'
-        parent.children.push(node)
-      } else {
-        roots.push(node)
-      }
-    })
-
-    return roots
-  }, [comments])
 
   const attachments = task.attachments || []
 

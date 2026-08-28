@@ -1,29 +1,31 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Task, TaskComment, Profile } from '@/types/database'
+import type { Task, TaskComment, Profile, UserRole } from '@/types/database'
 import {
   X,
-  Send,
-  Loader2,
-  Check,
   Calendar,
-  User,
+  Clock,
+  Trash2,
+  Send,
+  CornerDownRight,
+  Camera,
+  Image as ImageIcon,
+  Check,
   Users,
+  User,
   Rocket,
   FileText,
   Lock,
-  CornerDownRight,
-  Camera,
-  Trash2,
-  Maximize2,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 interface TaskDetailModalProps {
   task: Task | null
   onClose: () => void
-  currentUser: { id: string } | null
+  currentUser: { id: string; email?: string } | null
   currentProfile: Profile | null
   isAdmin: boolean
   onToggleStatus: (taskId: string, currentStatus: string) => Promise<void>
@@ -34,11 +36,10 @@ interface TaskDetailModalProps {
     parentCommentId?: string | null,
     imageUrl?: string | null
   ) => Promise<void>
-  onDeleteComment?: (commentId: string) => Promise<void>
 }
 
-function formatDetailDate(dateStr?: string) {
-  if (!dateStr) return 'Sin fecha'
+function formatTaskDate(dateStr?: string) {
+  if (!dateStr) return 'Sin fecha límite'
   try {
     const d = new Date(dateStr)
     const timeStr = d.toLocaleTimeString('es-ES', {
@@ -90,6 +91,8 @@ export function TaskDetailModal({
   const [commentLoading, setCommentLoading] = useState(false)
   const [selectedImageForLightbox, setSelectedImageForLightbox] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Gestos táctiles
@@ -97,10 +100,10 @@ export function TaskDetailModal({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
 
-  const isCompleted =
-    Array.isArray(task?.user_status) &&
-    task.user_status.length > 0 &&
-    task.user_status[0]?.status === 'completed'
+  const statuses = task?.user_status || (task as unknown as { user_task_status?: Array<{ status: string; user_id: string }> })?.user_task_status
+  const isCompleted = Array.isArray(statuses)
+    ? statuses.some((s) => s.status === 'completed' && (!currentUser || s.user_id === currentUser.id))
+    : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
   const canManageTask =
     isAdmin || (task && currentUser && task.created_by === currentUser.id)
@@ -132,7 +135,8 @@ export function TaskDetailModal({
 
   const handleTouchEnd = () => {
     setIsDragging(false)
-    if (dragOffsetY > 75) {
+    if (dragOffsetY > 65) {
+      document.body.classList.remove('body-scroll-lock')
       onClose()
     } else {
       setDragOffsetY(0)
@@ -157,7 +161,6 @@ export function TaskDetailModal({
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Previsualización y lectura en Base64
     const reader = new FileReader()
     reader.onload = (event) => {
       setPreviewImage(event.target?.result as string)
@@ -184,6 +187,20 @@ export function TaskDetailModal({
       console.error('Error enviando comentario:', err)
     } finally {
       setCommentLoading(false)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    try {
+      setDeleteLoading(true)
+      document.body.classList.remove('body-scroll-lock')
+      setShowDeleteConfirm(false)
+      await onDeleteTask(task.id)
+      onClose()
+    } catch (err) {
+      console.error('Error eliminando tarea:', err)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -230,7 +247,10 @@ export function TaskDetailModal({
     <>
       <div
         className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
-        onClick={onClose}
+        onClick={() => {
+          document.body.classList.remove('body-scroll-lock')
+          onClose()
+        }}
       >
         <div
           className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
@@ -277,12 +297,7 @@ export function TaskDetailModal({
               {canManageTask && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm('¿Deseas eliminar esta tarea?')) {
-                      onDeleteTask(task.id)
-                      onClose()
-                    }
-                  }}
+                  onClick={() => setShowDeleteConfirm(true)}
                   title="Eliminar tarea"
                   className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
                 >
@@ -292,7 +307,10 @@ export function TaskDetailModal({
 
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  document.body.classList.remove('body-scroll-lock')
+                  onClose()
+                }}
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
               >
                 <X className="w-4 h-4" />
@@ -301,7 +319,7 @@ export function TaskDetailModal({
           </div>
 
           {/* Contenido scrolleable del Detalle y Comentarios */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-contain">
             {/* Tarjeta de Información Principal */}
             <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-3">
               <div className="flex items-start gap-3">
@@ -318,101 +336,113 @@ export function TaskDetailModal({
                   {isCompleted && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                 </button>
 
-                <div className="flex-1 min-w-0">
+                <div className="space-y-1 min-w-0 flex-1">
                   <h2
-                    className={`text-base font-bold tracking-tight leading-snug ${
-                      isCompleted ? 'line-through text-zinc-400' : 'text-white'
+                    className={`text-base font-bold leading-snug break-words ${
+                      isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
                     }`}
                   >
                     {task.title}
                   </h2>
-                  <span
-                    className={`text-[11px] font-medium block mt-0.5 ${
-                      isCompleted ? 'text-emerald-400' : 'text-amber-400 font-semibold'
-                    }`}
-                  >
-                    {isCompleted ? 'Completada por ti' : 'Pendiente de entrega'}
-                  </span>
+
+                  <div className="flex items-center gap-2 text-xs text-zinc-400 flex-wrap">
+                    <span className="flex items-center gap-1 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>{formatTaskDate(task.due_date)}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {task.description && (
-                <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap pl-9">
-                  {task.description}
-                </p>
+              {/* Descripción / Notas */}
+              {task.description ? (
+                <div className="pt-2.5 border-t border-zinc-800/80">
+                  <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                    {task.description}
+                  </p>
+                </div>
+              ) : (
+                <div className="pt-2.5 border-t border-zinc-800/80">
+                  <p className="text-xs text-zinc-600 italic">Sin notas adicionales.</p>
+                </div>
               )}
-
-              <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-[11px] text-zinc-400">
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>Entrega: {formatDetailDate(task.due_date)}</span>
-                </span>
-              </div>
             </div>
 
-            {/* Sección de Discusión Colaborativa & Fotos de Apuntes (Solo en tareas del salón) */}
+            {/* ========================================================================= */}
+            {/* SECCIÓN DE DISCUSIÓN & APUNTES COLABORATIVOS (Hilos con árbol conectado)   */}
+            {/* ========================================================================= */}
             {!task.is_private && (
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>Discusión & Apuntes</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                    <span>Preguntas & Apuntes de Clase</span>
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400 font-mono">
                       {comments.length}
                     </span>
-                  </h4>
-                  <span className="text-[10px] text-zinc-500">
-                    Preguntas y fotos de pizarras
-                  </span>
+                  </h3>
                 </div>
 
-                {rootComments.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-zinc-950/50 border border-zinc-850 text-center text-xs text-zinc-500 space-y-1">
-                    <p>No hay preguntas ni fotos de apuntes aún.</p>
-                    <p className="text-[10px] text-zinc-600">
-                      Sé el primero en compartir una foto de la pizarra o resolver dudas.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {rootComments.map((root) => {
+                {/* Lista de Comentarios en Árbol */}
+                <div className="space-y-3">
+                  {rootComments.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
+                      No hay comentarios aún. Puedes hacer una pregunta o subir una foto de tu apunte.
+                    </div>
+                  ) : (
+                    rootComments.map((root) => {
                       const replies = getReplies(root.id)
+                      const isAuthorDelegate = root.author?.role === 'admin' || (root.author?.role as string) === 'delegate'
 
                       return (
                         <div key={root.id} className="space-y-2">
-                          {/* Comentario Padre */}
-                          <div className="p-3 rounded-2xl bg-zinc-950/80 border border-zinc-800/90 text-xs space-y-2 relative group">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-semibold text-zinc-200">
-                                {root.author?.full_name || 'Compañero'}
-                              </span>
-                              <span className="text-zinc-500 font-mono">
+                          {/* Comentario Raíz */}
+                          <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300">
+                                  {root.author?.full_name?.slice(0, 1) || 'A'}
+                                </div>
+                                <div>
+                                  <span className="text-xs font-semibold text-zinc-200">
+                                    {root.author?.full_name || 'Compañero'}
+                                  </span>
+                                  {isAuthorDelegate && (
+                                    <span className="ml-1.5 text-[9px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium">
+                                      Delegado
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <span className="text-[10px] text-zinc-500 font-mono">
                                 {formatCommentDate(root.created_at)}
                               </span>
                             </div>
 
+                            {/* Contenido del comentario */}
                             {root.content && (
-                              <p className="text-zinc-200 leading-relaxed whitespace-pre-wrap">
+                              <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-1">
                                 {root.content}
                               </p>
                             )}
 
-                            {/* Foto de Apunte / Pizarra Adjunta */}
+                            {/* Foto de Apunte adjunta */}
                             {root.image_url && (
-                              <div className="relative rounded-xl overflow-hidden border border-zinc-800 mt-2 max-h-48 group/img">
+                              <div
+                                onClick={() => setSelectedImageForLightbox(root.image_url || null)}
+                                className="relative rounded-xl overflow-hidden border border-zinc-800 max-w-xs cursor-pointer group"
+                              >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={root.image_url}
-                                  alt="Foto de apunte"
-                                  onClick={() => setSelectedImageForLightbox(root.image_url!)}
-                                  className="w-full h-auto object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
+                                  alt="Apunte adjunto"
+                                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedImageForLightbox(root.image_url!)}
-                                  className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-black/70 text-white backdrop-blur-sm opacity-90 hover:opacity-100 transition-opacity"
-                                >
-                                  <Maximize2 className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                  <span className="text-xs text-white bg-black/70 px-2 py-1 rounded-md">
+                                    Ver en pantalla completa
+                                  </span>
+                                </div>
                               </div>
                             )}
 
@@ -420,10 +450,7 @@ export function TaskDetailModal({
                             <div className="pt-1 flex items-center justify-end">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setReplyingTo(root)
-                                  setCommentText(`@${root.author?.full_name?.split(' ')[0] || 'Compañero'} `)
-                                }}
+                                onClick={() => setReplyingTo(root)}
                                 className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
                               >
                                 <CornerDownRight className="w-3 h-3" />
@@ -432,106 +459,114 @@ export function TaskDetailModal({
                             </div>
                           </div>
 
-                          {/* Hilo Anidado de Respuestas Conectadas Visualmente */}
+                          {/* Hilos Anidados (Visual Tree Connector) */}
                           {replies.length > 0 && (
-                            <div className="pl-4 ml-3 border-l-2 border-zinc-800 space-y-2 relative">
-                              {replies.map((reply) => (
-                                <div
-                                  key={reply.id}
-                                  className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs space-y-1.5 relative"
-                                >
-                                  <div className="flex items-center justify-between text-[10px]">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-semibold text-zinc-300">
-                                        {reply.author?.full_name || 'Compañero'}
-                                      </span>
-                                      <span className="text-zinc-600">•</span>
-                                      <span className="text-[10px] text-zinc-500">
-                                        en respuesta
+                            <div className="pl-4 space-y-2 border-l-2 border-zinc-800 ml-3">
+                              {replies.map((reply) => {
+                                const isReplyDelegate =
+                                  reply.author?.role === 'admin' ||
+                                  (reply.author?.role as string) === 'delegate'
+
+                                return (
+                                  <div
+                                    key={reply.id}
+                                    className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/60 space-y-2 relative"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-zinc-300">
+                                          {reply.author?.full_name?.slice(0, 1) || 'A'}
+                                        </div>
+                                        <span className="text-xs font-semibold text-zinc-200">
+                                          {reply.author?.full_name || 'Compañero'}
+                                        </span>
+                                        {isReplyDelegate && (
+                                          <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium">
+                                            Delegado
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <span className="text-[10px] text-zinc-500 font-mono">
+                                        {formatCommentDate(reply.created_at)}
                                       </span>
                                     </div>
-                                    <span className="text-zinc-500 font-mono">
-                                      {formatCommentDate(reply.created_at)}
-                                    </span>
+
+                                    {reply.content && (
+                                      <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-1">
+                                        {reply.content}
+                                      </p>
+                                    )}
+
+                                    {reply.image_url && (
+                                      <div
+                                        onClick={() =>
+                                          setSelectedImageForLightbox(reply.image_url || null)
+                                        }
+                                        className="relative rounded-xl overflow-hidden border border-zinc-800 max-w-xs cursor-pointer group"
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={reply.image_url}
+                                          alt="Apunte adjunto"
+                                          className="w-full h-36 object-cover group-hover:scale-105 transition-transform"
+                                        />
+                                      </div>
+                                    )}
                                   </div>
-
-                                  {reply.content && (
-                                    <p className="text-zinc-200 leading-relaxed whitespace-pre-wrap">
-                                      {reply.content}
-                                    </p>
-                                  )}
-
-                                  {reply.image_url && (
-                                    <div className="relative rounded-xl overflow-hidden border border-zinc-800 mt-2 max-h-40">
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={reply.image_url}
-                                        alt="Foto de apunte"
-                                        onClick={() => setSelectedImageForLightbox(reply.image_url!)}
-                                        className="w-full h-auto object-cover cursor-pointer hover:scale-105 transition-transform duration-200"
-                                      />
-                                    </div>
-                                  )}
-
-                                  <div className="pt-0.5 flex items-center justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setReplyingTo(root)
-                                        setCommentText(`@${reply.author?.full_name?.split(' ')[0] || 'Compañero'} `)
-                                      }}
-                                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
-                                    >
-                                      <CornerDownRight className="w-2.5 h-2.5" />
-                                      <span>Responder</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           )}
                         </div>
                       )
-                    })}
-                  </div>
-                )}
+                    })
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Formulario para Comentar / Adjuntar Foto (Solo en tareas del salón) */}
+          {/* ========================================================================= */}
+          {/* BARRA DE ENTRADA PARA NUEVO COMENTARIO O FOTO DE APUNTE                   */}
+          {/* ========================================================================= */}
           {!task.is_private && (
-            <div className="pt-2 border-t border-zinc-800/80 space-y-2 shrink-0">
-              {/* Indicador de Respondiendo a */}
+            <div className="pt-2 border-t border-zinc-800 space-y-2 shrink-0">
+              {/* Indicador de Respuesta */}
               {replyingTo && (
-                <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px] text-zinc-400">
-                  <span className="truncate flex items-center gap-1">
-                    <CornerDownRight className="w-3 h-3 text-indigo-400" />
-                    <span>Respondiendo a @{replyingTo.author?.full_name || 'Compañero'}</span>
-                  </span>
+                <div className="flex items-center justify-between bg-zinc-950 p-2 rounded-xl border border-zinc-800 text-xs">
+                  <div className="flex items-center gap-1.5 text-zinc-400">
+                    <CornerDownRight className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>
+                      Respondiendo a{' '}
+                      <strong className="text-zinc-200">
+                        {replyingTo.author?.full_name || 'Compañero'}
+                      </strong>
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setReplyingTo(null)}
-                    className="text-zinc-500 hover:text-zinc-300 p-0.5"
+                    className="text-zinc-500 hover:text-zinc-300"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
 
-              {/* Previsualización de Imagen Adjunta */}
+              {/* Previsualización de Imagen antes de enviar */}
               {previewImage && (
-                <div className="relative inline-block border border-zinc-700 rounded-xl overflow-hidden bg-zinc-950 p-1">
+                <div className="relative inline-block border border-zinc-800 rounded-xl overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewImage}
-                    alt="Previsualización de apunte"
-                    className="w-20 h-20 object-cover rounded-lg"
+                    alt="Previsualización"
+                    className="h-20 w-20 object-cover"
                   />
                   <button
                     type="button"
                     onClick={() => setPreviewImage(null)}
-                    className="absolute top-2 right-2 p-1 rounded-full bg-black/80 text-white"
+                    className="absolute top-1 right-1 p-1 rounded-full bg-black/80 text-white"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -542,19 +577,18 @@ export function TaskDetailModal({
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept="image/*"
                   onChange={handleImagePick}
+                  accept="image/*"
                   className="hidden"
                 />
 
-                {/* Botón de Cámara / Galería */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Subir foto de apunte o pizarra"
-                  className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors"
+                  title="Subir foto de libreta o pizarra"
+                  className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-indigo-400 hover:border-indigo-500/50 transition-colors"
                 >
-                  <Camera className="w-4 h-4 text-indigo-400" />
+                  <Camera className="w-4 h-4" />
                 </button>
 
                 <input
@@ -563,8 +597,8 @@ export function TaskDetailModal({
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder={
                     replyingTo
-                      ? `Responde a ${replyingTo.author?.full_name?.split(' ')[0]}...`
-                      : 'Pregunta o comparte apuntes del salón...'
+                      ? `Responde a ${replyingTo.author?.full_name || 'compañero'}...`
+                      : 'Escribe una duda o aporte...'
                   }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSendComment()
@@ -589,6 +623,56 @@ export function TaskDetailModal({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* ADVERTENCIA NATIVA ESTILO IOS ACTION SHEET PARA ELIMINAR TAREA            */}
+      {/* ========================================================================= */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-xs bg-zinc-900 border border-zinc-800 rounded-3xl p-5 text-center space-y-4 shadow-2xl animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-red-950/60 border border-red-800/60 flex items-center justify-center text-red-400 mx-auto">
+              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
+            </div>
+
+            <div>
+              <h4 className="text-sm font-bold text-white">¿Eliminar esta tarea?</h4>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+                Esta acción no se puede deshacer. Se eliminarán sus notas, hilos de discusión y fotos de apuntes.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 active:scale-[0.98] text-white font-semibold text-xs transition-all shadow-md shadow-red-950/50 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <span>Eliminar Tarea</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+                className="w-full py-2.5 px-4 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 active:scale-[0.98] text-zinc-300 font-medium text-xs transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* VISOR LIGHTBOX DE PANTALLA COMPLETA PARA FOTOS DE APUNTES & PIZARRAS      */}

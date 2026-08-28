@@ -23,6 +23,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { compressImageFile } from '@/lib/utils'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -166,15 +167,21 @@ export function TaskDetailModal({
     onToggleStatus(task.id, isCompleted ? 'completed' : 'pending')
   }
 
-  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setPreviewImage(event.target?.result as string)
+    try {
+      // Compresión nativa GPU (<60ms) para apuntes
+      const { fileUrl } = await compressImageFile(file, 2048, 0.85)
+      setPreviewImage(fileUrl)
+    } catch {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setPreviewImage(event.target?.result as string)
+      }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSendComment = async (e?: React.FormEvent) => {

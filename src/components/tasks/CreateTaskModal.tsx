@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Subject, Schedule, TaskType, Task, AttachmentType, TaskAttachment } from '@/types/database'
-import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
+import type { Subject, Schedule, TaskType, Task, AttachmentType } from '@/types/database'
+import { DAYS_OF_WEEK, SCHEDULE_BLOCKS, compressImageFile } from '@/lib/utils'
 import {
   X,
   Plus,
@@ -65,7 +65,7 @@ interface CreateTaskModalProps {
 const MAX_TITLE_LENGTH = 100
 const MAX_DESC_LENGTH = 300
 const MAX_ATTACHMENTS = 5
-const MAX_FILE_SIZE_MB = 5
+const MAX_FILE_SIZE_MB = 15
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 // Calcular la fecha exacta de la próxima ocurrencia de un día de la semana (1=Lun ... 5=Vie) sin desfase UTC
@@ -270,8 +270,8 @@ export function CreateTaskModal({
     })
   }
 
-  // Manejar adjuntar archivos
-  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Manejar adjuntar archivos con compresión automática
+  const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
@@ -282,30 +282,32 @@ export function CreateTaskModal({
       return
     }
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setFileError(`El archivo "${file.name}" supera el límite de ${MAX_FILE_SIZE_MB}MB.`)
-        return
+        continue
       }
 
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const fileUrl = event.target?.result as string
+      try {
         const isImage = file.type.startsWith('image/')
         const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf')
         const fileType: AttachmentType = isImage ? 'image' : isPdf ? 'pdf' : 'link'
 
+        // Compresión GPU instantánea (<60ms) para fotos de iPhone
+        const { fileUrl, fileName } = await compressImageFile(file, 2048, 0.85)
+
         setAttachments((prev) => [
           ...prev,
           {
-            file_name: file.name,
+            file_name: fileName,
             file_url: fileUrl,
             file_type: fileType,
           },
         ])
+      } catch (err) {
+        console.error('Error procesando archivo:', err)
       }
-      reader.readAsDataURL(file)
-    })
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = ''

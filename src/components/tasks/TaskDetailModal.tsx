@@ -20,6 +20,7 @@ import {
   Paperclip,
   ExternalLink,
   Image as ImageIcon,
+  MessageSquare,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { compressImageFile } from '@/lib/utils'
@@ -403,68 +404,94 @@ export function TaskDetailModal({
     )
   }
 
-  // Renderizar un nodo de respuesta recursivo en el árbol
-  const renderReplyTree = (reply: CommentNode): React.ReactNode => {
-    const isReplyDelegate =
-      reply.author?.role === 'admin' ||
-      (reply.author?.role as string) === 'delegate'
+  // Renderizar un nodo de comentario o respuesta estilo Twitter (X) / Reddit
+  const renderTwitterThreadItem = (
+    node: CommentNode,
+    isLastInChain: boolean = false,
+    depth: number = 0
+  ): React.ReactNode => {
+    const isDelegate =
+      node.author?.role === 'admin' ||
+      (node.author?.role as string) === 'delegate'
+    const hasChildren = node.children.length > 0
 
     return (
-      <div key={reply.id} className="space-y-2">
-        <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800/80 space-y-1.5">
+      <div key={node.id} className="relative flex gap-3 group">
+        {/* Columna Izquierda: Avatar y Espina Conectora Vertical estilo X / Twitter / Reddit */}
+        <div className="flex flex-col items-center shrink-0">
+          <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-200 z-10 shrink-0 shadow-sm">
+            {node.author?.full_name?.slice(0, 1) || 'A'}
+          </div>
+
+          {/* Línea vertical continua que conecta hacia las respuestas */}
+          {(hasChildren || !isLastInChain) && (
+            <div className="w-[2px] flex-1 bg-zinc-800 group-hover:bg-zinc-700 transition-colors my-1" />
+          )}
+        </div>
+
+        {/* Columna Derecha: Autor, Contenido, Adjuntos y Respuestas */}
+        <div className="flex-1 min-w-0 pb-3 space-y-1.5">
+          {/* Header del Autor */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300">
-                {reply.author?.full_name?.slice(0, 1) || 'A'}
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-zinc-200">
-                  {reply.author?.full_name || 'Compañero'}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="text-xs font-bold text-zinc-200 truncate">
+                {node.author?.full_name || 'Compañero'}
+              </span>
+              {isDelegate && (
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-semibold border border-indigo-800/50 shrink-0">
+                  Delegado
                 </span>
-                {isReplyDelegate && (
-                  <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/40">
-                    Delegado
-                  </span>
-                )}
-                {reply.parentAuthorName && (
-                  <span className="text-[10px] text-zinc-500 font-normal">
-                    ↳ en respuesta a <strong className="text-zinc-400 font-medium">@{reply.parentAuthorName.split(' ')[0]}</strong>
-                  </span>
-                )}
-              </div>
+              )}
+              {node.parentAuthorName && (
+                <span className="text-[10px] text-zinc-500 font-normal truncate">
+                  respondiendo a{' '}
+                  <strong className="text-zinc-400 font-medium">
+                    @{node.parentAuthorName.split(' ')[0]}
+                  </strong>
+                </span>
+              )}
             </div>
 
-            <span className="text-[10px] text-zinc-500 font-mono">
-              {formatCommentDate(reply.created_at)}
+            <span className="text-[10px] text-zinc-500 font-mono shrink-0">
+              {formatCommentDate(node.created_at)}
             </span>
           </div>
 
-          {reply.content && (
+          {/* Texto del comentario */}
+          {node.content && (
             <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">
-              {reply.content}
+              {node.content}
             </p>
           )}
 
-          {renderCommentAttachments(reply)}
+          {/* Fotos y Documentos */}
+          {renderCommentAttachments(node)}
 
-          <div className="pt-0.5 flex items-center justify-end">
+          {/* Botón Responder (Estilo X / Reddit) */}
+          <div className="pt-0.5 flex items-center gap-4">
             <button
               type="button"
-              onClick={() => setReplyingTo(reply)}
-              className="text-[11px] text-zinc-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-zinc-800 transition-colors"
+              onClick={() => setReplyingTo(node)}
+              className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-indigo-400 font-medium transition-colors py-0.5 px-1 rounded-md hover:bg-zinc-800/50 active:scale-95"
             >
-              <CornerDownRight className="w-3 h-3" />
+              <MessageSquare className="w-3.5 h-3.5" />
               <span>Responder</span>
             </button>
           </div>
-        </div>
 
-        {/* Hijos anidados recursivamente */}
-        {reply.children.length > 0 && (
-          <div className="pl-3 border-l-2 border-zinc-800 ml-2 space-y-2">
-            {reply.children.map((subChild) => renderReplyTree(subChild))}
-          </div>
-        )}
+          {/* Respuestas anidadas en el mismo hilo */}
+          {node.children.length > 0 && (
+            <div className="pt-2 space-y-2">
+              {node.children.map((child, idx) =>
+                renderTwitterThreadItem(
+                  child,
+                  idx === node.children.length - 1,
+                  depth + 1
+                )
+              )}
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -686,90 +713,21 @@ export function TaskDetailModal({
                   </h3>
                 </div>
 
-                {/* Lista de Comentarios en Hilos */}
-                <div className="space-y-3">
+                {/* Lista de Comentarios en Hilos estilo X / Twitter / Reddit */}
+                <div className="space-y-4 pt-1">
                   {commentTree.length === 0 ? (
                     <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
                       No hay comentarios aún. Puedes hacer una pregunta o compartir fotos y archivos de apuntes.
                     </div>
                   ) : (
-                    commentTree.map((root) => {
-                      const isAuthorDelegate =
-                        root.author?.role === 'admin' ||
-                        (root.author?.role as string) === 'delegate'
-
-                      return (
-                        <div
-                          key={root.id}
-                          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-2.5 shadow-sm"
-                        >
-                          {/* Comentario Principal del Hilo */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-200">
-                                  {root.author?.full_name?.slice(0, 1) || 'A'}
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-xs font-semibold text-zinc-200">
-                                    {root.author?.full_name || 'Compañero'}
-                                  </span>
-                                  {isAuthorDelegate && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/50">
-                                      Delegado
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <span className="text-[10px] text-zinc-500 font-mono">
-                                {formatCommentDate(root.created_at)}
-                              </span>
-                            </div>
-
-                            {/* Contenido del comentario */}
-                            {root.content && (
-                              <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-1">
-                                {root.content}
-                              </p>
-                            )}
-
-                            {/* Imágenes o Documentos adjuntos */}
-                            {renderCommentAttachments(root)}
-
-                            {/* Botón Responder */}
-                            <div className="pt-1 flex items-center justify-between border-t border-zinc-900">
-                              {root.children.length > 0 ? (
-                                <span className="text-[10px] font-semibold text-indigo-400 flex items-center gap-1">
-                                  <span>
-                                    {root.children.length}{' '}
-                                    {root.children.length === 1 ? 'respuesta' : 'respuestas'}
-                                  </span>
-                                </span>
-                              ) : (
-                                <span />
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => setReplyingTo(root)}
-                                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-1 px-2.5 rounded-lg hover:bg-zinc-900 transition-colors"
-                              >
-                                <CornerDownRight className="w-3.5 h-3.5" />
-                                <span>Responder</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Respuestas del Hilo conectadas dentro del contenedor */}
-                          {root.children.length > 0 && (
-                            <div className="pt-2 border-t border-zinc-900 space-y-2.5 pl-3 border-l-2 border-zinc-800 ml-2">
-                              {root.children.map((child) => renderReplyTree(child))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })
+                    commentTree.map((root) => (
+                      <div
+                        key={root.id}
+                        className="p-3.5 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 shadow-sm"
+                      >
+                        {renderTwitterThreadItem(root, true, 0)}
+                      </div>
+                    ))
                   )}
                 </div>
               </div>

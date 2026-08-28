@@ -460,13 +460,13 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* 4. Botón Flotante (FAB) para Crear Tarea sin mover el texto del Header */}
+      {/* 4. Botón Flotante (FAB) para Crear Tarea con separación amplia sobre la isla de navegación */}
       {canCreateInActiveTab && (
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
           aria-label={activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}
-          className="fixed bottom-20 right-5 z-40 px-4 py-3 rounded-2xl bg-white text-zinc-950 font-bold text-xs flex items-center gap-2 shadow-2xl shadow-black/80 hover:bg-zinc-100 active:scale-95 transition-all border border-zinc-200"
+          className="fixed bottom-[104px] right-5 z-40 px-4 py-3 rounded-2xl bg-white text-zinc-950 font-bold text-xs flex items-center gap-2 shadow-2xl shadow-black/90 hover:bg-zinc-100 active:scale-95 transition-all border border-zinc-200"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>

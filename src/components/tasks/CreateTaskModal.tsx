@@ -59,7 +59,7 @@ export function CreateTaskModal({
   const [dueTime, setDueTime] = useState('23:59')
   const [loading, setLoading] = useState(false)
 
-  // Gestos táctiles
+  // Gestos táctiles EXCLUSIVAMENTE para la zona superior marcada en rojo
   const [dragOffsetY, setDragOffsetY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
@@ -103,7 +103,7 @@ export function CreateTaskModal({
 
   const handleTouchEnd = () => {
     setIsDragging(false)
-    if (dragOffsetY > 75) {
+    if (dragOffsetY > 65) {
       onClose()
     } else {
       setDragOffsetY(0)
@@ -139,206 +139,209 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-x-hidden touch-pan-y"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-x-hidden touch-none"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-hidden flex flex-col shadow-2xl transition-transform"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Handle */}
+        {/* ========================================================================= */}
+        {/* ÁREA DE ARRASTRE SUPERIOR (ZONA MARCADA EN ROJO POR EL USUARIO)           */}
+        {/* ========================================================================= */}
         <div
-          className="w-full py-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-10 h-1 rounded-full bg-zinc-700 active:bg-zinc-500 transition-colors" />
-        </div>
+          {/* Drag Handle */}
+          <div className="w-10 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-3" />
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Plus className="w-4 h-4 text-indigo-400" />
-              <span>Nueva Tarea</span>
-            </h3>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
-              {mode === 'private'
-                ? 'Pendiente personal (solo visible para ti)'
-                : 'Tarea oficial del salón (visible para toda la clase)'}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Indicador / Selector de Ámbito */}
-        {isAdmin ? (
-          /* Delegado: Selector de 2 opciones */
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
-            <button
-              type="button"
-              onClick={() => setMode('classroom')}
-              className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                mode === 'classroom'
-                  ? 'bg-zinc-800 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <School className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Del Salón</span>
-            </button>
+          {/* Header del Modal */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-indigo-400" />
+                <span>Nueva Tarea</span>
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                {mode === 'private'
+                  ? 'Pendiente personal (solo visible para ti)'
+                  : 'Tarea oficial del salón (visible para toda la clase)'}
+              </p>
+            </div>
 
             <button
               type="button"
-              onClick={() => setMode('private')}
-              className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                mode === 'private'
-                  ? 'bg-zinc-800 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
             >
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Mi Pendiente</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
-        ) : (
-          /* Alumno: Panel fijo "Mis Pendientes" */
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-amber-950/50 border border-amber-800/50 text-amber-400">
-                <Lock className="w-3.5 h-3.5" />
-              </span>
-              <div>
-                <span className="text-xs font-semibold text-zinc-200 block">
-                  Mis Pendientes
+        </div>
+
+        {/* ========================================================================= */}
+        {/* CUERPO DEL FORMULARIO CON SCROLL SEGURO Y PROTECCIÓN CONTRA OVERFLOW       */}
+        {/* ========================================================================= */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3.5 pr-0.5 overscroll-contain">
+          {/* Indicador / Selector de Ámbito */}
+          {isAdmin ? (
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
+              <button
+                type="button"
+                onClick={() => setMode('classroom')}
+                className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  mode === 'classroom'
+                    ? 'bg-zinc-800 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <School className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Del Salón</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode('private')}
+                className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                  mode === 'private'
+                    ? 'bg-zinc-800 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Mi Pendiente</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-950/50 border border-amber-800/50 text-amber-400">
+                  <Lock className="w-3.5 h-3.5" />
                 </span>
-                <span className="text-[10px] text-zinc-500 block">
-                  Privado • Solo tú podrás ver y gestionar esta tarea
+                <div>
+                  <span className="text-xs font-semibold text-zinc-200 block">
+                    Mis Pendientes
+                  </span>
+                  <span className="text-[10px] text-zinc-500 block">
+                    Privado • Solo tú podrás ver y gestionar esta tarea
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40">
+                Personal
+              </span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3.5 w-full">
+            {/* Título de la tarea con contador */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-zinc-400">
+                  Título de la Tarea / Entrega *
+                </label>
+                <span className="text-[10px] font-mono text-zinc-500">
+                  {title.length}/{MAX_TITLE_LENGTH}
                 </span>
               </div>
+              <input
+                type="text"
+                value={title}
+                maxLength={MAX_TITLE_LENGTH}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ej. Resumen Capítulo 4, Proyecto Final..."
+                required
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 box-border"
+              />
             </div>
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40">
-              Personal
-            </span>
-          </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 w-full">
-          {/* Título de la tarea con contador */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-medium text-zinc-400">
-                Título de la Tarea / Entrega *
+            {/* Materia Asociada */}
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                Materia Asociada
               </label>
-              <span className="text-[10px] font-mono text-zinc-500">
-                {title.length}/{MAX_TITLE_LENGTH}
-              </span>
+              <select
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark] box-border"
+              >
+                <option value="">(Sin materia / General)</option>
+                {subjects.map((sub) => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name} {sub.code ? `(${sub.code})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
-            <input
-              type="text"
-              value={title}
-              maxLength={MAX_TITLE_LENGTH}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej. Resumen Capítulo 4, Proyecto Final..."
-              required
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
-            />
-          </div>
 
-          {/* Materia Asociada */}
-          <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-              Materia Asociada
-            </label>
-            <select
-              value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark]"
-            >
-              <option value="">(Sin materia / General)</option>
-              {subjects.map((sub) => (
-                <option key={sub.id} value={sub.id}>
-                  {sub.name} {sub.code ? `(${sub.code})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+            {/* Tipo de Tarea */}
+            <div>
+              <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
+                Tipo de Entrega
+              </label>
+              <div className="grid grid-cols-4 gap-1.5 w-full">
+                <button
+                  type="button"
+                  onClick={() => setType('individual')}
+                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    type === 'individual'
+                      ? 'bg-zinc-800 border-zinc-600 text-white'
+                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Individual</span>
+                </button>
 
-          {/* Tipo de Tarea */}
-          <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
-              Tipo de Entrega
-            </label>
-            <div className="grid grid-cols-4 gap-1.5 w-full">
-              <button
-                type="button"
-                onClick={() => setType('individual')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                  type === 'individual'
-                    ? 'bg-zinc-800 border-zinc-600 text-white'
+                <button
+                  type="button"
+                  onClick={() => setType('grupal')}
+                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    type === 'grupal'
+                      ? 'bg-sky-950/60 border-sky-600 text-sky-300'
+                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Grupal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setType('proyecto')}
+                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    type === 'proyecto'
+                      ? 'bg-purple-950/60 border-purple-600 text-purple-300'
+                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
+                  }`}
+                >
+                  <Rocket className="w-3.5 h-3.5" />
+                  <span>Proyecto</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setType('examen')}
+                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    type === 'examen'
+                      ? 'bg-rose-950/60 border-rose-600 text-rose-300'
                     : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Individual</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setType('grupal')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                  type === 'grupal'
-                    ? 'bg-sky-950/60 border-sky-600 text-sky-300'
-                    : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>Grupal</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setType('proyecto')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                  type === 'proyecto'
-                    ? 'bg-purple-950/60 border-purple-600 text-purple-300'
-                    : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                }`}
-              >
-                <Rocket className="w-3.5 h-3.5" />
-                <span>Proyecto</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setType('examen')}
-                className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                  type === 'examen'
-                    ? 'bg-rose-950/60 border-rose-600 text-rose-300'
-                    : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Examen</span>
-              </button>
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Examen</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Fecha y Hora de Entrega (En Filas Individuales para Pantallas Móviles) */}
-          <div className="space-y-3 w-full">
-            {/* 1. Fecha Límite */}
+            {/* Fecha Límite */}
             <div>
               <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-zinc-400" />
@@ -349,11 +352,11 @@ export function CreateTaskModal({
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 required
-                className="w-full h-11 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
               />
             </div>
 
-            {/* 2. Hora Límite */}
+            {/* Hora Límite */}
             <div>
               <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-zinc-400" />
@@ -364,51 +367,51 @@ export function CreateTaskModal({
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
                 required
-                className="w-full h-11 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
               />
             </div>
-          </div>
 
-          {/* Descripción / Instrucciones adicionales con Límite de Caracteres */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-medium text-zinc-400">
-                Notas / Instrucciones adicionales
-              </label>
-              <span
-                className={`text-[10px] font-mono ${
-                  description.length >= MAX_DESC_LENGTH
-                    ? 'text-red-400 font-bold'
-                    : 'text-zinc-500'
-                }`}
-              >
-                {description.length}/{MAX_DESC_LENGTH}
-              </span>
+            {/* Descripción / Instrucciones adicionales con Límite de Caracteres */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-medium text-zinc-400">
+                  Notas / Instrucciones adicionales
+                </label>
+                <span
+                  className={`text-[10px] font-mono ${
+                    description.length >= MAX_DESC_LENGTH
+                      ? 'text-red-400 font-bold'
+                      : 'text-zinc-500'
+                  }`}
+                >
+                  {description.length}/{MAX_DESC_LENGTH}
+                </span>
+              </div>
+              <textarea
+                value={description}
+                maxLength={MAX_DESC_LENGTH}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Detalles, enlaces de entrega o notas de estudio..."
+                rows={3}
+                className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none box-border"
+              />
             </div>
-            <textarea
-              value={description}
-              maxLength={MAX_DESC_LENGTH}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalles, enlaces de entrega o notas de estudio..."
-              rows={3}
-              className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
-            />
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading || !title.trim()}
-            className="w-full py-3.5 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
-            ) : (
-              <span>
-                {mode === 'private' ? 'Guardar Mi Pendiente' : 'Publicar Tarea del Salón'}
-              </span>
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !title.trim()}
+              className="w-full py-3.5 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+              ) : (
+                <span>
+                  {mode === 'private' ? 'Guardar Mi Pendiente' : 'Publicar Tarea del Salón'}
+                </span>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

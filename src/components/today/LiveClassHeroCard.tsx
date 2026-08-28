@@ -46,8 +46,8 @@ export function LiveClassHeroCard({
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 shadow-xl transition-all">
-      {/* Banner de cambio de aula urgente si existe */}
-      {urgentNotice && urgentNotice.category === 'cambio_aula' && (
+      {/* Banner de aviso urgente de Salón si existe */}
+      {urgentNotice && (
         <div className="mb-3 p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/60 flex items-center gap-2 text-amber-300 text-xs font-medium animate-fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="truncate">{urgentNotice.content}</span>

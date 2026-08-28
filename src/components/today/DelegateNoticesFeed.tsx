@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import type { Notice, NoticeCategory } from '@/types/database'
 import {
   Megaphone,
-  DoorOpen,
+  School,
   GraduationCap,
   MessageSquare,
   Send,
@@ -33,7 +33,7 @@ export function DelegateNoticesFeed({
 
   // Estados del modal de creación
   const [newContent, setNewContent] = useState('')
-  const [newCategory, setNewCategory] = useState<NoticeCategory>('aviso_general')
+  const [newCategory, setNewCategory] = useState<NoticeCategory>('cambio_aula') // 'cambio_aula' actúa como categoría Salón
   const [newIsUrgent, setNewIsUrgent] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -42,22 +42,22 @@ export function DelegateNoticesFeed({
       case 'cambio_aula':
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-950/50 border border-amber-800/50 px-2 py-0.5 rounded-md">
-            <DoorOpen className="w-3 h-3" />
-            <span>Cambio de Aula</span>
+            <School className="w-3 h-3" />
+            <span>Salón</span>
           </span>
         )
       case 'evento_escolar':
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-950/50 border border-purple-800/50 px-2 py-0.5 rounded-md">
             <GraduationCap className="w-3 h-3" />
-            <span>Evento Escolar</span>
+            <span>Evento</span>
           </span>
         )
       default:
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-zinc-300 bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded-md">
             <Megaphone className="w-3 h-3 text-zinc-400" />
-            <span>Aviso General</span>
+            <span>General</span>
           </span>
         )
     }
@@ -71,7 +71,7 @@ export function DelegateNoticesFeed({
       setLoading(true)
       await onAddNotice(newContent.trim(), newCategory, newIsUrgent)
       setNewContent('')
-      setNewCategory('aviso_general')
+      setNewCategory('cambio_aula')
       setNewIsUrgent(false)
       setShowCreateModal(false)
     } catch (err) {
@@ -220,47 +220,53 @@ export function DelegateNoticesFeed({
         </div>
       )}
 
-      {/* Modal Bottom Sheet: Publicar Aviso */}
+      {/* Modal Bottom Sheet: Publicar Aviso (z-[100] por encima de la barra de navegación) */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end justify-center animate-fade-in">
-          <div className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 space-y-4 animate-slide-up max-h-[90vh] overflow-y-auto safe-area-bottom">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0">
+          <div className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-6 space-y-4 animate-slide-up max-h-[92vh] overflow-y-auto safe-area-bottom shadow-2xl">
+            {/* Drag handle */}
+            <div className="w-10 h-1 rounded-full bg-zinc-700 mx-auto -mt-2 mb-1" />
+
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white">Publicar Aviso en el Salón</h3>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <School className="w-4 h-4 text-indigo-400" />
+                <span>Publicar Aviso en el Salón</span>
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNotice} className="space-y-3.5">
+            <form onSubmit={handleCreateNotice} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
-                  Categoría del Aviso
+                  Tipo de Aviso
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewCategory('cambio_aula')}
-                    className={`py-2 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    className={`py-2.5 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1.5 transition-all ${
                       newCategory === 'cambio_aula'
-                        ? 'bg-amber-950/40 border-amber-600 text-amber-300'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                        ? 'bg-amber-950/40 border-amber-500 text-amber-300'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <DoorOpen className="w-4 h-4" />
-                    <span>Cambio Aula</span>
+                    <School className="w-4 h-4" />
+                    <span>Salón</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setNewCategory('aviso_general')}
-                    className={`py-2 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    className={`py-2.5 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1.5 transition-all ${
                       newCategory === 'aviso_general'
-                        ? 'bg-indigo-950/40 border-indigo-600 text-indigo-300'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                        ? 'bg-indigo-950/40 border-indigo-500 text-indigo-300'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
                     <Megaphone className="w-4 h-4" />
@@ -270,10 +276,10 @@ export function DelegateNoticesFeed({
                   <button
                     type="button"
                     onClick={() => setNewCategory('evento_escolar')}
-                    className={`py-2 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1 transition-all ${
+                    className={`py-2.5 px-2 rounded-xl border text-[11px] font-medium flex flex-col items-center gap-1.5 transition-all ${
                       newCategory === 'evento_escolar'
-                        ? 'bg-purple-950/40 border-purple-600 text-purple-300'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                        ? 'bg-purple-950/40 border-purple-500 text-purple-300'
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
                     <GraduationCap className="w-4 h-4" />
@@ -284,12 +290,12 @@ export function DelegateNoticesFeed({
 
               <div>
                 <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                  Mensaje del Aviso
+                  Mensaje
                 </label>
                 <textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  placeholder="Ej. El profesor avisó que la clase de hoy se traslada al Aula 304..."
+                  placeholder="Escribe lo que ocurre en el salón (ej. el profe llegará 10 min tarde, cambio de aula, avisos de clase...)"
                   rows={3}
                   required
                   className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
@@ -301,7 +307,7 @@ export function DelegateNoticesFeed({
                   <AlertCircle className="w-4 h-4 text-red-400" />
                   <div>
                     <h4 className="text-xs font-medium text-zinc-200">Marcar como urgente</h4>
-                    <p className="text-[10px] text-zinc-500">Destaca el aviso en la parte superior</p>
+                    <p className="text-[10px] text-zinc-500">Destaca el aviso en la tarjeta principal</p>
                   </div>
                 </div>
                 <input
@@ -315,7 +321,7 @@ export function DelegateNoticesFeed({
               <button
                 type="submit"
                 disabled={loading || !newContent.trim()}
-                className="w-full py-3 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-medium text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />

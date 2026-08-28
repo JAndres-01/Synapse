@@ -60,17 +60,24 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
     }
   }
 
+  // Formateo y Colores de Prioridad para Fechas de Entrega
   const formatDueDate = (dateStr?: string) => {
-    if (!dateStr) return { text: 'Sin fecha', isUrgent: false }
+    if (!dateStr) return { text: 'Sin fecha', colorClass: 'text-zinc-500' }
     try {
       const date = new Date(dateStr)
-      if (isNaN(date.getTime())) return { text: 'Fecha pendiente', isUrgent: false }
+      if (isNaN(date.getTime())) return { text: 'Fecha pendiente', colorClass: 'text-zinc-500' }
       const now = new Date()
+
+      const isPast = date.getTime() < now.getTime()
       const isToday = date.toDateString() === now.toDateString()
 
       const tomorrow = new Date(now)
       tomorrow.setDate(tomorrow.getDate() + 1)
       const isTomorrow = date.toDateString() === tomorrow.toDateString()
+
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const isYesterday = date.toDateString() === yesterday.toDateString()
 
       const hours = date.getHours()
       const minutes = String(date.getMinutes()).padStart(2, '0')
@@ -78,16 +85,46 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
       const formattedHour = hours % 12 || 12
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
-      if (isToday) return { text: `Hoy • ${timeStr}`, isUrgent: true }
-      if (isTomorrow) return { text: `Mañana • ${timeStr}`, isUrgent: false }
+      if (isCompleted) {
+        const formattedDate = isToday
+          ? `Hoy • ${timeStr}`
+          : `${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} • ${timeStr}`
+        return { text: formattedDate, colorClass: 'text-zinc-500 line-through' }
+      }
 
+      // 1. Fecha Vencida (Rojo llamativo)
+      if (isPast) {
+        if (isToday) {
+          return { text: `Venció hoy • ${timeStr}`, colorClass: 'text-red-400 font-bold' }
+        }
+        if (isYesterday) {
+          return { text: `Venció ayer • ${timeStr}`, colorClass: 'text-red-400 font-bold' }
+        }
+        const formattedDate = date.toLocaleDateString('es-ES', {
+          day: 'numeric',
+          month: 'short',
+        })
+        return { text: `Venció • ${formattedDate}`, colorClass: 'text-red-400 font-bold' }
+      }
+
+      // 2. Entrega para Hoy (Ámbar / Urgente)
+      if (isToday) {
+        return { text: `Hoy • ${timeStr}`, colorClass: 'text-amber-400 font-bold' }
+      }
+
+      // 3. Entrega para Mañana (Índigo)
+      if (isTomorrow) {
+        return { text: `Mañana • ${timeStr}`, colorClass: 'text-indigo-300 font-medium' }
+      }
+
+      // 4. Fechas futuras normales
       const formattedDate = date.toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'short',
       })
-      return { text: `${formattedDate} • ${timeStr}`, isUrgent: false }
+      return { text: `${formattedDate} • ${timeStr}`, colorClass: 'text-zinc-400 font-medium' }
     } catch {
-      return { text: 'Fecha pendiente', isUrgent: false }
+      return { text: 'Fecha pendiente', colorClass: 'text-zinc-500' }
     }
   }
 
@@ -120,7 +157,7 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
           : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
       }`}
     >
-      {/* Header: Tipo, Materia (izq) y Fecha Límite Antidesborde (der) */}
+      {/* Header: Tipo, Materia (izq) y Fecha Límite Antidesborde con colores de prioridad (der) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {task.is_private ? (
@@ -145,11 +182,9 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
           )}
         </div>
 
-        {/* Fecha Límite en una sola línea protegida */}
+        {/* Fecha Límite con Color de Prioridad en una sola línea protegida */}
         <span
-          className={`text-[10px] font-mono font-medium shrink-0 whitespace-nowrap text-right pl-1 ${
-            dueInfo.isUrgent ? 'text-amber-400 font-bold' : 'text-zinc-400'
-          }`}
+          className={`text-[10px] font-mono shrink-0 whitespace-nowrap text-right pl-1 ${dueInfo.colorClass}`}
         >
           {dueInfo.text}
         </span>

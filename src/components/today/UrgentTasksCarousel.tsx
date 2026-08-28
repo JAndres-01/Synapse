@@ -32,15 +32,17 @@ export function UrgentTasksCarousel({
     }
   }
 
-  const formatDueDate = (dateStr?: string) => {
-    if (!dateStr) return 'Sin fecha'
+  const formatDueDate = (dateStr?: string, isCompleted?: boolean) => {
+    if (!dateStr) return { text: 'Sin fecha', colorClass: 'text-zinc-500' }
     try {
       const date = new Date(dateStr)
-      if (isNaN(date.getTime())) return 'Fecha pendiente'
-      const today = new Date()
-      const isToday = date.toDateString() === today.toDateString()
+      if (isNaN(date.getTime())) return { text: 'Fecha pendiente', colorClass: 'text-zinc-500' }
+      const now = new Date()
 
-      const tomorrow = new Date(today)
+      const isPast = date.getTime() < now.getTime()
+      const isToday = date.toDateString() === now.toDateString()
+
+      const tomorrow = new Date(now)
       tomorrow.setDate(tomorrow.getDate() + 1)
       const isTomorrow = date.toDateString() === tomorrow.toDateString()
 
@@ -50,14 +52,30 @@ export function UrgentTasksCarousel({
       const formattedHour = hours % 12 || 12
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
-      if (isToday) return `Hoy • ${timeStr}`
-      if (isTomorrow) return `Mañana • ${timeStr}`
+      if (isCompleted) {
+        return {
+          text: isToday ? `Hoy • ${timeStr}` : `Entregada`,
+          colorClass: 'text-zinc-500 line-through',
+        }
+      }
+
+      if (isPast) {
+        const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' })
+        const day = date.getDate()
+        return {
+          text: isToday ? `Venció hoy • ${timeStr}` : `Venció • ${weekday} ${day}`,
+          colorClass: 'text-red-400 font-bold',
+        }
+      }
+
+      if (isToday) return { text: `Hoy • ${timeStr}`, colorClass: 'text-amber-400 font-bold' }
+      if (isTomorrow) return { text: `Mañana • ${timeStr}`, colorClass: 'text-indigo-300 font-medium' }
 
       const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' })
       const day = date.getDate()
-      return `${weekday} ${day} • ${timeStr}`
+      return { text: `${weekday} ${day} • ${timeStr}`, colorClass: 'text-zinc-400' }
     } catch {
-      return 'Fecha pendiente'
+      return { text: 'Fecha pendiente', colorClass: 'text-zinc-500' }
     }
   }
 
@@ -118,9 +136,14 @@ export function UrgentTasksCarousel({
                     <span>{task.type}</span>
                   </div>
 
-                  <span className="text-[10px] font-mono text-zinc-400">
-                    {formatDueDate(task.due_date)}
-                  </span>
+                  {(() => {
+                    const dueInfo = formatDueDate(task.due_date, isCompleted)
+                    return (
+                      <span className={`text-[10px] font-mono whitespace-nowrap ${dueInfo.colorClass}`}>
+                        {dueInfo.text}
+                      </span>
+                    )
+                  })()}
                 </div>
 
                 <div className="flex items-center gap-1.5 mb-1">

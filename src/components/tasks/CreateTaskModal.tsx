@@ -577,20 +577,13 @@ export function CreateTaskModal({
                                     : 'bg-zinc-950/30 border-zinc-900 opacity-40'
                                 }`}
                               >
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span
-                                    className={`text-[10px] font-bold uppercase ${
-                                      isCurrentDay ? 'text-indigo-300 font-extrabold' : 'text-zinc-300'
-                                    }`}
-                                  >
-                                    {dayData.short}
-                                  </span>
-                                  {isCurrentDay && (
-                                    <span className="text-[7px] font-extrabold px-1 py-0.2 rounded bg-indigo-600 text-white uppercase tracking-wider shadow-sm">
-                                      Hoy
-                                    </span>
-                                  )}
-                                </div>
+                                <span
+                                  className={`text-[10px] font-bold uppercase ${
+                                    isCurrentDay ? 'text-indigo-400 font-extrabold' : 'text-zinc-300'
+                                  }`}
+                                >
+                                  {dayData.short}
+                                </span>
 
                                 {/* 4 Bloques diarios */}
                                 <div className="w-full space-y-1 flex-1 flex flex-col justify-start">

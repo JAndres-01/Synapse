@@ -337,6 +337,7 @@ function TasksPageContent() {
   }
 
   // Guardar nueva tarea (Del Salón o Mis Pendientes)
+  // Guardar nueva tarea (Del Salón o Mis Pendientes) con renderizado optimista instantáneo (0ms)
   const handleSaveTask = async (taskData: {
     title: string
     description?: string
@@ -348,6 +349,47 @@ function TasksPageContent() {
   }) => {
     if (!classroom || !user) return
 
+    const tempId = 'temp-' + Date.now()
+    const nowIso = new Date().toISOString()
+    const selectedSubject = subjects.find((s) => s.id === taskData.subject_id)
+
+    // 1. Inyección Optimista Instantánea (0ms)
+    const optimisticTask: Task = {
+      id: tempId,
+      classroom_id: classroom.id,
+      created_by: user.id,
+      subject_id: taskData.subject_id || null,
+      title: taskData.title,
+      description: taskData.description || null,
+      type: taskData.type,
+      due_date: taskData.due_date || nowIso,
+      is_private: taskData.is_private,
+      created_at: nowIso,
+      subject: selectedSubject || undefined,
+      attachments: (taskData.attachments || []).map((a, i) => ({
+        id: `att-temp-${i}`,
+        task_id: tempId,
+        uploaded_by: user.id,
+        file_type: a.file_type,
+        file_url: a.file_url,
+        file_name: a.file_name,
+        created_at: nowIso,
+      })),
+      user_status: [],
+      comments: [],
+    }
+
+    setTasks((prev) => {
+      const updated = sortTasksChronologically([optimisticTask, ...prev])
+      memoryCache.tasks = updated
+      return updated
+    })
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('tasks_updated'))
+    }
+
+    // 2. Persistencia asíncrona en Supabase
     try {
       const { data: newTask, error } = await supabase
         .from('tasks')
@@ -380,18 +422,24 @@ function TasksPageContent() {
         await supabase.from('task_attachments').insert(rowsToInsert)
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('tasks_updated'))
-      }
+      // Reconciliar id temporal con el id real de la base de datos
+      setTasks((prev) =>
+        prev.map((t) => (t.id === tempId ? { ...t, ...newTask } : t))
+      )
 
-      await loadTasksData()
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'tasks_updated',
+        payload: { taskId: newTask.id },
+      })
     } catch (err) {
       console.error('Error creando tarea:', err)
+      setTasks((prev) => prev.filter((t) => t.id !== tempId))
       throw err
     }
   }
 
-  // Actualizar tarea existente (Editar)
+  // Actualizar tarea existente (Editar) con actualización optimista instantánea (0ms)
   const handleUpdateTask = async (
     taskId: string,
     taskData: {
@@ -405,6 +453,58 @@ function TasksPageContent() {
   ) => {
     if (!user) return
 
+    const selectedSubject = subjects.find((s) => s.id === taskData.subject_id)
+
+    // 1. Actualización Optimista Instantánea (0ms)
+    setTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            title: taskData.title,
+            description: taskData.description || null,
+            subject_id: taskData.subject_id || null,
+            subject: selectedSubject || t.subject,
+            type: taskData.type,
+            due_date: taskData.due_date || t.due_date,
+            attachments: taskData.attachments
+              ? taskData.attachments.map((a, i) => ({
+                  id: `att-temp-${i}`,
+                  task_id: taskId,
+                  uploaded_by: user.id,
+                  file_type: a.file_type,
+                  file_url: a.file_url,
+                  file_name: a.file_name,
+                  created_at: new Date().toISOString(),
+                }))
+              : t.attachments,
+          }
+        }
+        return t
+      })
+      const sorted = sortTasksChronologically(updated)
+      memoryCache.tasks = sorted
+      return sorted
+    })
+
+    setSelectedTaskForDetail((current) => {
+      if (!current || current.id !== taskId) return current
+      return {
+        ...current,
+        title: taskData.title,
+        description: taskData.description || null,
+        subject_id: taskData.subject_id || null,
+        subject: selectedSubject || current.subject,
+        type: taskData.type,
+        due_date: taskData.due_date || current.due_date,
+      }
+    })
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('tasks_updated'))
+    }
+
+    // 2. Persistencia en Supabase
     try {
       const { error } = await supabase
         .from('tasks')
@@ -433,13 +533,14 @@ function TasksPageContent() {
         await supabase.from('task_attachments').insert(rowsToInsert)
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('tasks_updated'))
-      }
-
-      await loadTasksData()
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'tasks_updated',
+        payload: { taskId },
+      })
     } catch (err) {
       console.error('Error actualizando tarea:', err)
+      loadTasksData()
       throw err
     }
   }

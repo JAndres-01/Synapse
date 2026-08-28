@@ -441,7 +441,7 @@ export default function TodayPage() {
     }
   }
 
-  // Guardar tarea editada
+  // Guardar tarea editada con actualización optimista instantánea (0ms)
   const handleUpdateTask = async (
     taskId: string,
     taskData: {
@@ -455,6 +455,58 @@ export default function TodayPage() {
   ) => {
     if (!user) return
 
+    const selectedSubject = subjects.find((s) => s.id === taskData.subject_id)
+
+    // 1. Actualización Optimista Instantánea (0ms)
+    setUrgentTasks((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            title: taskData.title,
+            description: taskData.description || null,
+            subject_id: taskData.subject_id || null,
+            subject: selectedSubject || t.subject,
+            type: taskData.type,
+            due_date: taskData.due_date || t.due_date,
+            attachments: taskData.attachments
+              ? taskData.attachments.map((a, i) => ({
+                  id: `att-temp-${i}`,
+                  task_id: taskId,
+                  uploaded_by: user.id,
+                  file_type: a.file_type,
+                  file_url: a.file_url,
+                  file_name: a.file_name,
+                  created_at: new Date().toISOString(),
+                }))
+              : t.attachments,
+          }
+        }
+        return t
+      })
+      const sorted = sortTasksChronologically(updated)
+      memoryCache.tasks = sorted
+      return sorted
+    })
+
+    setSelectedTaskForDetail((current) => {
+      if (!current || current.id !== taskId) return current
+      return {
+        ...current,
+        title: taskData.title,
+        description: taskData.description || null,
+        subject_id: taskData.subject_id || null,
+        subject: selectedSubject || current.subject,
+        type: taskData.type,
+        due_date: taskData.due_date || current.due_date,
+      }
+    })
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('tasks_updated'))
+    }
+
+    // 2. Persistencia en Supabase
     try {
       const { error } = await supabase
         .from('tasks')
@@ -483,13 +535,14 @@ export default function TodayPage() {
         await supabase.from('task_attachments').insert(rowsToInsert)
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('tasks_updated'))
-      }
-
-      await loadTodayData()
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'tasks_updated',
+        payload: { taskId },
+      })
     } catch (err) {
       console.error('Error actualizando tarea:', err)
+      loadTodayData()
       throw err
     }
   }

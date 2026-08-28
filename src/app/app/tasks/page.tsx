@@ -74,7 +74,9 @@ export default function TasksPage() {
         setSchedules(scheduleData as unknown as Schedule[])
       }
 
-      // 2. Cargar Tareas con sus materias, estado de usuario y comentarios con autores
+      // 2. Cargar Tareas con fallback inteligente
+      let loadedTasks: Task[] = []
+
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
         .select(`
@@ -87,12 +89,29 @@ export default function TasksPage() {
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        setTasks(taskData as unknown as Task[])
-        if (offlineDB && taskData.length > 0) {
-          const validTasks = taskData.filter((t) => !!t && !!t.id)
-          if (validTasks.length > 0) {
-            await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
-          }
+        loadedTasks = taskData as unknown as Task[]
+      } else {
+        // Fallback: Si task_comments aún no ha sido migrado en Supabase
+        const { data: fallbackData } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            subject:subjects(*),
+            user_status:user_task_status(*)
+          `)
+          .eq('classroom_id', classroom.id)
+          .order('due_date', { ascending: true })
+
+        if (fallbackData) {
+          loadedTasks = fallbackData as unknown as Task[]
+        }
+      }
+
+      setTasks(loadedTasks)
+      if (offlineDB && loadedTasks.length > 0) {
+        const validTasks = loadedTasks.filter((t) => !!t && !!t.id)
+        if (validTasks.length > 0) {
+          await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
         }
       }
     } catch (err) {
@@ -191,19 +210,24 @@ export default function TasksPage() {
   }) => {
     if (!classroom || !user) return
 
+    const payload: Record<string, unknown> = {
+      classroom_id: classroom.id,
+      created_by: user.id,
+      title: taskData.title,
+      description: taskData.description || null,
+      type: taskData.type,
+      due_date: taskData.due_date,
+      is_private: taskData.is_private,
+    }
+
+    if (taskData.subject_id) {
+      payload.subject_id = taskData.subject_id
+    }
+
     const { data: newTask, error } = await supabase
       .from('tasks')
-      .insert({
-        classroom_id: classroom.id,
-        created_by: user.id,
-        title: taskData.title,
-        description: taskData.description || null,
-        subject_id: taskData.subject_id || null,
-        type: taskData.type,
-        due_date: taskData.due_date,
-        is_private: taskData.is_private,
-      })
-      .select('*, subject:subjects(*), user_status:user_task_status(*), comments:task_comments(*)')
+      .insert(payload)
+      .select('*, subject:subjects(*), user_status:user_task_status(*)')
       .single()
 
     if (!error && newTask) {
@@ -212,6 +236,7 @@ export default function TasksPage() {
         await offlineDB.tasks.put(newTask as unknown as Task)
       }
     } else {
+      console.error('Error insertando tarea:', error)
       loadTasksData()
     }
   }

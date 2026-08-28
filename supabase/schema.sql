@@ -94,20 +94,32 @@ CREATE TABLE IF NOT EXISTS public.schedules (
     CONSTRAINT unique_schedule_slot UNIQUE (classroom_id, day_of_week, block_number)
 );
 
--- 7. TABLA: TASKS (Tareas, proyectos y exámenes del salón)
+-- 7. TABLA: TASKS (Tareas, proyectos y exámenes del salón + pendientes personales)
 CREATE TABLE IF NOT EXISTS public.tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     classroom_id UUID NOT NULL REFERENCES public.classrooms(id) ON DELETE CASCADE,
-    subject_id UUID NOT NULL REFERENCES public.subjects(id) ON DELETE CASCADE,
+    subject_id UUID REFERENCES public.subjects(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT DEFAULT '',
     type task_type NOT NULL DEFAULT 'individual',
     due_date TIMESTAMPTZ NOT NULL,
     created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    is_private BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 8. TABLA: TASK_ATTACHMENTS (Fotos de pizarra, PDFs y enlaces)
+-- 8. TABLA: TASK_COMMENTS (Hilos de respuestas y fotos de apuntes / pizarra)
+CREATE TABLE IF NOT EXISTS public.task_comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    parent_comment_id UUID REFERENCES public.task_comments(id) ON DELETE CASCADE,
+    content TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 9. TABLA: TASK_ATTACHMENTS (Archivos adjuntos)
 CREATE TABLE IF NOT EXISTS public.task_attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,

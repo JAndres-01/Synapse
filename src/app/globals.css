@@ -25,6 +25,15 @@ html, body {
   touch-action: none !important;
 }
 
+/* Despeje superior seguro para reloj, batería y Dynamic Island en iPhone */
+.safe-area-top {
+  padding-top: calc(env(safe-area-inset-top, 47px) + 12px);
+}
+
+.safe-area-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
 /* Posición exacta de la barra flotante de navegación (12px del borde inferior en iPhone) */
 .floating-nav-container {
   bottom: 12px !important;

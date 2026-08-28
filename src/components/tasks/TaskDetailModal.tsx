@@ -296,11 +296,35 @@ export function TaskDetailModal({
     }
   }
 
-  // Agrupar comentarios en estructura de árbol (Padres e Hijos)
+  // Estructura de Árbol Jerárquico para Comentarios e Hilos
+  interface CommentNode extends TaskComment {
+    children: CommentNode[]
+    parentAuthorName?: string
+  }
+
   const comments = task.comments || []
-  const rootComments = comments.filter((c) => !c.parent_comment_id)
-  const getReplies = (parentId: string) =>
-    comments.filter((c) => c.parent_comment_id === parentId)
+
+  const commentTree = React.useMemo(() => {
+    const map = new Map<string, CommentNode>()
+    const roots: CommentNode[] = []
+
+    comments.forEach((c) => {
+      map.set(c.id, { ...c, children: [] })
+    })
+
+    comments.forEach((c) => {
+      const node = map.get(c.id)!
+      if (c.parent_comment_id && map.has(c.parent_comment_id)) {
+        const parent = map.get(c.parent_comment_id)!
+        node.parentAuthorName = parent.author?.full_name || 'Compañero'
+        parent.children.push(node)
+      } else {
+        roots.push(node)
+      }
+    })
+
+    return roots
+  }, [comments])
 
   const attachments = task.attachments || []
 
@@ -375,6 +399,72 @@ export function TaskDetailModal({
             </a>
           )
         })}
+      </div>
+    )
+  }
+
+  // Renderizar un nodo de respuesta recursivo en el árbol
+  const renderReplyTree = (reply: CommentNode): React.ReactNode => {
+    const isReplyDelegate =
+      reply.author?.role === 'admin' ||
+      (reply.author?.role as string) === 'delegate'
+
+    return (
+      <div key={reply.id} className="space-y-2">
+        <div className="p-3 rounded-xl bg-zinc-900/80 border border-zinc-800/80 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300">
+                {reply.author?.full_name?.slice(0, 1) || 'A'}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-zinc-200">
+                  {reply.author?.full_name || 'Compañero'}
+                </span>
+                {isReplyDelegate && (
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/40">
+                    Delegado
+                  </span>
+                )}
+                {reply.parentAuthorName && (
+                  <span className="text-[10px] text-zinc-500 font-normal">
+                    ↳ en respuesta a <strong className="text-zinc-400 font-medium">@{reply.parentAuthorName.split(' ')[0]}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <span className="text-[10px] text-zinc-500 font-mono">
+              {formatCommentDate(reply.created_at)}
+            </span>
+          </div>
+
+          {reply.content && (
+            <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">
+              {reply.content}
+            </p>
+          )}
+
+          {renderCommentAttachments(reply)}
+
+          <div className="pt-0.5 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setReplyingTo(reply)}
+              className="text-[11px] text-zinc-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            >
+              <CornerDownRight className="w-3 h-3" />
+              <span>Responder</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Hijos anidados recursivamente */}
+        {reply.children.length > 0 && (
+          <div className="pl-3 border-l-2 border-zinc-800 ml-2 space-y-2">
+            {reply.children.map((subChild) => renderReplyTree(subChild))}
+          </div>
+        )}
       </div>
     )
   }
@@ -596,27 +686,31 @@ export function TaskDetailModal({
                   </h3>
                 </div>
 
-                {/* Lista de Comentarios en Árbol */}
+                {/* Lista de Comentarios en Hilos */}
                 <div className="space-y-3">
-                  {rootComments.length === 0 ? (
+                  {commentTree.length === 0 ? (
                     <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
                       No hay comentarios aún. Puedes hacer una pregunta o compartir fotos y archivos de apuntes.
                     </div>
                   ) : (
-                    rootComments.map((root) => {
-                      const replies = getReplies(root.id)
-                      const isAuthorDelegate = root.author?.role === 'admin' || (root.author?.role as string) === 'delegate'
+                    commentTree.map((root) => {
+                      const isAuthorDelegate =
+                        root.author?.role === 'admin' ||
+                        (root.author?.role as string) === 'delegate'
 
                       return (
-                        <div key={root.id} className="space-y-2">
-                          {/* Comentario Raíz */}
-                          <div className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-2 shadow-sm">
+                        <div
+                          key={root.id}
+                          className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-2.5 shadow-sm"
+                        >
+                          {/* Comentario Principal del Hilo */}
+                          <div className="space-y-2">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-indigo-950 border border-indigo-800/60 flex items-center justify-center text-[10px] font-bold text-indigo-300">
+                                <div className="w-7 h-7 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-200">
                                   {root.author?.full_name?.slice(0, 1) || 'A'}
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-xs font-semibold text-zinc-200">
                                     {root.author?.full_name || 'Compañero'}
                                   </span>
@@ -645,83 +739,32 @@ export function TaskDetailModal({
 
                             {/* Botón Responder */}
                             <div className="pt-1 flex items-center justify-between border-t border-zinc-900">
-                              {replies.length > 0 ? (
+                              {root.children.length > 0 ? (
                                 <span className="text-[10px] font-semibold text-indigo-400 flex items-center gap-1">
-                                  <span>{replies.length} {replies.length === 1 ? 'respuesta' : 'respuestas'}</span>
+                                  <span>
+                                    {root.children.length}{' '}
+                                    {root.children.length === 1 ? 'respuesta' : 'respuestas'}
+                                  </span>
                                 </span>
-                              ) : <span />}
+                              ) : (
+                                <span />
+                              )}
 
                               <button
                                 type="button"
                                 onClick={() => setReplyingTo(root)}
-                                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-0.5 px-2 rounded-lg hover:bg-zinc-900 transition-colors"
+                                className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 py-1 px-2.5 rounded-lg hover:bg-zinc-900 transition-colors"
                               >
-                                <CornerDownRight className="w-3 h-3" />
+                                <CornerDownRight className="w-3.5 h-3.5" />
                                 <span>Responder</span>
                               </button>
                             </div>
                           </div>
 
-                          {/* Hilos Anidados con Conectores Visuales */}
-                          {replies.length > 0 && (
-                            <div className="relative pl-6 space-y-2 mt-1 ml-3 border-l-2 border-indigo-800/50">
-                              {replies.map((reply) => {
-                                const isReplyDelegate =
-                                  reply.author?.role === 'admin' ||
-                                  (reply.author?.role as string) === 'delegate'
-
-                                return (
-                                  <div
-                                    key={reply.id}
-                                    className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-1.5 relative shadow-sm"
-                                  >
-                                    {/* Rama conectora curva hacia el hilo principal */}
-                                    <div className="absolute -left-6 top-4 w-4 h-3.5 border-b-2 border-l-2 border-indigo-600/70 rounded-bl-lg pointer-events-none" />
-
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-zinc-300">
-                                          {reply.author?.full_name?.slice(0, 1) || 'A'}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className="text-xs font-semibold text-zinc-200">
-                                            {reply.author?.full_name || 'Compañero'}
-                                          </span>
-                                          {isReplyDelegate && (
-                                            <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-medium border border-indigo-800/40">
-                                              Delegado
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <span className="text-[10px] text-zinc-500 font-mono">
-                                        {formatCommentDate(reply.created_at)}
-                                      </span>
-                                    </div>
-
-                                    {reply.content && (
-                                      <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed pl-0.5">
-                                        {reply.content}
-                                      </p>
-                                    )}
-
-                                    {/* Imágenes o Documentos adjuntos en respuesta */}
-                                    {renderCommentAttachments(reply)}
-
-                                    <div className="pt-0.5 flex items-center justify-end">
-                                      <button
-                                        type="button"
-                                        onClick={() => setReplyingTo(root)}
-                                        className="text-[10px] text-zinc-400 hover:text-indigo-300 font-medium flex items-center gap-1"
-                                      >
-                                        <CornerDownRight className="w-2.5 h-2.5" />
-                                        <span>Responder al hilo</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                          {/* Respuestas del Hilo conectadas dentro del contenedor */}
+                          {root.children.length > 0 && (
+                            <div className="pt-2 border-t border-zinc-900 space-y-2.5 pl-3 border-l-2 border-zinc-800 ml-2">
+                              {root.children.map((child) => renderReplyTree(child))}
                             </div>
                           )}
                         </div>
@@ -740,20 +783,26 @@ export function TaskDetailModal({
             <div className="pt-2 border-t border-zinc-800 space-y-2 shrink-0">
               {/* Indicador de Respuesta */}
               {replyingTo && (
-                <div className="flex items-center justify-between bg-zinc-950 p-2 rounded-xl border border-zinc-800 text-xs">
-                  <div className="flex items-center gap-1.5 text-zinc-400">
-                    <CornerDownRight className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>
+                <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-xl border border-indigo-900/60 text-xs shadow-sm">
+                  <div className="flex items-center gap-2 text-zinc-400 min-w-0 flex-1">
+                    <CornerDownRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">
                       Respondiendo a{' '}
-                      <strong className="text-zinc-200">
-                        {replyingTo.author?.full_name || 'Compañero'}
+                      <strong className="text-indigo-300">
+                        @{replyingTo.author?.full_name || 'Compañero'}
                       </strong>
+                      {replyingTo.content && (
+                        <span className="text-zinc-500 ml-1.5 italic truncate">
+                          &ldquo;{replyingTo.content.slice(0, 30)}{replyingTo.content.length > 30 ? '...' : ''}&rdquo;
+                        </span>
+                      )}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setReplyingTo(null)}
-                    className="text-zinc-500 hover:text-zinc-300"
+                    aria-label="Cancelar respuesta"
+                    className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0 ml-2"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>

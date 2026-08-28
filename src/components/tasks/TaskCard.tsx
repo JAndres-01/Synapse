@@ -130,7 +130,28 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
 
   const dueInfo = formatDueDate(task.due_date)
   const commentsCount = task.comments?.length || 0
-  const photosCount = (task.comments || []).filter((c) => !!c.image_url).length
+  const photosCount = (task.comments || []).reduce((acc, c) => {
+    if (!c.image_url) return acc
+    if (c.image_url.startsWith('[') && c.image_url.endsWith(']')) {
+      try {
+        const arr = JSON.parse(c.image_url)
+        if (Array.isArray(arr)) {
+          return (
+            acc +
+            arr.filter(
+              (item: { fileType?: string; file_type?: string }) =>
+                item.fileType === 'image' || item.file_type === 'image'
+            ).length
+          )
+        }
+      } catch {}
+    }
+    const isImage =
+      c.file_type === 'image' ||
+      (!c.file_type &&
+        (c.image_url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp)$/i.test(c.image_url)))
+    return acc + (isImage ? 1 : 0)
+  }, 0)
   const attachmentsCount = task.attachments?.length || 0
 
   const handleCheck = (e: React.MouseEvent) => {
@@ -222,9 +243,10 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
         </div>
       </div>
 
-      {/* Footer: Adjuntos, Respuestas y Fotos de Apuntes */}
-      {(attachmentsCount > 0 || (!task.is_private && (commentsCount > 0 || photosCount > 0))) && (
+      {/* Footer: 1. Adjuntos, 2. Imágenes, 3. Respuestas */}
+      {(attachmentsCount > 0 || (!task.is_private && (photosCount > 0 || commentsCount > 0))) && (
         <div className="flex items-center gap-3 pt-1 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-medium flex-wrap">
+          {/* 1. Adjuntos */}
           {attachmentsCount > 0 && (
             <div className="flex items-center gap-1 text-indigo-300 font-medium">
               <Paperclip className="w-3 h-3 text-indigo-400" />
@@ -232,17 +254,19 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
             </div>
           )}
 
+          {/* 2. Imágenes */}
+          {!task.is_private && photosCount > 0 && (
+            <div className="flex items-center gap-1 text-emerald-400">
+              <ImageIcon className="w-3 h-3" />
+              <span>{photosCount} {photosCount === 1 ? 'imagen' : 'imagenes'}</span>
+            </div>
+          )}
+
+          {/* 3. Respuestas */}
           {!task.is_private && commentsCount > 0 && (
             <div className="flex items-center gap-1">
               <MessageSquare className="w-3 h-3 text-zinc-500" />
               <span>{commentsCount} {commentsCount === 1 ? 'respuesta' : 'respuestas'}</span>
-            </div>
-          )}
-
-          {!task.is_private && photosCount > 0 && (
-            <div className="flex items-center gap-1 text-emerald-400">
-              <ImageIcon className="w-3 h-3" />
-              <span>{photosCount} {photosCount === 1 ? 'apunte' : 'apuntes'}</span>
             </div>
           )}
         </div>

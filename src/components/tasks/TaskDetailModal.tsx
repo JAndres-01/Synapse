@@ -679,29 +679,20 @@ export function TaskDetailModal({
       {/* ========================================================================= */}
       {selectedImageForLightbox && (
         <div
-          className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center p-4 animate-fade-in cursor-pointer select-none"
           onClick={() => setSelectedImageForLightbox(null)}
         >
-          <button
-            type="button"
-            onClick={() => setSelectedImageForLightbox(null)}
-            className="absolute top-6 right-6 p-2 rounded-full bg-zinc-800/80 text-white z-10"
-          >
-            <X className="w-6 h-6" />
-          </button>
-
           <div
-            className="max-w-full max-h-[85vh] overflow-auto flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-[85vh] overflow-auto flex items-center justify-center pointer-events-none"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={selectedImageForLightbox}
               alt="Apunte en alta resolución"
-              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
             />
           </div>
-          <p className="text-xs text-zinc-400 mt-3 font-mono">
+          <p className="text-xs text-zinc-400 mt-4 font-mono font-medium">
             Toca en cualquier parte para cerrar
           </p>
         </div>

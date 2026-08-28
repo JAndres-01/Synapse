@@ -10,14 +10,19 @@ export interface CurrentClassState {
   progressPercent?: number
 }
 
-// Convierte "HH:MM" o "HH:MM:SS" a minutos desde las 00:00
-export function timeStringToMinutes(timeStr: string): number {
-  const parts = timeStr.split(':').map(Number)
-  return parts[0] * 60 + parts[1]
+// Convierte "HH:MM" o "HH:MM:SS" a minutos desde las 00:00 de forma segura
+export function timeStringToMinutes(timeStr?: string | null): number {
+  if (!timeStr) return 0
+  try {
+    const parts = timeStr.split(':').map(Number)
+    return (parts[0] || 0) * 60 + (parts[1] || 0)
+  } catch {
+    return 0
+  }
 }
 
 export function getCurrentClassState(
-  schedulesToday: Schedule[],
+  schedulesToday: Schedule[] = [],
   now: Date = new Date()
 ): CurrentClassState {
   if (!schedulesToday || schedulesToday.length === 0) {
@@ -26,8 +31,14 @@ export function getCurrentClassState(
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
-  // Ordenar bloques por block_number
-  const sorted = [...schedulesToday].sort((a, b) => a.block_number - b.block_number)
+  // Filtrar horarios válidos y ordenar por número de bloque
+  const sorted = [...schedulesToday]
+    .filter((item) => !!item && !!item.start_time && !!item.end_time)
+    .sort((a, b) => (a.block_number || 0) - (b.block_number || 0))
+
+  if (sorted.length === 0) {
+    return { status: 'no_classes' }
+  }
 
   // 1. Verificar si hay una clase activa en este momento
   for (const item of sorted) {
@@ -35,22 +46,24 @@ export function getCurrentClassState(
     const end = timeStringToMinutes(item.end_time)
 
     if (currentMinutes >= start && currentMinutes < end) {
+      const remaining = Math.max(0, end - currentMinutes)
+
       if (item.is_virtual) {
         return {
           status: 'virtual_free',
           currentSchedule: item,
-          minutesRemaining: end - currentMinutes,
+          minutesRemaining: remaining,
         }
       }
 
-      const totalDuration = end - start
+      const totalDuration = Math.max(1, end - start)
       const elapsed = currentMinutes - start
       const progressPercent = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)))
 
       return {
         status: 'active',
         currentSchedule: item,
-        minutesRemaining: end - currentMinutes,
+        minutesRemaining: remaining,
         progressPercent,
       }
     }
@@ -64,11 +77,11 @@ export function getCurrentClassState(
     return {
       status: 'upcoming',
       nextSchedule: upcoming,
-      minutesUntilNext: start - currentMinutes,
+      minutesUntilNext: Math.max(0, start - currentMinutes),
     }
   }
 
-  // 3. Si ya pasaron todas las clases del día (después de la 1:00 PM)
+  // 3. Si ya pasaron todas las clases del día (después del último bloque)
   return {
     status: 'day_ended',
   }

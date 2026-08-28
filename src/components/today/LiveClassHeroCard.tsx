@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import type { Schedule, Notice } from '@/types/database'
 import { getCurrentClassState, type CurrentClassState } from '@/lib/schedule-utils'
 import {
-  Clock,
   MapPin,
   User,
   Video,
@@ -15,12 +14,12 @@ import {
 } from 'lucide-react'
 
 interface LiveClassHeroCardProps {
-  schedulesToday: Schedule[]
+  schedulesToday?: Schedule[]
   urgentNotice?: Notice | null
 }
 
 export function LiveClassHeroCard({
-  schedulesToday,
+  schedulesToday = [],
   urgentNotice,
 }: LiveClassHeroCardProps) {
   const [classState, setClassState] = useState<CurrentClassState>({
@@ -39,6 +38,11 @@ export function LiveClassHeroCard({
 
   const { status, currentSchedule, nextSchedule, minutesRemaining, minutesUntilNext, progressPercent } =
     classState
+
+  const formatTimeRange = (startTime?: string, endTime?: string) => {
+    if (!startTime || !endTime) return ''
+    return `${startTime.slice(0, 5)} - ${endTime.slice(0, 5)}`
+  }
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-zinc-900/90 border border-zinc-800 p-4 shadow-xl transition-all">
@@ -66,7 +70,7 @@ export function LiveClassHeroCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: currentSchedule.subject?.color || '#3B82F6' }}
               />
               <h2 className="text-base font-bold text-white tracking-tight truncate">
@@ -119,15 +123,15 @@ export function LiveClassHeroCard({
           <div>
             <div className="flex items-center gap-2">
               <span
-                className="w-2.5 h-2.5 rounded-full"
+                className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: nextSchedule.subject?.color || '#3B82F6' }}
               />
               <h2 className="text-sm font-semibold text-zinc-100 truncate">
-                {nextSchedule.subject?.name}
+                {nextSchedule.subject?.name || 'Materia'}
               </h2>
             </div>
             <p className="text-xs text-zinc-400 mt-1 flex items-center gap-2">
-              <span>{nextSchedule.start_time.slice(0, 5)} - {nextSchedule.end_time.slice(0, 5)}</span>
+              <span>{formatTimeRange(nextSchedule.start_time, nextSchedule.end_time)}</span>
               <span>•</span>
               <span>{nextSchedule.classroom_room || 'Aula Principal'}</span>
             </p>
@@ -144,13 +148,13 @@ export function LiveClassHeroCard({
               <span>MODALIDAD VIRTUAL / HORA LIBRE</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-400">
-              {currentSchedule.start_time.slice(0, 5)} - {currentSchedule.end_time.slice(0, 5)}
+              {formatTimeRange(currentSchedule.start_time, currentSchedule.end_time)}
             </span>
           </div>
 
           <div>
             <h2 className="text-sm font-semibold text-zinc-100 truncate">
-              {currentSchedule.subject?.name}
+              {currentSchedule.subject?.name || 'Materia'}
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
               Materia virtual / asíncrona. Tiempo de estudio libre o conexión remota.

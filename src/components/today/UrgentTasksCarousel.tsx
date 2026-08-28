@@ -7,12 +7,12 @@ import Link from 'next/link'
 import confetti from 'canvas-confetti'
 
 interface UrgentTasksCarouselProps {
-  tasks: Task[]
+  tasks?: Task[]
   onToggleTaskStatus: (taskId: string, currentStatus: string) => Promise<void>
 }
 
 export function UrgentTasksCarousel({
-  tasks,
+  tasks = [],
   onToggleTaskStatus,
 }: UrgentTasksCarouselProps) {
   if (!tasks || tasks.length === 0) {
@@ -32,14 +32,20 @@ export function UrgentTasksCarousel({
     }
   }
 
-  const formatDueDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const today = new Date()
-    const isToday = date.toDateString() === today.toDateString()
-    const hours = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  const formatDueDate = (dateStr?: string) => {
+    if (!dateStr) return 'Sin fecha'
+    try {
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return 'Fecha pendiente'
+      const today = new Date()
+      const isToday = date.toDateString() === today.toDateString()
+      const hours = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 
-    if (isToday) return `Hoy • ${hours}`
-    return `${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })} • ${hours}`
+      if (isToday) return `Hoy • ${hours}`
+      return `${date.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })} • ${hours}`
+    } catch {
+      return 'Fecha pendiente'
+    }
   }
 
   return (
@@ -62,17 +68,21 @@ export function UrgentTasksCarousel({
 
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
         {tasks.map((task) => {
-          const isCompleted = task.user_status?.[0]?.status === 'completed'
+          const isCompleted = Array.isArray(task.user_status) && task.user_status.length > 0 && task.user_status[0]?.status === 'completed'
 
           const handleCheck = (e: React.MouseEvent) => {
             e.stopPropagation()
             if (!isCompleted) {
-              confetti({
-                particleCount: 25,
-                spread: 40,
-                origin: { y: 0.8 },
-                colors: ['#6366F1', '#10B981', '#ffffff'],
-              })
+              try {
+                confetti({
+                  particleCount: 25,
+                  spread: 40,
+                  origin: { y: 0.8 },
+                  colors: ['#6366F1', '#10B981', '#ffffff'],
+                })
+              } catch {
+                // Ignore if confetti fails in some browser environments
+              }
             }
             onToggleTaskStatus(task.id, isCompleted ? 'completed' : 'pending')
           }

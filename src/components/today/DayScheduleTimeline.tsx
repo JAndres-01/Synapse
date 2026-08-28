@@ -6,13 +6,13 @@ import { SCHEDULE_BLOCKS } from '@/lib/utils'
 import { MapPin, User, Video } from 'lucide-react'
 
 interface DayScheduleTimelineProps {
-  schedulesToday: Schedule[]
+  schedulesToday?: Schedule[]
 }
 
-export function DayScheduleTimeline({ schedulesToday }: DayScheduleTimelineProps) {
+export function DayScheduleTimeline({ schedulesToday = [] }: DayScheduleTimelineProps) {
   // Mapear los 4 bloques
   const blocks = SCHEDULE_BLOCKS.map((def) => {
-    const scheduledClass = schedulesToday.find((s) => s.block_number === def.block)
+    const scheduledClass = (schedulesToday || []).find((s) => s.block_number === def.block)
     return {
       ...def,
       scheduledClass,
@@ -69,7 +69,7 @@ export function DayScheduleTimeline({ schedulesToday }: DayScheduleTimelineProps
                       style={{ backgroundColor: item.subject?.color || '#3B82F6' }}
                     />
                     <h4 className="text-xs font-semibold text-zinc-100 truncate">
-                      {item.subject?.name}
+                      {item.subject?.name || 'Materia'}
                     </h4>
                   </div>
 

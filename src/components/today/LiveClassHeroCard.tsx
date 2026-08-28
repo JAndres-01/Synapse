@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import type { Schedule } from '@/types/database'
-import { getCurrentClassState, type CurrentClassState } from '@/lib/schedule-utils'
+import { getCurrentClassState, formatMinutesHuman, type CurrentClassState } from '@/lib/schedule-utils'
 import {
   MapPin,
   User,
@@ -52,7 +52,7 @@ export function LiveClassHeroCard({
               <span>EN CURSO • CLASE {currentSchedule.block_number}</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-400">
-              Termina en {minutesRemaining} min
+              Termina en {formatMinutesHuman(minutesRemaining)}
             </span>
           </div>
 
@@ -105,7 +105,7 @@ export function LiveClassHeroCard({
               <span>PRÓXIMA • CLASE {nextSchedule.block_number}</span>
             </div>
             <span className="text-[11px] font-mono text-zinc-400">
-              Comienza en {minutesUntilNext} min
+              Comienza en {formatMinutesHuman(minutesUntilNext)}
             </span>
           </div>
 

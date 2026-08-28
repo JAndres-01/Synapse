@@ -21,6 +21,22 @@ export function timeStringToMinutes(timeStr?: string | null): number {
   }
 }
 
+// Formatea minutos a horas y minutos legibles (ej: 145 min -> "2 h 25 min", 45 min -> "45 min")
+export function formatMinutesHuman(totalMinutes?: number | null): string {
+  if (totalMinutes === undefined || totalMinutes === null || totalMinutes <= 0) {
+    return 'Ahora'
+  }
+  if (totalMinutes < 60) {
+    return `${totalMinutes} min`
+  }
+  const hours = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+  if (mins === 0) {
+    return `${hours} h`
+  }
+  return `${hours} h ${mins} min`
+}
+
 export function getCurrentClassState(
   schedulesToday: Schedule[] = [],
   now: Date = new Date()

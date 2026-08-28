@@ -55,10 +55,10 @@ export default function TodayPage() {
       // 2. Cargar Tareas próximas
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
-        .select('*, subject:subjects(*), user_status:user_task_status(*)')
+        .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*)')
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
-        .limit(10)
+        .limit(20)
 
       if (!taskErr && taskData) {
         setUrgentTasks(taskData as unknown as Task[])
@@ -152,6 +152,9 @@ export default function TodayPage() {
         },
         { onConflict: 'user_id,task_id' }
       )
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
     } catch (err) {
       console.error('Error actualizando estado de tarea:', err)
       loadTodayData()

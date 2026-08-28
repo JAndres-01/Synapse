@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
+import { useSearchParams } from 'next/navigation'
 import type { Task, Subject, TaskType, Schedule, AttachmentType, TaskAttachment, TaskComment } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
@@ -43,7 +44,7 @@ const getTaskCompletedDate = (t: Task, userId?: string): Date | null => {
   return statusObj?.completed_at ? new Date(statusObj.completed_at) : null
 }
 
-export default function TasksPage() {
+function TasksPageContent() {
   const { user, profile, classroom } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -70,6 +71,24 @@ export default function TasksPage() {
     (profile?.role as string) === 'delegate'
 
   const canCreateInActiveTab = activeTab === 'private' || isAdmin
+
+  const searchParams = useSearchParams()
+  const taskIdParam = searchParams ? searchParams.get('taskId') : null
+
+  // Abrir automáticamente el modal de detalle si viene taskId en la URL
+  useEffect(() => {
+    if (taskIdParam && tasks.length > 0) {
+      const match = tasks.find((t) => t.id === taskIdParam)
+      if (match) {
+        setSelectedTaskForDetail(match)
+        if (match.is_private) {
+          setActiveTab('private')
+        } else {
+          setActiveTab('classroom')
+        }
+      }
+    }
+  }, [taskIdParam, tasks])
 
   // Cargar Tareas, Materias y Horarios
   const loadTasksData = useCallback(async () => {
@@ -719,3 +738,18 @@ export default function TasksPage() {
     </div>
   )
 }
+
+export default function TasksPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+        </div>
+      }
+    >
+      <TasksPageContent />
+    </React.Suspense>
+  )
+}
+

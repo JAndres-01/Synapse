@@ -611,15 +611,16 @@ function TasksPageContent() {
         </button>
       </div>
 
-      {/* 2. Barra de Filtros: Estados y Materia */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-0.5">
-        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 shrink-0">
+      {/* 2. Barra de Filtros: Estados arriba y Materias abajo */}
+      <div className="space-y-2 pb-0.5">
+        {/* Filtro de Estado (Pendientes / Completadas / Todas) */}
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 w-fit">
           {(['pending', 'completed', 'all'] as const).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`py-1 px-2.5 rounded-lg text-[11px] font-medium transition-all ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
                 statusFilter === st
                   ? 'bg-zinc-800 text-white shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -635,11 +636,11 @@ function TasksPageContent() {
         </div>
 
         {/* Filtro por Materia */}
-        <div className="relative shrink-0">
+        <div className="relative w-full">
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="appearance-none text-[11px] py-1.5 pl-2.5 pr-6 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 font-medium"
+            className="w-full appearance-none text-xs py-2 pl-3 pr-8 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 font-medium"
           >
             <option value="all">Todas las materias</option>
             {subjects.map((sub) => (
@@ -648,7 +649,7 @@ function TasksPageContent() {
               </option>
             ))}
           </select>
-          <ChevronDown className="w-3 h-3 text-zinc-500 absolute right-2 top-2.5 pointer-events-none" />
+          <ChevronDown className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
         </div>
       </div>
 
@@ -712,7 +713,7 @@ function TasksPageContent() {
             setTaskToEdit(null)
             setShowCreateModal(true)
           }}
-          className="fixed bottom-20 right-4 z-30 py-2.5 px-4 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 font-semibold text-xs flex items-center gap-2 shadow-lg shadow-indigo-950/60 border border-indigo-400/40 active:scale-95 transition-all"
+          className="fixed bottom-24 right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-2 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>

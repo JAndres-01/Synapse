@@ -23,8 +23,8 @@ export function DayViewSchedule({
   // Filtrar los horarios del día seleccionado
   const schedulesForDay = schedules.filter((s) => s.day_of_week === selectedDay)
 
-  // Mapear los 4 bloques
-  const blocks = SCHEDULE_BLOCKS.map((def) => {
+  // Mapear las 4 clases
+  const classes = SCHEDULE_BLOCKS.map((def) => {
     const scheduledClass = schedulesForDay.find((s) => s.block_number === def.block)
     return {
       ...def,
@@ -60,28 +60,35 @@ export function DayViewSchedule({
         })}
       </div>
 
-      {/* Lista de los 4 Bloques del Día */}
+      {/* Lista de las 4 Clases del Día */}
       <div className="space-y-2.5">
-        {blocks.map((b) => {
-          const item = b.scheduledClass
+        {classes.map((c) => {
+          const item = c.scheduledClass
 
           return (
             <div
-              key={b.block}
+              key={c.block}
               className={`p-3.5 rounded-2xl border transition-all ${
                 item
                   ? 'bg-zinc-900/80 border-zinc-800 shadow-sm'
                   : 'bg-zinc-950/30 border-zinc-900 border-dashed'
               }`}
+              style={
+                item?.subject?.color
+                  ? {
+                      borderLeft: `4px solid ${item.subject.color}`,
+                    }
+                  : undefined
+              }
             >
-              {/* Encabezado del Bloque */}
+              {/* Encabezado de la Clase */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-[10px] font-mono text-zinc-300 font-semibold">
-                    Bloque {b.block}
+                    Clase {c.block}
                   </span>
                   <span className="text-[11px] font-mono text-zinc-400">
-                    {b.startTime} - {b.endTime}
+                    {c.startTime} - {c.endTime}
                   </span>
                 </div>
 
@@ -99,8 +106,8 @@ export function DayViewSchedule({
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: item.subject?.color || '#6366F1' }}
+                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-zinc-700"
+                        style={{ backgroundColor: item.subject?.color || '#FFFFFF' }}
                       />
                       <h3 className="text-sm font-semibold text-zinc-100 truncate">
                         {item.subject?.name}
@@ -130,9 +137,9 @@ export function DayViewSchedule({
                   {isAdmin && (
                     <button
                       type="button"
-                      onClick={() => onOpenAssignModal(selectedDay, b.block, item)}
-                      aria-label="Editar bloque"
-                      className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors shrink-0"
+                      onClick={() => onOpenAssignModal(selectedDay, c.block, item)}
+                      aria-label="Editar clase"
+                      className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors shrink-0 active:scale-95"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -147,7 +154,7 @@ export function DayViewSchedule({
                   {isAdmin && (
                     <button
                       type="button"
-                      onClick={() => onOpenAssignModal(selectedDay, b.block)}
+                      onClick={() => onOpenAssignModal(selectedDay, c.block)}
                       className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />

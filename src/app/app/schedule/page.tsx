@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { offlineDB } from '@/lib/db'
 import type { Schedule, Subject } from '@/types/database'
+import { SCHEDULE_BLOCKS } from '@/lib/utils'
 import { DayViewSchedule } from '@/components/schedule/DayViewSchedule'
 import { WeeklyMatrixSchedule } from '@/components/schedule/WeeklyMatrixSchedule'
 import { ManageSubjectsModal } from '@/components/schedule/ManageSubjectsModal'
@@ -43,13 +44,13 @@ export default function SchedulePage() {
   })
 
   const supabase = createClient()
-  const isAdmin = classroom?.created_by === user?.id || profile?.role === 'delegate' || profile?.role === 'admin'
+  const isAdmin = classroom?.created_by === user?.id || profile?.role === 'admin' || (profile?.role as string) === 'delegate'
 
   const loadData = useCallback(async () => {
     if (!classroom) return
 
     try {
-      // 1. Intentar cargar desde caché local Dexie (Offline-First)
+      // 1. Cargar desde caché local Dexie (Offline-First)
       if (offlineDB) {
         const [cachedSubjects, cachedSchedules] = await Promise.all([
           offlineDB.subjects.where('classroom_id').equals(classroom.id).toArray(),
@@ -127,7 +128,7 @@ export default function SchedulePage() {
       name: data.name!,
       code: data.code || null,
       teacher_name: data.teacher_name || null,
-      color: data.color || '#6366F1',
+      color: data.color || '#FFFFFF',
     }
 
     const { data: saved, error } = await supabase
@@ -164,16 +165,24 @@ export default function SchedulePage() {
   ) => {
     if (!classroom) return
 
+    const blockDef = SCHEDULE_BLOCKS.find((b) => b.block === blockNumber)
+    const startTime = blockDef ? blockDef.fullStart : '07:00:00'
+    const endTime = blockDef ? blockDef.fullEnd : '08:30:00'
+
     // Buscar si ya existe un bloque en este día
     const existing = schedules.find(
       (s) => s.day_of_week === dayOfWeek && s.block_number === blockNumber
     )
+
+    const subjectObj = subjects.find((s) => s.id === subjectId)
 
     const payload = {
       classroom_id: classroom.id,
       day_of_week: dayOfWeek,
       block_number: blockNumber,
       subject_id: subjectId,
+      start_time: startTime,
+      end_time: endTime,
       classroom_room: classroomRoom || 'Aula Principal',
       is_virtual: isVirtual,
     }
@@ -191,6 +200,8 @@ export default function SchedulePage() {
         if (offlineDB) {
           await offlineDB.schedules.put(updated)
         }
+      } else if (error) {
+        console.error('Error actualizando clase:', error)
       }
     } else {
       const { data: inserted, error } = await supabase
@@ -200,10 +211,17 @@ export default function SchedulePage() {
         .single()
 
       if (!error && inserted) {
-        setSchedules((prev) => [...prev, inserted])
+        // Asignar objeto de subject si no vino en el join
+        const scheduleWithSubject = inserted.subject
+          ? inserted
+          : { ...inserted, subject: subjectObj }
+
+        setSchedules((prev) => [...prev, scheduleWithSubject])
         if (offlineDB) {
-          await offlineDB.schedules.put(inserted)
+          await offlineDB.schedules.put(scheduleWithSubject)
         }
+      } else if (error) {
+        console.error('Error insertando clase:', error)
       }
     }
   }
@@ -236,7 +254,7 @@ export default function SchedulePage() {
             <span>Horario de Clases</span>
           </h1>
           <p className="text-[11px] text-zinc-400 mt-0.5">
-            4 bloques diarios de 90 min (7:00 AM - 1:00 PM)
+            4 clases diarias de 90 min (7:00 AM - 1:00 PM)
           </p>
         </div>
 
@@ -253,7 +271,7 @@ export default function SchedulePage() {
         )}
       </header>
 
-      {/* Switch de Vista: Día a Día vs Grilla Semanal */}
+      {/* Switch de Vista: Día a Día vs Resumen Semanal */}
       <div className="flex p-1 rounded-xl bg-zinc-900 border border-zinc-800/80">
         <button
           type="button"
@@ -278,7 +296,7 @@ export default function SchedulePage() {
           }`}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
-          <span>Matriz Semanal</span>
+          <span>Vista Semanal</span>
         </button>
       </div>
 

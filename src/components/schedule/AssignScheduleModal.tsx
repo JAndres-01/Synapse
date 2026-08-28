@@ -98,7 +98,7 @@ export function AssignScheduleModal({
       )
       onClose()
     } catch (err) {
-      console.error('Error guardando horario:', err)
+      console.error('Error guardando clase:', err)
     } finally {
       setLoading(false)
     }
@@ -111,7 +111,7 @@ export function AssignScheduleModal({
       await onDeleteSchedule(existingSchedule.id)
       onClose()
     } catch (err) {
-      console.error('Error eliminando horario:', err)
+      console.error('Error eliminando clase:', err)
     } finally {
       setLoading(false)
     }
@@ -149,7 +149,7 @@ export function AssignScheduleModal({
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Calendar className="w-4 h-4 text-indigo-400" />
-              <span>Configurar Bloque #{blockNumber}</span>
+              <span>Configurar Clase #{blockNumber}</span>
             </h3>
             <p className="text-[11px] text-zinc-400 mt-0.5">
               {dayName} • {blockDef?.startTime} - {blockDef?.endTime}
@@ -171,7 +171,7 @@ export function AssignScheduleModal({
             </label>
             {subjects.length === 0 ? (
               <p className="text-xs text-amber-400 bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl">
-                Debes registrar al menos una materia antes de asignarla a un horario.
+                Debes registrar al menos una materia antes de asignarla a una clase.
               </p>
             ) : (
               <select
@@ -230,7 +230,7 @@ export function AssignScheduleModal({
                 onClick={handleDelete}
                 disabled={loading}
                 className="p-3 rounded-xl bg-red-950/40 border border-red-900/50 text-red-400 hover:bg-red-900/60 transition-colors"
-                title="Desasignar horario"
+                title="Desasignar clase"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -244,7 +244,7 @@ export function AssignScheduleModal({
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
               ) : (
-                <span>Guardar Bloque</span>
+                <span>Guardar Clase</span>
               )}
             </button>
           </div>

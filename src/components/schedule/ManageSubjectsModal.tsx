@@ -144,7 +144,7 @@ export function ManageSubjectsModal({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span
-                    className="w-3 h-3 rounded-full shrink-0"
+                    className="w-3.5 h-3.5 rounded-full shrink-0 border border-zinc-700 shadow-sm"
                     style={{ backgroundColor: sub.color }}
                   />
                   <div className="min-w-0">
@@ -153,7 +153,7 @@ export function ManageSubjectsModal({
                     </h4>
                     <p className="text-[10px] text-zinc-500 truncate">
                       {sub.code ? `${sub.code} • ` : ''}
-                      {sub.teacher_name || 'Sin profesor asignado'}
+                      {sub.teacher_name || 'Sin docente asignado'}
                     </p>
                   </div>
                 </div>
@@ -226,25 +226,34 @@ export function ManageSubjectsModal({
               </div>
             </div>
 
-            {/* Paleta de Colores */}
+            {/* Paleta de Colores Básicos */}
             <div>
               <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
                 Color Distintivo
               </label>
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                {SUBJECT_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSelectedColor(c)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90"
-                    style={{ backgroundColor: c }}
-                  >
-                    {selectedColor === c && (
-                      <Check className="w-4 h-4 text-white stroke-[3]" />
-                    )}
-                  </button>
-                ))}
+                {SUBJECT_COLORS.map((c) => {
+                  const isWhite = c.toLowerCase() === '#ffffff'
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSelectedColor(c)}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 ${
+                        isWhite ? 'border-2 border-zinc-600' : 'border border-transparent'
+                      }`}
+                      style={{ backgroundColor: c }}
+                    >
+                      {selectedColor === c && (
+                        <Check
+                          className={`w-4 h-4 stroke-[3] ${
+                            isWhite ? 'text-zinc-950' : 'text-white'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 

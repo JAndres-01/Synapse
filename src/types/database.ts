@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type UserRole = 'student' | 'admin'
+export type UserRole = 'student' | 'admin' | 'delegate'
 export type TaskType = 'individual' | 'grupal' | 'proyecto' | 'examen'
 export type NoticeCategory = 'cambio_aula' | 'aviso_general' | 'evento_escolar'
 export type AttachmentType = 'image' | 'pdf' | 'link'

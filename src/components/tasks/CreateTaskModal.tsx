@@ -260,13 +260,12 @@ export function CreateTaskModal({
       setSubjectId(schedule.subject_id)
     }
 
-    const dayObj = DAYS_OF_WEEK.find((d) => d.day === schedule.day_of_week)
     setSelectedScheduleSlot({
       day: schedule.day_of_week,
       block: blockDef.block,
       subjectName: schedule.subject?.name || 'Materia',
       time: timeFormatted,
-      dateLabel: `${dayObj?.name || ''}, ${label}`,
+      dateLabel: label,
     })
   }
 

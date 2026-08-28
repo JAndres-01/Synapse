@@ -4,6 +4,7 @@ import React from 'react'
 import type { Schedule, Task } from '@/types/database'
 import { SCHEDULE_BLOCKS } from '@/lib/utils'
 import { MapPin, User, Video, CheckSquare, Check } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import confetti from 'canvas-confetti'
 
 interface DayScheduleTimelineProps {
@@ -17,6 +18,8 @@ export function DayScheduleTimeline({
   tasksToday = [],
   onToggleTaskStatus,
 }: DayScheduleTimelineProps) {
+  const router = useRouter()
+
   // Mapear las 4 clases
   const classes = SCHEDULE_BLOCKS.map((def) => {
     const scheduledClass = (schedulesToday || []).find((s) => s.block_number === def.block)
@@ -109,14 +112,17 @@ export function DayScheduleTimeline({
                     <div className="pt-2 border-t border-zinc-800/60 space-y-1.5">
                       <span className="text-[10px] font-semibold text-amber-400 flex items-center gap-1">
                         <CheckSquare className="w-3 h-3 text-amber-400" />
-                        <span>Entregas de hoy para esta materia ({tasks.length}):</span>
+                        <span>Entregas de hoy:</span>
                       </span>
 
                       {tasks.map((task) => {
-                        const isCompleted =
-                          Array.isArray(task.user_status) &&
-                          task.user_status.length > 0 &&
-                          task.user_status[0]?.status === 'completed'
+                        const statuses =
+                          task.user_status ||
+                          (task as unknown as { user_task_status?: Array<{ status: string }> })
+                            .user_task_status
+                        const isCompleted = Array.isArray(statuses)
+                          ? statuses.some((s) => s.status === 'completed')
+                          : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
                         const handleCheck = (e: React.MouseEvent) => {
                           e.stopPropagation()
@@ -133,27 +139,32 @@ export function DayScheduleTimeline({
                           onToggleTaskStatus?.(task.id, isCompleted ? 'completed' : 'pending')
                         }
 
+                        const handleTaskClick = () => {
+                          router.push(`/app/tasks?taskId=${task.id}`)
+                        }
+
                         return (
                           <div
                             key={task.id}
-                            className={`p-2 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+                            onClick={handleTaskClick}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all cursor-pointer select-none ${
                               isCompleted
                                 ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
-                                : 'bg-zinc-950/90 border-zinc-800/90'
+                                : 'bg-zinc-950/90 border-zinc-800/90 hover:border-zinc-700 active:scale-[0.99]'
                             }`}
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <button
                                 type="button"
                                 onClick={handleCheck}
-                                aria-label="Marcar tarea"
-                                className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                                aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
+                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                                   isCompleted
-                                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                                    : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500'
+                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                                    : 'border-zinc-500 hover:border-zinc-400 bg-zinc-900 active:scale-90'
                                 }`}
                               >
-                                {isCompleted && <Check className="w-3 h-3 stroke-[2.5]" />}
+                                {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
                               </button>
 
                               <span

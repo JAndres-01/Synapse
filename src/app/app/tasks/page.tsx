@@ -1,20 +1,516 @@
 'use client'
 
-import React from 'react'
-import { CheckSquare } from 'lucide-react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { createClient } from '@/lib/supabase/client'
+import type { Task, Subject, TaskType } from '@/types/database'
+import { TaskCard } from '@/components/tasks/TaskCard'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { offlineDB } from '@/lib/db'
+import {
+  CheckSquare,
+  Plus,
+  School,
+  Lock,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react'
 
 export default function TasksPage() {
+  const { user, profile, classroom } = useAuth()
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // 1. Selector de Panel Principal: "classroom" (Del Salón) vs "private" (Mis Pendientes)
+  const [activeTab, setActiveTab] = useState<'classroom' | 'private'>('classroom')
+
+  // 2. Filtros secundarios: Estado y Materia
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('pending')
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+
+  // 3. Modales
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null)
+
+  const supabase = createClient()
+  const isAdmin =
+    classroom?.created_by === user?.id ||
+    profile?.role === 'admin' ||
+    (profile?.role as string) === 'delegate'
+
+  // Cargar Tareas y Materias
+  const loadTasksData = useCallback(async () => {
+    if (!classroom || !user) return
+
+    try {
+      // 1. Cargar Materias
+      const { data: subjectData } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('classroom_id', classroom.id)
+        .order('name', { ascending: true })
+
+      if (subjectData) {
+        setSubjects(subjectData as Subject[])
+      }
+
+      // 2. Cargar Tareas con sus materias, estado de usuario y comentarios con autores
+      const { data: taskData, error: taskErr } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          subject:subjects(*),
+          user_status:user_task_status(*),
+          comments:task_comments(*, author:profiles(*))
+        `)
+        .eq('classroom_id', classroom.id)
+        .order('due_date', { ascending: true })
+
+      if (!taskErr && taskData) {
+        setTasks(taskData as unknown as Task[])
+        if (offlineDB && taskData.length > 0) {
+          const validTasks = taskData.filter((t) => !!t && !!t.id)
+          if (validTasks.length > 0) {
+            await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando tareas:', err)
+      // Carga desde caché offline
+      if (offlineDB && classroom) {
+        const cached = await offlineDB.tasks
+          .where('classroom_id')
+          .equals(classroom.id)
+          .toArray()
+        if (cached.length > 0) setTasks(cached)
+      }
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [classroom, user, supabase])
+
+  useEffect(() => {
+    loadTasksData()
+
+    if (!classroom) return
+
+    // Suscripción Realtime a cambios en tareas y comentarios
+    const channel = supabase
+      .channel(`public:tasks_room:${classroom.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `classroom_id=eq.${classroom.id}` },
+        () => loadTasksData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_comments' },
+        () => loadTasksData()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [classroom, loadTasksData, supabase])
+
+  // Mantener sincronizado el modal de detalle si la tarea cambia
+  useEffect(() => {
+    if (selectedTaskForDetail) {
+      const updated = tasks.find((t) => t.id === selectedTaskForDetail.id)
+      if (updated) setSelectedTaskForDetail(updated)
+    }
+  }, [tasks, selectedTaskForDetail])
+
+  // Alternar estado completada / pendiente
+  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
+    if (!user) return
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id === taskId) {
+          return {
+            ...t,
+            user_status: [
+              {
+                id: 'temp',
+                user_id: user.id,
+                task_id: taskId,
+                status: newStatus,
+                completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+              },
+            ],
+          }
+        }
+        return t
+      })
+    )
+
+    try {
+      await supabase.from('user_task_status').upsert(
+        {
+          user_id: user.id,
+          task_id: taskId,
+          status: newStatus,
+          completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+        },
+        { onConflict: 'user_id,task_id' }
+      )
+    } catch (err) {
+      console.error('Error actualizando estado de tarea:', err)
+      loadTasksData()
+    }
+  }
+
+  // Guardar nueva tarea (Personal o del Salón)
+  const handleSaveTask = async (taskData: {
+    title: string
+    description?: string
+    subject_id?: string | null
+    type: TaskType
+    due_date: string
+    is_private: boolean
+  }) => {
+    if (!classroom || !user) return
+
+    const { data: newTask, error } = await supabase
+      .from('tasks')
+      .insert({
+        classroom_id: classroom.id,
+        created_by: user.id,
+        title: taskData.title,
+        description: taskData.description || null,
+        subject_id: taskData.subject_id || null,
+        type: taskData.type,
+        due_date: taskData.due_date,
+        is_private: taskData.is_private,
+      })
+      .select('*, subject:subjects(*), user_status:user_task_status(*), comments:task_comments(*)')
+      .single()
+
+    if (!error && newTask) {
+      setTasks((prev) => [newTask as unknown as Task, ...prev])
+      if (offlineDB) {
+        await offlineDB.tasks.put(newTask as unknown as Task)
+      }
+    } else {
+      loadTasksData()
+    }
+  }
+
+  // Eliminar tarea
+  const handleDeleteTask = async (taskId: string) => {
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+    if (!error) {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+      if (offlineDB) {
+        await offlineDB.tasks.delete(taskId)
+      }
+    }
+  }
+
+  // Agregar comentario o foto de apunte a una tarea
+  const handleAddComment = async (
+    taskId: string,
+    content: string,
+    parentCommentId?: string | null,
+    imageUrl?: string | null
+  ) => {
+    if (!user) return
+
+    const { data: newComment, error } = await supabase
+      .from('task_comments')
+      .insert({
+        task_id: taskId,
+        author_id: user.id,
+        content: content || '',
+        parent_comment_id: parentCommentId || null,
+        image_url: imageUrl || null,
+      })
+      .select('*, author:profiles(*)')
+      .single()
+
+    if (!error && newComment) {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              comments: [...(t.comments || []), newComment],
+            }
+          }
+          return t
+        })
+      )
+    } else {
+      loadTasksData()
+    }
+  }
+
+  // =========================================================================
+  // Filtrado de Tareas
+  // =========================================================================
+  const filteredTasks = tasks.filter((t) => {
+    // 1. Filtro por Ámbito:
+    // En "classroom": Solo tareas públicas (is_private = false)
+    // En "private": Solo tareas privadas del usuario actual
+    if (activeTab === 'classroom') {
+      if (t.is_private) return false
+    } else {
+      if (!t.is_private) return false
+      if (t.created_by !== user?.id) return false
+    }
+
+    // 2. Filtro por Estado:
+    const isCompleted =
+      Array.isArray(t.user_status) &&
+      t.user_status.length > 0 &&
+      t.user_status[0]?.status === 'completed'
+
+    if (statusFilter === 'pending' && isCompleted) return false
+    if (statusFilter === 'completed' && !isCompleted) return false
+
+    // 3. Filtro por Materia:
+    if (selectedSubjectId !== 'all' && t.subject_id !== selectedSubjectId) {
+      return false
+    }
+
+    return true
+  })
+
+  // Estadísticas rápidas
+  const pendingCount = tasks.filter((t) => {
+    const isScopeMatch = activeTab === 'classroom' ? !t.is_private : t.is_private && t.created_by === user?.id
+    const isComp = Array.isArray(t.user_status) && t.user_status[0]?.status === 'completed'
+    return isScopeMatch && !isComp
+  }).length
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col space-y-4">
-      <header className="pt-1 pb-4">
-        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          <CheckSquare className="w-5 h-5 text-indigo-400" />
-          <span>Tareas & Evaluaciones</span>
-        </h1>
-        <p className="text-xs text-zinc-400 mt-1">
-          Seguimiento de entregas individuales, grupales, proyectos y exámenes
-        </p>
+      {/* Header Principal */}
+      <header className="flex items-center justify-between gap-2 pt-1">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 text-indigo-400" />
+            <span>Tareas & Entregas</span>
+          </h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {pendingCount === 0
+              ? '¡Estás al día con todas tus entregas! 🎉'
+              : `Tienes ${pendingCount} ${pendingCount === 1 ? 'entrega pendiente' : 'entregas pendientes'}`}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setRefreshing(true)
+              loadTasksData()
+            }}
+            disabled={refreshing}
+            aria-label="Actualizar tareas"
+            className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+          </button>
+
+          {/* Botón Crear Tarea */}
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="h-9 px-3 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nueva Tarea</span>
+          </button>
+        </div>
       </header>
+
+      {/* 1. Selector de Panel Principal: "Del Salón" vs "Mis Pendientes" */}
+      <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-zinc-900/90 border border-zinc-800/80">
+        <button
+          type="button"
+          onClick={() => setActiveTab('classroom')}
+          className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            activeTab === 'classroom'
+              ? 'bg-zinc-800 text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <School className="w-4 h-4 text-indigo-400" />
+          <span>Del Salón</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('private')}
+          className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            activeTab === 'private'
+              ? 'bg-zinc-800 text-white shadow-sm'
+              : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Lock className="w-3.5 h-3.5 text-amber-400" />
+          <span>Mis Pendientes</span>
+        </button>
+      </div>
+
+      {/* 2. Filtros Rápidos (Estado y Materias) */}
+      <div className="space-y-2">
+        {/* Filtro por Estado: Pendientes / Completadas / Todas */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('pending')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              statusFilter === 'pending'
+                ? 'bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 font-semibold'
+                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Pendientes
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('completed')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              statusFilter === 'completed'
+                ? 'bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 font-semibold'
+                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Completadas
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              statusFilter === 'all'
+                ? 'bg-zinc-800 border border-zinc-700 text-white font-semibold'
+                : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Todas
+          </button>
+        </div>
+
+        {/* Filtro por Materia (Scroll Horizontal de pastillas) */}
+        {subjects.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
+            <button
+              type="button"
+              onClick={() => setSelectedSubjectId('all')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0 transition-all ${
+                selectedSubjectId === 'all'
+                  ? 'bg-zinc-800 text-white border border-zinc-700'
+                  : 'bg-zinc-950 text-zinc-400 border border-zinc-900 hover:text-zinc-200'
+              }`}
+            >
+              Todas las materias
+            </button>
+
+            {subjects.map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setSelectedSubjectId(sub.id)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0 flex items-center gap-1.5 transition-all ${
+                  selectedSubjectId === sub.id
+                    ? 'bg-zinc-800 text-white border border-zinc-600'
+                    : 'bg-zinc-950 text-zinc-400 border border-zinc-900 hover:text-zinc-200'
+                }`}
+              >
+                <span
+                  className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
+                  style={{ backgroundColor: sub.color || '#FFFFFF' }}
+                />
+                <span>{sub.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Lista de Tareas */}
+      <div className="space-y-3 pb-8">
+        {filteredTasks.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 text-center space-y-3">
+            <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-400 mx-auto">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-200">
+                {activeTab === 'classroom'
+                  ? 'No hay tareas publicadas del salón'
+                  : 'No tienes pendientes personales'}
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
+                {activeTab === 'classroom'
+                  ? 'Los delegados publicarán las entregas grupales, proyectos y exámenes aquí.'
+                  : 'Crea tus propias notas y recordatorios de estudio que solo tú podrás ver.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{activeTab === 'classroom' ? 'Publicar Tarea Oficial' : 'Crear mi Primer Pendiente'}</span>
+            </button>
+          </div>
+        ) : (
+          filteredTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onToggleStatus={handleToggleTaskStatus}
+              onOpenDetail={(t) => setSelectedTaskForDetail(t)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* 4. Modal para Crear Tarea */}
+      <CreateTaskModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        subjects={subjects}
+        defaultMode={activeTab}
+        isAdmin={isAdmin}
+        onSaveTask={handleSaveTask}
+      />
+
+      {/* 5. Modal de Detalle de Tarea con Hilos & Fotos de Apuntes */}
+      <TaskDetailModal
+        task={selectedTaskForDetail}
+        onClose={() => setSelectedTaskForDetail(null)}
+        currentUser={user}
+        currentProfile={profile}
+        isAdmin={isAdmin}
+        onToggleStatus={handleToggleTaskStatus}
+        onDeleteTask={handleDeleteTask}
+        onAddComment={handleAddComment}
+      />
     </div>
   )
 }

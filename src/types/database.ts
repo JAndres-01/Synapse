@@ -71,16 +71,30 @@ export interface Schedule {
 export interface Task {
   id: string
   classroom_id: string
-  subject_id: string
+  subject_id?: string | null
   title: string
   description: string | null
   type: TaskType
   due_date: string
   created_by: string | null
+  is_private?: boolean
   created_at: string
   subject?: Subject
   attachments?: TaskAttachment[]
   user_status?: UserTaskStatus[]
+  comments?: TaskComment[]
+}
+
+export interface TaskComment {
+  id: string
+  task_id: string
+  author_id: string
+  parent_comment_id?: string | null
+  content: string
+  image_url?: string | null
+  created_at: string
+  author?: Profile
+  replies?: TaskComment[]
 }
 
 export interface TaskAttachment {

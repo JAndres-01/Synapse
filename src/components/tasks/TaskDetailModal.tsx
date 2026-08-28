@@ -53,6 +53,7 @@ interface CommentAttachment {
 interface CommentNode extends TaskComment {
   children: CommentNode[]
   parentAuthorName?: string
+  parentCommentText?: string
 }
 
 function formatTaskDate(dateStr?: string) {
@@ -159,6 +160,7 @@ export function TaskDetailModal({
       if (c.parent_comment_id && map.has(c.parent_comment_id)) {
         const parent = map.get(c.parent_comment_id)!
         node.parentAuthorName = parent.author?.full_name || 'Compañero'
+        node.parentCommentText = parent.content || (parent.image_url ? 'Foto / Archivo adjunto' : '')
         parent.children.push(node)
       } else {
         roots.push(node)
@@ -404,52 +406,60 @@ export function TaskDetailModal({
     )
   }
 
-  // Renderizar un nodo de comentario o respuesta estilo Twitter (X) / Reddit
-  const renderTwitterThreadItem = (
+  const THREAD_LINE_COLORS = [
+    'border-indigo-500/60',
+    'border-emerald-500/60',
+    'border-amber-500/60',
+    'border-purple-500/60',
+    'border-rose-500/60',
+  ]
+
+  // Renderizar un comentario o respuesta con árbol e indicador claro de respuesta estilo Reddit / X
+  const renderRedditThreadItem = (
     node: CommentNode,
-    isLastInChain: boolean = false,
     depth: number = 0
   ): React.ReactNode => {
     const isDelegate =
       node.author?.role === 'admin' ||
       (node.author?.role as string) === 'delegate'
-    const hasChildren = node.children.length > 0
+
+    const lineColor = THREAD_LINE_COLORS[depth % THREAD_LINE_COLORS.length]
 
     return (
-      <div key={node.id} className="relative flex gap-3 group">
-        {/* Columna Izquierda: Avatar y Espina Conectora Vertical estilo X / Twitter / Reddit */}
-        <div className="flex flex-col items-center shrink-0">
-          <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-200 z-10 shrink-0 shadow-sm">
-            {node.author?.full_name?.slice(0, 1) || 'A'}
-          </div>
-
-          {/* Línea vertical continua que conecta hacia las respuestas */}
-          {(hasChildren || !isLastInChain) && (
-            <div className="w-[2px] flex-1 bg-zinc-800 group-hover:bg-zinc-700 transition-colors my-1" />
-          )}
-        </div>
-
-        {/* Columna Derecha: Autor, Contenido, Adjuntos y Respuestas */}
-        <div className="flex-1 min-w-0 pb-3 space-y-1.5">
-          {/* Header del Autor */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="text-xs font-bold text-zinc-200 truncate">
-                {node.author?.full_name || 'Compañero'}
+      <div
+        key={node.id}
+        className={`space-y-2 ${depth > 0 ? `pl-3 border-l-2 ${lineColor} mt-2` : ''}`}
+      >
+        <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800/80 space-y-2 shadow-xs">
+          {/* 1. Indicador Destacado de a quién responde (Estilo Cita Reddit / X) */}
+          {node.parentAuthorName && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/90 border-l-2 border-indigo-500 text-[11px] text-zinc-400">
+              <CornerDownRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="font-semibold text-indigo-300 shrink-0">
+                @{node.parentAuthorName.split(' ')[0]}:
               </span>
-              {isDelegate && (
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-semibold border border-indigo-800/50 shrink-0">
-                  Delegado
+              <span className="truncate italic text-zinc-400">
+                {node.parentCommentText ? `"${node.parentCommentText}"` : 'Comentario'}
+              </span>
+            </div>
+          )}
+
+          {/* 2. Cabecera del Autor */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-200 shrink-0">
+                {node.author?.full_name?.slice(0, 1) || 'A'}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-zinc-200">
+                  {node.author?.full_name || 'Compañero'}
                 </span>
-              )}
-              {node.parentAuthorName && (
-                <span className="text-[10px] text-zinc-500 font-normal truncate">
-                  respondiendo a{' '}
-                  <strong className="text-zinc-400 font-medium">
-                    @{node.parentAuthorName.split(' ')[0]}
-                  </strong>
-                </span>
-              )}
+                {isDelegate && (
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-semibold border border-indigo-800/50">
+                    Delegado
+                  </span>
+                )}
+              </div>
             </div>
 
             <span className="text-[10px] text-zinc-500 font-mono shrink-0">
@@ -457,41 +467,43 @@ export function TaskDetailModal({
             </span>
           </div>
 
-          {/* Texto del comentario */}
+          {/* 3. Contenido del comentario */}
           {node.content && (
-            <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">
+            <p className="text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed pl-0.5">
               {node.content}
             </p>
           )}
 
-          {/* Fotos y Documentos */}
+          {/* 4. Adjuntos */}
           {renderCommentAttachments(node)}
 
-          {/* Botón Responder (Estilo X / Reddit) */}
-          <div className="pt-0.5 flex items-center gap-4">
+          {/* 5. Acciones: Botón Responder */}
+          <div className="pt-0.5 flex items-center justify-between">
+            {node.children.length > 0 ? (
+              <span className="text-[10px] text-zinc-500 font-medium">
+                {node.children.length} {node.children.length === 1 ? 'respuesta' : 'respuestas'}
+              </span>
+            ) : (
+              <span />
+            )}
+
             <button
               type="button"
               onClick={() => setReplyingTo(node)}
-              className="inline-flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-indigo-400 font-medium transition-colors py-0.5 px-1 rounded-md hover:bg-zinc-800/50 active:scale-95"
+              className="inline-flex items-center gap-1.5 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium py-1 px-2.5 rounded-lg hover:bg-zinc-900 transition-colors active:scale-95"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Responder</span>
             </button>
           </div>
-
-          {/* Respuestas anidadas en el mismo hilo */}
-          {node.children.length > 0 && (
-            <div className="pt-2 space-y-2">
-              {node.children.map((child, idx) =>
-                renderTwitterThreadItem(
-                  child,
-                  idx === node.children.length - 1,
-                  depth + 1
-                )
-              )}
-            </div>
-          )}
         </div>
+
+        {/* 6. Sub-hilos anidados en árbol con guía de color */}
+        {node.children.length > 0 && (
+          <div className="space-y-2 pt-0.5">
+            {node.children.map((child) => renderRedditThreadItem(child, depth + 1))}
+          </div>
+        )}
       </div>
     )
   }
@@ -713,21 +725,14 @@ export function TaskDetailModal({
                   </h3>
                 </div>
 
-                {/* Lista de Comentarios en Hilos estilo X / Twitter / Reddit */}
-                <div className="space-y-4 pt-1">
+                {/* Lista de Comentarios en Hilos estilo Reddit / X */}
+                <div className="space-y-3 pt-1">
                   {commentTree.length === 0 ? (
                     <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
                       No hay comentarios aún. Puedes hacer una pregunta o compartir fotos y archivos de apuntes.
                     </div>
                   ) : (
-                    commentTree.map((root) => (
-                      <div
-                        key={root.id}
-                        className="p-3.5 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 shadow-sm"
-                      >
-                        {renderTwitterThreadItem(root, true, 0)}
-                      </div>
-                    ))
+                    commentTree.map((root) => renderRedditThreadItem(root, 0))
                   )}
                 </div>
               </div>

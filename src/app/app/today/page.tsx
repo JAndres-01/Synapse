@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import type { Schedule, Task, Subject, TaskType, TaskStatus, AttachmentType, TaskComment } from '@/types/database'
@@ -33,58 +33,65 @@ export default function TodayPage() {
     profile?.role === 'admin' ||
     (profile?.role as string) === 'delegate'
 
+  // ID de usuario persistente para evitar parpadeos de visibilidad en tareas privadas
+  const currentUserId = user?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('synapse_cached_user') || '{}')?.id : null)
+
   // Obtener día actual (1=Lunes ... 7=Domingo en nuestra BD)
   const getTodayDayOfWeek = () => {
     const day = new Date().getDay()
     return day === 0 ? 7 : day
   }
 
-  // 1. Carga instantánea desde Dexie IndexedDB (0ms)
+  // 1. Carga inicial desde Dexie SOLO si memoryCache está vacío (Cold Start)
   useEffect(() => {
     if (!classroom) return
 
-    const loadCachedInstantly = async () => {
+    const loadCachedIfEmpty = async () => {
       if (!offlineDB) return
       try {
         const todayNum = getTodayDayOfWeek()
-        const [cachedSchedules, cachedTasks, cachedSubjects] = await Promise.all([
-          offlineDB.schedules
+
+        if (memoryCache.schedules.length === 0) {
+          const cachedSchedules = await offlineDB.schedules
             .where('classroom_id')
             .equals(classroom.id)
             .filter((s) => s.day_of_week === todayNum)
-            .toArray(),
-          offlineDB.tasks
-            .where('classroom_id')
-            .equals(classroom.id)
-            .toArray(),
-          offlineDB.subjects
-            .where('classroom_id')
-            .equals(classroom.id)
-            .toArray(),
-        ])
-
-        if (cachedSchedules.length > 0) {
-          setSchedulesToday(cachedSchedules)
-          memoryCache.schedules = cachedSchedules
-        }
-        if (cachedTasks.length > 0) {
-          setUrgentTasks(cachedTasks)
-          memoryCache.tasks = cachedTasks
-        }
-        if (cachedSubjects.length > 0) {
-          setSubjects(cachedSubjects)
-          memoryCache.subjects = cachedSubjects
+            .toArray()
+          if (cachedSchedules.length > 0) {
+            setSchedulesToday(cachedSchedules)
+            memoryCache.schedules = cachedSchedules
+          }
         }
 
-        if (cachedSchedules.length > 0 || cachedTasks.length > 0) {
-          setLoading(false)
+        if (memoryCache.tasks.length === 0) {
+          const cachedTasks = await offlineDB.tasks
+            .where('classroom_id')
+            .equals(classroom.id)
+            .toArray()
+          if (cachedTasks.length > 0) {
+            setUrgentTasks(cachedTasks)
+            memoryCache.tasks = cachedTasks
+          }
         }
+
+        if (memoryCache.subjects.length === 0) {
+          const cachedSubjects = await offlineDB.subjects
+            .where('classroom_id')
+            .equals(classroom.id)
+            .toArray()
+          if (cachedSubjects.length > 0) {
+            setSubjects(cachedSubjects)
+            memoryCache.subjects = cachedSubjects
+          }
+        }
+
+        setLoading(false)
       } catch (err) {
         console.error('Error cargando caché de hoy:', err)
       }
     }
 
-    loadCachedInstantly()
+    loadCachedIfEmpty()
   }, [classroom])
 
   // 2. Carga fresca y revalidación en segundo plano desde Supabase
@@ -113,13 +120,12 @@ export default function TodayPage() {
         }
       }
 
-      // B. Cargar Tareas próximas
+      // B. Cargar Tareas
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
         .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
-        .limit(30)
 
       if (!taskErr && taskData) {
         setUrgentTasks(taskData as unknown as Task[])
@@ -367,29 +373,42 @@ export default function TodayPage() {
     }
   }
 
-  const todayDate = new Date().toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
+  const todayDate = useMemo(() => {
+    return new Date().toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+  }, [])
 
-  const now = new Date()
-  const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
+  const tasksThisWeek = useMemo(() => {
+    const now = new Date()
+    const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
 
-  const startOfWeek = new Date(now)
-  startOfWeek.setDate(now.getDate() - (currentDayOfWeek - 1))
-  startOfWeek.setHours(0, 0, 0, 0)
+    const startOfWeek = new Date(now)
+    startOfWeek.setDate(now.getDate() - (currentDayOfWeek - 1))
+    startOfWeek.setHours(0, 0, 0, 0)
 
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setDate(startOfWeek.getDate() + 6)
-  endOfWeek.setHours(23, 59, 59, 999)
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    endOfWeek.setHours(23, 59, 59, 999)
 
-  const tasksThisWeek = urgentTasks.filter((t) => {
-    if (t.is_private && t.created_by !== user?.id) return false
-    if (!t.due_date) return false
-    const dueDate = new Date(t.due_date)
-    return dueDate >= startOfWeek && dueDate <= endOfWeek
-  })
+    return urgentTasks.filter((t) => {
+      if (t.is_private && (!currentUserId || t.created_by !== currentUserId)) return false
+      if (!t.due_date) return false
+      const dueDate = new Date(t.due_date)
+      return dueDate >= startOfWeek && dueDate <= endOfWeek
+    })
+  }, [urgentTasks, currentUserId])
+
+  const tasksTodayForTimeline = useMemo(() => {
+    const todayStr = new Date().toDateString()
+    return urgentTasks.filter((t) => {
+      if (t.is_private && (!currentUserId || t.created_by !== currentUserId)) return false
+      if (!t.due_date) return false
+      return new Date(t.due_date).toDateString() === todayStr
+    })
+  }, [urgentTasks, currentUserId])
 
   if (loading && urgentTasks.length === 0 && schedulesToday.length === 0) {
     return (
@@ -460,10 +479,7 @@ export default function TodayPage() {
       {/* 3. Cronograma de las 4 Clases de Hoy con Tareas Integradas */}
       <DayScheduleTimeline
         schedulesToday={schedulesToday}
-        tasksToday={urgentTasks.filter((t) => {
-          if (!t.due_date) return false
-          return new Date(t.due_date).toDateString() === new Date().toDateString()
-        })}
+        tasksToday={tasksTodayForTimeline}
         onToggleTaskStatus={handleToggleTaskStatus}
         onOpenDetail={(task) => setSelectedTaskForDetail(task)}
       />

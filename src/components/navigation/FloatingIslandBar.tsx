@@ -44,9 +44,9 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
   return (
     <nav
       aria-label="Navegación principal"
-      className="absolute bottom-3 left-4 right-4 z-40 pointer-events-auto"
+      className="fixed bottom-3 left-0 right-0 z-40 max-w-md mx-auto px-4 pointer-events-none"
     >
-      <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-zinc-900/95 backdrop-blur-lg border border-zinc-800 shadow-2xl shadow-black">
+      <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-zinc-900/95 backdrop-blur-lg border border-zinc-800 shadow-2xl shadow-black pointer-events-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (

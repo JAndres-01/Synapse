@@ -15,14 +15,12 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
-  overscroll-behavior-x: none;
+  min-height: 100%;
 }
 
 /* Bloqueo de scroll cuando un modal está abierto */
 .body-scroll-lock {
-  overflow: hidden !important;
-  touch-action: none !important;
+  overflow: hidden;
 }
 
 /* Despeje superior seguro para reloj, batería y Dynamic Island en iPhone */

@@ -185,6 +185,13 @@ function TasksPageContent() {
         const sorted = sortTasksChronologically(taskData as Task[])
         setTasks(sorted)
         memoryCache.tasks = sorted
+
+        // Sincronizar modal de detalles en tiempo real (0ms)
+        setSelectedTaskForDetail((current) => {
+          if (!current) return null
+          return sorted.find((t) => t.id === current.id) || current
+        })
+
         if (offlineDB && sorted.length > 0) {
           const validTasks = sorted.filter((t) => !!t && !!t.id)
           if (validTasks.length > 0) {
@@ -527,19 +534,34 @@ function TasksPageContent() {
           .insert(payload)
         if (simpleErr) throw simpleErr
       } else if (insertedComment) {
+        const realComment = insertedComment as unknown as TaskComment
         setTasks((prev) =>
           prev.map((t) => {
             if (t.id === taskId) {
               return {
                 ...t,
                 comments: (t.comments || []).map((c) =>
-                  c.id === tempId ? (insertedComment as unknown as TaskComment) : c
+                  c.id === tempId ? realComment : c
                 ),
               }
             }
             return t
           })
         )
+
+        setSelectedTaskForDetail((prev) => {
+          if (!prev || prev.id !== taskId) return prev
+          return {
+            ...prev,
+            comments: (prev.comments || []).map((c) =>
+              c.id === tempId ? realComment : c
+            ),
+          }
+        })
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('tasks_updated'))
+        }
       }
     } catch (err) {
       console.error('Error insertando comentario en Supabase:', err)

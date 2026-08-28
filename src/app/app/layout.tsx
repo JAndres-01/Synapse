@@ -52,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
+      <div className="flex-1 flex items-center justify-center min-h-[80vh]">
         <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
       </div>
     )
@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] pb-24 safe-area-bottom">
+    <div className="flex-1 flex flex-col pb-20">
       {children}
       <FloatingIslandBar pendingTasksCount={pendingTasksCount} />
     </div>

@@ -8,8 +8,6 @@
 }
 
 html, body {
-  min-height: 100%;
-  height: 100%;
   color: var(--foreground);
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", system-ui, sans-serif;
@@ -25,59 +23,21 @@ html, body {
 .body-scroll-lock {
   overflow: hidden !important;
   touch-action: none !important;
-  height: 100% !important;
 }
 
-/* Soporte para áreas seguras de iPhone (Notch y Home Bar) */
-.safe-area-bottom {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-}
-
-.safe-area-top {
-  padding-top: max(0.5rem, env(safe-area-inset-top));
-}
-
-/* Calibración específica de la barra flotante en PWA Standalone (iOS) */
+/* Posición exacta de la barra flotante de navegación (12px del borde inferior en iPhone) */
 .floating-nav-container {
-  bottom: 1rem;
+  bottom: 12px !important;
 }
 
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .floating-nav-container {
-    bottom: max(1rem, env(safe-area-inset-bottom));
-  }
-}
-
-@media (display-mode: standalone) {
-  .floating-nav-container {
-    bottom: 0.85rem;
-  }
-}
-
-/* Scrollbar minimalista estilo Linear */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Ocultar barra de scroll en elementos con scroll horizontal suave */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
+/* Scrollbar invisible y limpio en móviles */
+* {
   scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

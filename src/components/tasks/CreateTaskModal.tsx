@@ -13,6 +13,7 @@ import {
   Calendar,
   Lock,
   School,
+  Clock,
 } from 'lucide-react'
 
 interface CreateTaskModalProps {
@@ -30,6 +31,9 @@ interface CreateTaskModalProps {
     is_private: boolean
   }) => Promise<void>
 }
+
+const MAX_TITLE_LENGTH = 100
+const MAX_DESC_LENGTH = 300
 
 export function CreateTaskModal({
   isOpen,
@@ -62,11 +66,17 @@ export function CreateTaskModal({
   const dragStartYRef = useRef(0)
 
   useEffect(() => {
-    setMode(defaultMode)
+    // Si no es admin, forzar siempre modo 'private'
+    if (!isAdmin) {
+      setMode('private')
+    } else {
+      setMode(defaultMode)
+    }
+
     if (subjects.length > 0 && !subjectId) {
       setSubjectId(subjects[0].id)
     }
-  }, [defaultMode, subjects, isOpen])
+  }, [defaultMode, subjects, isOpen, isAdmin, subjectId])
 
   useEffect(() => {
     if (isOpen) {
@@ -175,8 +185,9 @@ export function CreateTaskModal({
           </button>
         </div>
 
-        {/* Selector de Ámbito (Si es Delegado puede alternar Salón vs Personal) */}
-        {isAdmin && (
+        {/* Indicador / Selector de Ámbito */}
+        {isAdmin ? (
+          /* Delegado: Puede alternar entre "Del Salón" y "Mi Pendiente" */
           <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800">
             <button
               type="button"
@@ -204,17 +215,43 @@ export function CreateTaskModal({
               <span>Mi Pendiente</span>
             </button>
           </div>
+        ) : (
+          /* Alumno: Panel fijo "Mi Pendiente" con candado y estilo consistente */
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-amber-950/50 border border-amber-800/50 text-amber-400">
+                <Lock className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <span className="text-xs font-semibold text-zinc-200 block">
+                  Mis Pendientes
+                </span>
+                <span className="text-[10px] text-zinc-500 block">
+                  Privado • Solo tú podrás ver y gestionar esta tarea
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40">
+              Personal
+            </span>
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* Título de la tarea */}
+          {/* Título de la tarea con contador */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-              Título de la Tarea / Entrega *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400">
+                Título de la Tarea / Entrega *
+              </label>
+              <span className="text-[10px] font-mono text-zinc-500">
+                {title.length}/{MAX_TITLE_LENGTH}
+              </span>
+            </div>
             <input
               type="text"
               value={title}
+              maxLength={MAX_TITLE_LENGTH}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ej. Resumen Capítulo 4, Proyecto Final..."
               required
@@ -230,7 +267,7 @@ export function CreateTaskModal({
             <select
               value={subjectId}
               onChange={(e) => setSubjectId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark]"
             >
               <option value="">(Sin materia / General)</option>
               {subjects.map((sub) => (
@@ -301,45 +338,62 @@ export function CreateTaskModal({
             </div>
           </div>
 
-          {/* Fecha y Hora de Entrega */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1">
+          {/* Fecha y Hora de Entrega (Diseño Blindado para iOS Safari WebKit) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-zinc-500" />
                 <span>Fecha Límite</span>
               </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500"
-              />
+              <div className="relative">
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  required
+                  className="w-full h-11 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                Hora Límite
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-zinc-500" />
+                <span>Hora Límite</span>
               </label>
-              <input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500"
-              />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  required
+                  className="w-full h-11 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Descripción / Instrucciones adicionales */}
+          {/* Descripción / Instrucciones adicionales con Límite de Caracteres */}
           <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-              Instrucciones / Notas adicionales
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-[11px] font-medium text-zinc-400">
+                Notas / Instrucciones adicionales
+              </label>
+              <span
+                className={`text-[10px] font-mono ${
+                  description.length >= MAX_DESC_LENGTH
+                    ? 'text-red-400 font-bold'
+                    : 'text-zinc-500'
+                }`}
+              >
+                {description.length}/{MAX_DESC_LENGTH}
+              </span>
+            </div>
             <textarea
               value={description}
+              maxLength={MAX_DESC_LENGTH}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalles, enlaces de entrega o pautas de evaluación..."
+              placeholder="Detalles, enlaces de entrega o notas de estudio..."
               rows={3}
               className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
             />

@@ -16,6 +16,8 @@ import {
   Loader2,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  Filter,
 } from 'lucide-react'
 
 export default function TasksPage() {
@@ -41,6 +43,11 @@ export default function TasksPage() {
     classroom?.created_by === user?.id ||
     profile?.role === 'admin' ||
     (profile?.role as string) === 'delegate'
+
+  // Determinar si puede crear tareas en la pestaña activa
+  // En "Del Salón": solo delegados/admins
+  // En "Mis Pendientes": cualquier usuario
+  const canCreateInActiveTab = activeTab === 'private' || isAdmin
 
   // Cargar Tareas y Materias
   const loadTasksData = useCallback(async () => {
@@ -259,8 +266,6 @@ export default function TasksPage() {
   // =========================================================================
   const filteredTasks = tasks.filter((t) => {
     // 1. Filtro por Ámbito:
-    // En "classroom": Solo tareas públicas (is_private = false)
-    // En "private": Solo tareas privadas del usuario actual
     if (activeTab === 'classroom') {
       if (t.is_private) return false
     } else {
@@ -287,7 +292,10 @@ export default function TasksPage() {
 
   // Estadísticas rápidas
   const pendingCount = tasks.filter((t) => {
-    const isScopeMatch = activeTab === 'classroom' ? !t.is_private : t.is_private && t.created_by === user?.id
+    const isScopeMatch =
+      activeTab === 'classroom'
+        ? !t.is_private
+        : t.is_private && t.created_by === user?.id
     const isComp = Array.isArray(t.user_status) && t.user_status[0]?.status === 'completed'
     return isScopeMatch && !isComp
   }).length
@@ -311,7 +319,7 @@ export default function TasksPage() {
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             {pendingCount === 0
-              ? '¡Estás al día con todas tus entregas! 🎉'
+              ? '¡Estás al día con tus entregas! 🎉'
               : `Tienes ${pendingCount} ${pendingCount === 1 ? 'entrega pendiente' : 'entregas pendientes'}`}
           </p>
         </div>
@@ -330,15 +338,17 @@ export default function TasksPage() {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
           </button>
 
-          {/* Botón Crear Tarea */}
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="h-9 px-3 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nueva Tarea</span>
-          </button>
+          {/* Botón Crear Tarea: solo si está en Mis Pendientes O es delegado */}
+          {canCreateInActiveTab && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="h-9 px-3 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center gap-1.5 hover:bg-white active:scale-95 transition-all shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -371,14 +381,14 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* 2. Filtros Rápidos (Estado y Materias) */}
-      <div className="space-y-2">
+      {/* 2. Barra Unificada de Filtros: Estados + Dropdown de Materia */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         {/* Filtro por Estado: Pendientes / Completadas / Todas */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setStatusFilter('pending')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'pending'
                 ? 'bg-indigo-950/80 border border-indigo-800/80 text-indigo-300 font-semibold'
                 : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
@@ -390,7 +400,7 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('completed')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'completed'
                 ? 'bg-emerald-950/80 border border-emerald-800/80 text-emerald-300 font-semibold'
                 : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
@@ -402,7 +412,7 @@ export default function TasksPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
               statusFilter === 'all'
                 ? 'bg-zinc-800 border border-zinc-700 text-white font-semibold'
                 : 'bg-zinc-900 border border-zinc-800/80 text-zinc-400 hover:text-zinc-200'
@@ -412,39 +422,22 @@ export default function TasksPage() {
           </button>
         </div>
 
-        {/* Filtro por Materia (Scroll Horizontal de pastillas) */}
+        {/* Dropdown Compacto de Materia (Filtro Limpio y Elegante) */}
         {subjects.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
-            <button
-              type="button"
-              onClick={() => setSelectedSubjectId('all')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0 transition-all ${
-                selectedSubjectId === 'all'
-                  ? 'bg-zinc-800 text-white border border-zinc-700'
-                  : 'bg-zinc-950 text-zinc-400 border border-zinc-900 hover:text-zinc-200'
-              }`}
+          <div className="relative">
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="h-8 pl-2.5 pr-7 rounded-xl text-xs font-medium bg-zinc-900 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 appearance-none [color-scheme:dark] max-w-[150px] truncate"
             >
-              Todas las materias
-            </button>
-
-            {subjects.map((sub) => (
-              <button
-                key={sub.id}
-                type="button"
-                onClick={() => setSelectedSubjectId(sub.id)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0 flex items-center gap-1.5 transition-all ${
-                  selectedSubjectId === sub.id
-                    ? 'bg-zinc-800 text-white border border-zinc-600'
-                    : 'bg-zinc-950 text-zinc-400 border border-zinc-900 hover:text-zinc-200'
-                }`}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
-                  style={{ backgroundColor: sub.color || '#FFFFFF' }}
-                />
-                <span>{sub.name}</span>
-              </button>
-            ))}
+              <option value="all">Todas las materias</option>
+              {subjects.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         )}
       </div>
@@ -459,24 +452,32 @@ export default function TasksPage() {
             <div>
               <h3 className="text-sm font-semibold text-zinc-200">
                 {activeTab === 'classroom'
-                  ? 'No hay tareas publicadas del salón'
+                  ? 'No hay tareas del salón con estos filtros'
                   : 'No tienes pendientes personales'}
               </h3>
               <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
                 {activeTab === 'classroom'
-                  ? 'Los delegados publicarán las entregas grupales, proyectos y exámenes aquí.'
+                  ? isAdmin
+                    ? 'Como delegado, puedes publicar entregas grupales, proyectos o exámenes.'
+                    : 'Tus delegados publicarán las tareas grupales y evaluaciones oficiales aquí.'
                   : 'Crea tus propias notas y recordatorios de estudio que solo tú podrás ver.'}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{activeTab === 'classroom' ? 'Publicar Tarea Oficial' : 'Crear mi Primer Pendiente'}</span>
-            </button>
+            {canCreateInActiveTab && (
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>
+                  {activeTab === 'classroom'
+                    ? 'Publicar Tarea Oficial'
+                    : 'Crear mi Primer Pendiente'}
+                </span>
+              </button>
+            )}
           </div>
         ) : (
           filteredTasks.map((task) => (

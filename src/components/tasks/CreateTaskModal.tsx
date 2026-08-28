@@ -714,10 +714,34 @@ export function CreateTaskModal({
             </label>
             <div className="grid grid-cols-4 gap-1.5">
               {[
-                { id: 'individual', label: 'Individual', icon: User },
-                { id: 'grupal', label: 'Grupal', icon: Users },
-                { id: 'proyecto', label: 'Proyecto', icon: Rocket },
-                { id: 'examen', label: 'Examen', icon: FileText },
+                {
+                  id: 'individual',
+                  label: 'Individual',
+                  icon: User,
+                  activeClass: 'bg-zinc-800 border-zinc-500 text-zinc-100 font-semibold shadow-sm scale-[1.02]',
+                  activeIconClass: 'text-zinc-200',
+                },
+                {
+                  id: 'grupal',
+                  label: 'Grupal',
+                  icon: Users,
+                  activeClass: 'bg-sky-950/90 border-sky-500 text-sky-300 font-semibold shadow-sm scale-[1.02]',
+                  activeIconClass: 'text-sky-400',
+                },
+                {
+                  id: 'proyecto',
+                  label: 'Proyecto',
+                  icon: Rocket,
+                  activeClass: 'bg-purple-950/90 border-purple-500 text-purple-300 font-semibold shadow-sm scale-[1.02]',
+                  activeIconClass: 'text-purple-400',
+                },
+                {
+                  id: 'examen',
+                  label: 'Examen',
+                  icon: FileText,
+                  activeClass: 'bg-rose-950/90 border-rose-500 text-rose-300 font-semibold shadow-sm scale-[1.02]',
+                  activeIconClass: 'text-rose-400',
+                },
               ].map((item) => {
                 const Icon = item.icon
                 const isSelected = type === item.id
@@ -729,11 +753,15 @@ export function CreateTaskModal({
                     onClick={() => setType(item.id as TaskType)}
                     className={`p-2 rounded-xl border text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
                       isSelected
-                        ? 'bg-indigo-950/80 border-indigo-700 text-indigo-300 font-semibold'
+                        ? item.activeClass
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon
+                      className={`w-3.5 h-3.5 ${
+                        isSelected ? item.activeIconClass : 'text-zinc-500'
+                      }`}
+                    />
                     <span className="text-[10px]">{item.label}</span>
                   </button>
                 )

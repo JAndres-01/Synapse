@@ -152,68 +152,84 @@ export function CreateTaskModal({
   const [dragOffsetY, setDragOffsetY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
+  const prevIsOpenRef = useRef(false)
+  const prevTaskIdRef = useRef<string | null | undefined>(undefined)
 
-  // Inicializar o rellenar formulario para creación o edición
+  // Inicializar o rellenar formulario ÚNICAMENTE al abrir el modal o cambiar de tarea (evita borrado mientras se escribe)
   useEffect(() => {
-    if (initialTask) {
-      setTitle(initialTask.title || '')
-      setDescription(initialTask.description || '')
-      setSubjectId(initialTask.subject_id || (subjects[0]?.id ?? ''))
-      setType(initialTask.type || 'individual')
-      setMode(initialTask.is_private ? 'private' : 'classroom')
-      setScheduleMode('manual')
-      setSelectedScheduleSlot(null)
-      setFileError(null)
+    if (!isOpen) {
+      prevIsOpenRef.current = false
+      prevTaskIdRef.current = undefined
+      return
+    }
 
-      if (initialTask.attachments && initialTask.attachments.length > 0) {
-        setAttachments(
-          initialTask.attachments.map((a) => ({
-            id: a.id,
-            file_name: a.file_name,
-            file_url: a.file_url,
-            file_type: a.file_type,
-          }))
-        )
+    const isOpening = !prevIsOpenRef.current
+    const isTaskChanged = initialTask ? initialTask.id !== prevTaskIdRef.current : prevTaskIdRef.current !== null
+
+    if (isOpening || isTaskChanged) {
+      prevIsOpenRef.current = true
+      prevTaskIdRef.current = initialTask?.id || null
+
+      if (initialTask) {
+        setTitle(initialTask.title || '')
+        setDescription(initialTask.description || '')
+        setSubjectId(initialTask.subject_id || (subjects[0]?.id ?? ''))
+        setType(initialTask.type || 'individual')
+        setMode(initialTask.is_private ? 'private' : 'classroom')
+        setScheduleMode('manual')
+        setSelectedScheduleSlot(null)
+        setFileError(null)
+
+        if (initialTask.attachments && initialTask.attachments.length > 0) {
+          setAttachments(
+            initialTask.attachments.map((a) => ({
+              id: a.id,
+              file_name: a.file_name,
+              file_url: a.file_url,
+              file_type: a.file_type,
+            }))
+          )
+        } else {
+          setAttachments([])
+        }
+
+        if (initialTask.due_date) {
+          try {
+            const d = new Date(initialTask.due_date)
+            const y = d.getFullYear()
+            const m = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            setDueDate(`${y}-${m}-${day}`)
+            const h = String(d.getHours()).padStart(2, '0')
+            const min = String(d.getMinutes()).padStart(2, '0')
+            setDueTime(`${h}:${min}`)
+          } catch {
+            setDueDate(getTomorrowDate())
+            setDueTime('23:59')
+          }
+        }
       } else {
+        // Modo creación nuevo
+        if (!isAdmin) {
+          setMode('private')
+        } else {
+          setMode(defaultMode)
+        }
+        setTitle('')
+        setDescription('')
+        setType('individual')
         setAttachments([])
-      }
-
-      if (initialTask.due_date) {
-        try {
-          const d = new Date(initialTask.due_date)
-          const y = d.getFullYear()
-          const m = String(d.getMonth() + 1).padStart(2, '0')
-          const day = String(d.getDate()).padStart(2, '0')
-          setDueDate(`${y}-${m}-${day}`)
-          const h = String(d.getHours()).padStart(2, '0')
-          const min = String(d.getMinutes()).padStart(2, '0')
-          setDueTime(`${h}:${min}`)
-        } catch {
-          setDueDate(getTomorrowDate())
-          setDueTime('23:59')
+        setFileError(null)
+        setScheduleMode('preset')
+        setSelectedScheduleSlot(null)
+        setDueDate(getTomorrowDate())
+        setDueTime('23:59')
+        if (subjects.length > 0) {
+          setSubjectId(subjects[0].id)
         }
       }
-    } else {
-      // Modo creación nuevo
-      if (!isAdmin) {
-        setMode('private')
-      } else {
-        setMode(defaultMode)
-      }
-      setTitle('')
-      setDescription('')
-      setType('individual')
-      setAttachments([])
-      setFileError(null)
-      setScheduleMode('preset')
-      setSelectedScheduleSlot(null)
-      setDueDate(getTomorrowDate())
-      setDueTime('23:59')
-      if (subjects.length > 0 && !subjectId) {
-        setSubjectId(subjects[0].id)
-      }
     }
-  }, [initialTask, defaultMode, subjects, isOpen, isAdmin])
+  }, [isOpen, initialTask, defaultMode, isAdmin, subjects])
 
   useEffect(() => {
     if (isOpen) {

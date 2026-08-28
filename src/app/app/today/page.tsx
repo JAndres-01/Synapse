@@ -213,12 +213,12 @@ export default function TodayPage() {
 
     channelRef.current = channel
 
-    // Polling de respaldo cada 4 segundos para garantizar tiempo real
+    // Polling de respaldo cada 5 segundos para garantizar tiempo real
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !showCreateModal) {
         loadTodayData()
       }
-    }, 4000)
+    }, 5000)
 
     return () => {
       clearInterval(interval)

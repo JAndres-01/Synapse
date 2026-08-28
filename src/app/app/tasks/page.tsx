@@ -251,12 +251,12 @@ function TasksPageContent() {
 
     channelRef.current = channel
 
-    // Polling de respaldo cada 4 segundos cuando la pestaña esté activa para garantizar tiempo real 100%
+    // Polling de respaldo cada 5 segundos cuando la pestaña esté activa para garantizar tiempo real
     const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !showCreateModal) {
         loadTasksData()
       }
-    }, 4000)
+    }, 5000)
 
     return () => {
       clearInterval(interval)

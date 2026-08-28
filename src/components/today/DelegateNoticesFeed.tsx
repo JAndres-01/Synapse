@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { Notice, NoticeCategory } from '@/types/database'
 import {
   Megaphone,
@@ -33,9 +33,52 @@ export function DelegateNoticesFeed({
 
   // Estados del modal de creación
   const [newContent, setNewContent] = useState('')
-  const [newCategory, setNewCategory] = useState<NoticeCategory>('cambio_aula') // 'cambio_aula' actúa como categoría Salón
+  const [newCategory, setNewCategory] = useState<NoticeCategory>('cambio_aula')
   const [newIsUrgent, setNewIsUrgent] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Estados de gesto táctil para deslizar hacia abajo y cerrar
+  const [dragOffsetY, setDragOffsetY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartYRef = useRef(0)
+
+  // Bloquear el scroll del fondo cuando el modal esté abierto
+  useEffect(() => {
+    if (showCreateModal) {
+      document.body.classList.add('body-scroll-lock')
+    } else {
+      document.body.classList.remove('body-scroll-lock')
+      setDragOffsetY(0)
+    }
+    return () => {
+      document.body.classList.remove('body-scroll-lock')
+    }
+  }, [showCreateModal])
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    dragStartYRef.current = e.touches[0].clientY
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return
+    const currentY = e.touches[0].clientY
+    const deltaY = currentY - dragStartYRef.current
+    if (deltaY > 0) {
+      setDragOffsetY(deltaY)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    setIsDragging(false)
+    if (dragOffsetY > 75) {
+      // Deslizó lo suficiente hacia abajo: cerrar modal
+      setShowCreateModal(false)
+    } else {
+      // Regresar a la posición original
+      setDragOffsetY(0)
+    }
+  }
 
   const getCategoryBadge = (category: NoticeCategory) => {
     switch (category) {
@@ -220,12 +263,29 @@ export function DelegateNoticesFeed({
         </div>
       )}
 
-      {/* Modal Bottom Sheet: Publicar Aviso (z-[100] por encima de la barra de navegación) */}
+      {/* Modal Bottom Sheet con gesto táctil de cierre (Swipe Down) y Scroll Lock */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0">
-          <div className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-6 space-y-4 animate-slide-up max-h-[92vh] overflow-y-auto safe-area-bottom shadow-2xl">
-            {/* Drag handle */}
-            <div className="w-10 h-1 rounded-full bg-zinc-700 mx-auto -mt-2 mb-1" />
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-6 space-y-4 max-h-[92vh] overflow-y-auto safe-area-bottom shadow-2xl transition-transform"
+            style={{
+              transform: `translateY(${dragOffsetY}px)`,
+              transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Tirador táctil (Drag Handle) con detección de deslizamiento hacia abajo */}
+            <div
+              className="w-full py-2 -mt-3 mb-1 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div className="w-12 h-1.5 rounded-full bg-zinc-600 active:bg-zinc-400 transition-colors" />
+            </div>
 
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -235,7 +295,7 @@ export function DelegateNoticesFeed({
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors active:scale-90"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -295,7 +355,7 @@ export function DelegateNoticesFeed({
                 <textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  placeholder="Escribe lo que ocurre en el salón (ej. el profe llegará 10 min tarde, cambio de aula, avisos de clase...)"
+                  placeholder="Escribe lo que ocurre en el salón (ej. el profe llegará 10 min tarde, avisos de clase...)"
                   rows={3}
                   required
                   className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"

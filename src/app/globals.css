@@ -7,7 +7,8 @@
   --foreground: #f4f4f5;
 }
 
-body {
+html, body {
+  height: 100%;
   color: var(--foreground);
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", system-ui, sans-serif;
@@ -16,6 +17,14 @@ body {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+}
+
+/* Bloqueo de scroll cuando un modal está abierto */
+.body-scroll-lock {
+  overflow: hidden !important;
+  touch-action: none !important;
+  height: 100% !important;
 }
 
 /* Soporte para áreas seguras de iPhone (Notch y Home Bar) */

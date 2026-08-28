@@ -103,9 +103,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen w-full bg-zinc-950 text-zinc-100 flex flex-col selection:bg-zinc-800 relative">
+    <div className="min-h-screen w-full max-w-full bg-zinc-950 text-zinc-100 flex flex-col selection:bg-zinc-800 relative overflow-x-hidden">
       {/* Contenedor Principal Centrado Mobile First con despeje seguro para Dynamic Island / Notch y margen inferior amplio */}
-      <main className="w-full max-w-md mx-auto px-4 pt-[calc(env(safe-area-inset-top,44px)+16px)] pb-36 flex-1 flex flex-col">
+      <main className="w-full max-w-md mx-auto px-4 pt-[calc(env(safe-area-inset-top,44px)+16px)] pb-36 flex-1 flex flex-col overflow-x-hidden">
         {children}
       </main>
 

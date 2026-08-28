@@ -7,7 +7,22 @@
   --foreground: #f4f4f5;
 }
 
-html, body {
+html {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+}
+
+body {
   color: var(--foreground);
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", system-ui, sans-serif;
@@ -16,11 +31,25 @@ html, body {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   min-height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  touch-action: pan-y pinch-zoom;
+  position: relative;
 }
 
 /* Bloqueo de scroll cuando un modal está abierto */
 .body-scroll-lock {
-  overflow: hidden;
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
+/* Contenedores con scroll horizontal permitido */
+.scroll-horizontal {
+  touch-action: pan-x pan-y !important;
+  overscroll-behavior-x: contain !important;
 }
 
 /* Despeje superior seguro para reloj, batería y Dynamic Island en iPhone */

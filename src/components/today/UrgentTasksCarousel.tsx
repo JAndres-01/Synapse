@@ -132,7 +132,7 @@ export function UrgentTasksCarousel({
         </Link>
       </div>
 
-      <div className="flex gap-2.5 items-start overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
+      <div className="flex gap-2.5 items-start overflow-x-auto no-scrollbar pb-1 -mx-5 px-5 scroll-horizontal">
         {tasks.map((task) => {
           const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string }> }).user_task_status
           const isCompleted = Array.isArray(statuses)

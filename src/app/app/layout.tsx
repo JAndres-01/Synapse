@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import { FloatingIslandBar } from '@/components/navigation/FloatingIslandBar'
@@ -24,31 +24,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, classroom, loading, router, pathname])
 
-  // Contar tareas pendientes para el badge de la barra de navegación
+  // Contar tareas pendientes (Suma tareas oficiales del salón + tareas personales del alumno)
+  const fetchPendingCount = useCallback(async () => {
+    if (!classroom || !user) return
+
+    try {
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          created_by,
+          is_private,
+          user_status:user_task_status(user_id, status)
+        `)
+        .eq('classroom_id', classroom.id)
+
+      if (!error && tasks) {
+        const pending = tasks.filter((t) => {
+          // 1. Ámbito: Visible si es del salón o si es su propio pendiente personal
+          const isVisibleToUser = !t.is_private || t.created_by === user.id
+          if (!isVisibleToUser) return false
+
+          // 2. Estado: Verificar si el usuario actual ya la marcó como completada
+          const userStatusList = t.user_status || (t as unknown as { user_task_status?: Array<{ user_id: string; status: string }> }).user_task_status
+          const isCompleted = Array.isArray(userStatusList)
+            ? userStatusList.some((s) => s.user_id === user.id && s.status === 'completed')
+            : Boolean(userStatusList && (userStatusList as { status?: string; user_id?: string }).status === 'completed' && (userStatusList as { user_id?: string }).user_id === user.id)
+
+          return !isCompleted
+        }).length
+
+        setPendingTasksCount(pending)
+      }
+    } catch (err) {
+      console.error('Error cargando conteo de tareas:', err)
+    }
+  }, [classroom, user, supabase])
+
+  // Carga inicial y suscripción Realtime en vivo
   useEffect(() => {
     if (!classroom || !user) return
 
-    const fetchPendingCount = async () => {
-      try {
-        const { data: tasks } = await supabase
-          .from('tasks')
-          .select('id, user_task_status(status)')
-          .eq('classroom_id', classroom.id)
-
-        if (tasks) {
-          const pending = tasks.filter((t) => {
-            const status = t.user_task_status?.[0]?.status
-            return status !== 'completed'
-          }).length
-          setPendingTasksCount(pending)
-        }
-      } catch (err) {
-        console.error('Error cargando conteo de tareas:', err)
-      }
-    }
-
     fetchPendingCount()
-  }, [classroom, user, supabase])
+
+    // 1. Canal Realtime para cambios en tareas
+    const tasksChannel = supabase
+      .channel(`public:app_layout_tasks:${classroom.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `classroom_id=eq.${classroom.id}` },
+        () => fetchPendingCount()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_task_status' },
+        () => fetchPendingCount()
+      )
+      .subscribe()
+
+    // 2. Evento interno para sincronización local instantánea
+    const handleLocalUpdate = () => fetchPendingCount()
+    window.addEventListener('tasks_updated', handleLocalUpdate)
+
+    return () => {
+      supabase.removeChannel(tasksChannel)
+      window.removeEventListener('tasks_updated', handleLocalUpdate)
+    }
+  }, [classroom, user, supabase, fetchPendingCount, pathname])
 
   if (loading) {
     return (

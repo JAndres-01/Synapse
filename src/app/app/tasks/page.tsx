@@ -247,6 +247,9 @@ export default function TasksPage() {
         },
         { onConflict: 'user_id,task_id' }
       )
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
     } catch (err) {
       console.error('Error actualizando estado de tarea:', err)
       loadTasksData()
@@ -288,6 +291,9 @@ export default function TasksPage() {
       if (offlineDB) {
         await offlineDB.tasks.put(newTask as unknown as Task)
       }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
     } else {
       console.error('Error insertando tarea:', error)
       loadTasksData()
@@ -300,6 +306,9 @@ export default function TasksPage() {
       setTasks((prev) => prev.filter((t) => t.id !== taskId))
       if (offlineDB) {
         await offlineDB.tasks.delete(taskId)
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
       }
     }
   }

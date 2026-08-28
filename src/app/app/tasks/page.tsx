@@ -61,6 +61,7 @@ export default function TasksPage() {
   // 3. Modales
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null)
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
   const supabase = createClient()
   const isAdmin =
@@ -296,6 +297,52 @@ export default function TasksPage() {
       }
     } else {
       console.error('Error insertando tarea:', error)
+      loadTasksData()
+    }
+  }
+
+  const handleUpdateTask = async (
+    taskId: string,
+    taskData: {
+      title: string
+      description?: string
+      subject_id?: string | null
+      type: TaskType
+      due_date: string
+      is_private: boolean
+    }
+  ) => {
+    if (!user) return
+
+    const payload: Record<string, unknown> = {
+      title: taskData.title,
+      description: taskData.description || null,
+      type: taskData.type,
+      due_date: taskData.due_date,
+      is_private: taskData.is_private,
+      subject_id: taskData.subject_id || null,
+    }
+
+    const { data: updated, error } = await supabase
+      .from('tasks')
+      .update(payload)
+      .eq('id', taskId)
+      .select('*, subject:subjects(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
+      .single()
+
+    if (!error && updated) {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? (updated as unknown as Task) : t)))
+      if (selectedTaskForDetail?.id === taskId) {
+        setSelectedTaskForDetail(updated as unknown as Task)
+      }
+      if (offlineDB) {
+        await offlineDB.tasks.put(updated as unknown as Task)
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
+    } else {
+      console.error('Error actualizando tarea:', error)
       loadTasksData()
     }
   }
@@ -540,7 +587,10 @@ export default function TasksPage() {
             {canCreateInActiveTab && (
               <button
                 type="button"
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setTaskToEdit(null)
+                  setShowCreateModal(true)
+                }}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -568,7 +618,10 @@ export default function TasksPage() {
       {canCreateInActiveTab && (
         <button
           type="button"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setTaskToEdit(null)
+            setShowCreateModal(true)
+          }}
           aria-label={activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}
           className="fixed bottom-[104px] right-5 z-40 px-4 py-3 rounded-2xl bg-white text-zinc-950 font-bold text-xs flex items-center gap-2 shadow-2xl shadow-black/90 hover:bg-zinc-100 active:scale-95 transition-all border border-zinc-200"
         >
@@ -577,15 +630,20 @@ export default function TasksPage() {
         </button>
       )}
 
-      {/* 5. Modal para Crear Tarea */}
+      {/* 5. Modal para Crear o Editar Tarea */}
       <CreateTaskModal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false)
+          setTaskToEdit(null)
+        }}
         subjects={subjects}
         schedules={schedules}
         defaultMode={activeTab}
         isAdmin={isAdmin}
+        initialTask={taskToEdit}
         onSaveTask={handleSaveTask}
+        onUpdateTask={handleUpdateTask}
       />
 
       {/* 6. Modal de Detalle de Tarea con Hilos & Fotos de Apuntes */}
@@ -597,6 +655,11 @@ export default function TasksPage() {
         isAdmin={isAdmin}
         onToggleStatus={handleToggleTaskStatus}
         onDeleteTask={handleDeleteTask}
+        onEditTask={(t) => {
+          setSelectedTaskForDetail(null)
+          setTaskToEdit(t)
+          setShowCreateModal(true)
+        }}
         onAddComment={handleAddComment}
       />
     </div>

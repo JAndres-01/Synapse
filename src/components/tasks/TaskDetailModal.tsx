@@ -1,16 +1,14 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Task, TaskComment, Profile, UserRole } from '@/types/database'
+import type { Task, TaskComment, Profile } from '@/types/database'
 import {
   X,
-  Calendar,
   Clock,
   Trash2,
   Send,
   CornerDownRight,
   Camera,
-  Image as ImageIcon,
   Check,
   Users,
   User,
@@ -19,6 +17,7 @@ import {
   Lock,
   Loader2,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
@@ -30,6 +29,7 @@ interface TaskDetailModalProps {
   isAdmin: boolean
   onToggleStatus: (taskId: string, currentStatus: string) => Promise<void>
   onDeleteTask: (taskId: string) => Promise<void>
+  onEditTask?: (task: Task) => void
   onAddComment: (
     taskId: string,
     content: string,
@@ -84,6 +84,7 @@ export function TaskDetailModal({
   isAdmin,
   onToggleStatus,
   onDeleteTask,
+  onEditTask,
   onAddComment,
 }: TaskDetailModalProps) {
   const [commentText, setCommentText] = useState('')
@@ -105,8 +106,13 @@ export function TaskDetailModal({
     ? statuses.some((s) => s.status === 'completed' && (!currentUser || s.user_id === currentUser.id))
     : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
+  // Regla de Permisos de Edición y Eliminación:
+  // - Si es privada: Solo el autor que la creó
+  // - Si es del salón: Solo el delegado / administrador
   const canManageTask =
-    isAdmin || (task && currentUser && task.created_by === currentUser.id)
+    task &&
+    ((task.is_private && currentUser && task.created_by === currentUser.id) ||
+      (!task.is_private && isAdmin))
 
   useEffect(() => {
     if (task) {
@@ -294,6 +300,19 @@ export function TaskDetailModal({
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* Botón Editar Tarea (Solo si tiene permisos) */}
+              {canManageTask && onEditTask && (
+                <button
+                  type="button"
+                  onClick={() => onEditTask(task)}
+                  title="Editar tarea"
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-700/60 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Botón Eliminar Tarea */}
               {canManageTask && (
                 <button
                   type="button"
@@ -311,7 +330,7 @@ export function TaskDetailModal({
                   document.body.classList.remove('body-scroll-lock')
                   onClose()
                 }}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -327,13 +346,13 @@ export function TaskDetailModal({
                   type="button"
                   onClick={handleCheck}
                   aria-label="Marcar completada"
-                  className={`w-6 h-6 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+                  className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all mt-0.5 ${
                     isCompleted
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'border-zinc-700 hover:border-zinc-400 bg-zinc-900 active:scale-90'
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                      : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
                   }`}
                 >
-                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </button>
 
                 <div className="space-y-1 min-w-0 flex-1">

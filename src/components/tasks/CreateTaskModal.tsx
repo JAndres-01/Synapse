@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Subject, Schedule, TaskType } from '@/types/database'
+import type { Subject, Schedule, TaskType, Task } from '@/types/database'
 import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
 import {
   X,
@@ -18,6 +18,7 @@ import {
   Sparkles,
   CalendarCheck,
   Check,
+  Pencil,
 } from 'lucide-react'
 
 interface CreateTaskModalProps {
@@ -27,6 +28,7 @@ interface CreateTaskModalProps {
   schedules?: Schedule[]
   defaultMode: 'classroom' | 'private'
   isAdmin: boolean
+  initialTask?: Task | null
   onSaveTask: (taskData: {
     title: string
     description?: string
@@ -35,6 +37,17 @@ interface CreateTaskModalProps {
     due_date: string
     is_private: boolean
   }) => Promise<void>
+  onUpdateTask?: (
+    taskId: string,
+    taskData: {
+      title: string
+      description?: string
+      subject_id?: string | null
+      type: TaskType
+      due_date: string
+      is_private: boolean
+    }
+  ) => Promise<void>
 }
 
 const MAX_TITLE_LENGTH = 100
@@ -84,7 +97,9 @@ export function CreateTaskModal({
   schedules = [],
   defaultMode,
   isAdmin,
+  initialTask,
   onSaveTask,
+  onUpdateTask,
 }: CreateTaskModalProps) {
   const [mode, setMode] = useState<'classroom' | 'private'>(defaultMode)
   const [title, setTitle] = useState('')
@@ -120,17 +135,51 @@ export function CreateTaskModal({
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
 
+  // Inicializar o rellenar formulario para creación o edición
   useEffect(() => {
-    if (!isAdmin) {
-      setMode('private')
-    } else {
-      setMode(defaultMode)
-    }
+    if (initialTask) {
+      setTitle(initialTask.title || '')
+      setDescription(initialTask.description || '')
+      setSubjectId(initialTask.subject_id || (subjects[0]?.id ?? ''))
+      setType(initialTask.type || 'individual')
+      setMode(initialTask.is_private ? 'private' : 'classroom')
+      setScheduleMode('manual')
+      setSelectedScheduleSlot(null)
 
-    if (subjects.length > 0 && !subjectId) {
-      setSubjectId(subjects[0].id)
+      if (initialTask.due_date) {
+        try {
+          const d = new Date(initialTask.due_date)
+          const y = d.getFullYear()
+          const m = String(d.getMonth() + 1).padStart(2, '0')
+          const day = String(d.getDate()).padStart(2, '0')
+          setDueDate(`${y}-${m}-${day}`)
+          const h = String(d.getHours()).padStart(2, '0')
+          const min = String(d.getMinutes()).padStart(2, '0')
+          setDueTime(`${h}:${min}`)
+        } catch {
+          setDueDate(getTomorrowDate())
+          setDueTime('23:59')
+        }
+      }
+    } else {
+      // Modo creación nuevo
+      if (!isAdmin) {
+        setMode('private')
+      } else {
+        setMode(defaultMode)
+      }
+      setTitle('')
+      setDescription('')
+      setType('individual')
+      setScheduleMode('preset')
+      setSelectedScheduleSlot(null)
+      setDueDate(getTomorrowDate())
+      setDueTime('23:59')
+      if (subjects.length > 0 && !subjectId) {
+        setSubjectId(subjects[0].id)
+      }
     }
-  }, [defaultMode, subjects, isOpen, isAdmin, subjectId])
+  }, [initialTask, defaultMode, subjects, isOpen, isAdmin])
 
   useEffect(() => {
     if (isOpen) {
@@ -200,18 +249,23 @@ export function CreateTaskModal({
       const localDate = new Date(year, month - 1, day, hour, minute, 0)
       const combinedDateTime = localDate.toISOString()
 
-      await onSaveTask({
+      const taskPayload = {
         title: title.trim(),
         description: description.trim() || undefined,
         subject_id: subjectId || null,
         type,
         due_date: combinedDateTime,
         is_private: mode === 'private',
-      })
+      }
+
+      if (initialTask && onUpdateTask) {
+        await onUpdateTask(initialTask.id, taskPayload)
+      } else {
+        await onSaveTask(taskPayload)
+      }
 
       setTitle('')
       setDescription('')
-      setSelectedScheduleSlot(null)
       onClose()
     } catch (err) {
       console.error('Error guardando tarea:', err)
@@ -220,306 +274,261 @@ export function CreateTaskModal({
     }
   }
 
+  // Agrupar horarios por día y bloque para el selector visual
+  const scheduleMatrix = DAYS_OF_WEEK.map((d) => {
+    const daySchedules = schedules.filter((s) => s.day_of_week === d.day)
+    return {
+      day: d.day,
+      name: d.name,
+      short: d.short,
+      schedules: daySchedules,
+    }
+  })
+
   return (
     <div
       className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] overflow-hidden flex flex-col shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-4 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ========================================================================= */}
-        {/* ÁREA DE ARRASTRE SUPERIOR EXCLUSIVA (TOTALMENTE DESPEJADA DE NOTCH)       */}
-        {/* ========================================================================= */}
+        {/* Drag Handle & Header Top Area */}
         <div
           className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Drag Handle */}
           <div className="w-12 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-2.5" />
-
-          {/* Header del Modal */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-indigo-400" />
-                <span>Nueva Tarea</span>
-              </h3>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                {mode === 'private'
-                  ? 'Pendiente personal (solo visible para ti)'
-                  : 'Tarea oficial del salón (visible para toda la clase)'}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
         </div>
 
-        {/* ========================================================================= */}
-        {/* CUERPO DEL FORMULARIO                                                     */}
-        {/* ========================================================================= */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-3.5 pr-0.5 overscroll-contain">
-          {/* Indicador / Selector de Ámbito */}
-          {isAdmin ? (
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
-              <button
-                type="button"
-                onClick={() => setMode('classroom')}
-                className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  mode === 'classroom'
-                    ? 'bg-zinc-800 text-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <School className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Del Salón</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('private')}
-                className={`py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                  mode === 'private'
-                    ? 'bg-zinc-800 text-white shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Mi Pendiente</span>
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 w-full">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-amber-950/50 border border-amber-800/50 text-amber-400">
-                  <Lock className="w-3.5 h-3.5" />
-                </span>
-                <div>
-                  <span className="text-xs font-semibold text-zinc-200 block">
-                    Mis Pendientes
-                  </span>
-                  <span className="text-[10px] text-zinc-500 block">
-                    Privado • Solo tú podrás ver y gestionar esta tarea
-                  </span>
-                </div>
+        {/* Encabezado del Modal */}
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            {initialTask ? (
+              <div className="w-8 h-8 rounded-xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400">
+                <Pencil className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40">
-                Personal
-              </span>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-3.5 w-full">
-            {/* Título de la tarea con contador */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-medium text-zinc-400">
-                  Título de la Tarea / Entrega *
-                </label>
-                <span className="text-[10px] font-mono text-zinc-500">
-                  {title.length}/{MAX_TITLE_LENGTH}
-                </span>
+            ) : mode === 'classroom' ? (
+              <div className="w-8 h-8 rounded-xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400">
+                <School className="w-4 h-4" />
               </div>
-              <input
-                type="text"
-                value={title}
-                maxLength={MAX_TITLE_LENGTH}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej. Resumen Capítulo 4, Proyecto Final..."
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 box-border"
-              />
-            </div>
-
-            {/* Materia Asociada: Solo visible en modo Manual (en modo Horario se elige directamente en la clase) */}
-            {scheduleMode === 'manual' && (
-              <div className="animate-fade-in">
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                  Materia Asociada
-                </label>
-                <select
-                  value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 appearance-none [color-scheme:dark] box-border"
-                >
-                  <option value="">(Sin materia / General)</option>
-                  {subjects.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {sub.name} {sub.code ? `(${sub.code})` : ''}
-                    </option>
-                  ))}
-                </select>
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400">
+                <Lock className="w-4 h-4" />
               </div>
             )}
 
-            {/* Tipo de Tarea */}
             <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
-                Tipo de Entrega
+              <h2 className="text-sm font-bold text-white tracking-tight">
+                {initialTask
+                  ? initialTask.is_private
+                    ? 'Editar Pendiente'
+                    : 'Editar Tarea Oficial'
+                  : mode === 'classroom'
+                  ? 'Nueva Tarea Oficial'
+                  : 'Nuevo Pendiente Personal'}
+              </h2>
+              <p className="text-[11px] text-zinc-400">
+                {initialTask
+                  ? 'Modifica los datos y horario de entrega'
+                  : mode === 'classroom'
+                  ? 'Visible para todos los alumnos del salón'
+                  : 'Solo visible para ti (notas y pendientes privados)'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar modal"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Selector de Ámbito (Solo para delegado en creación nueva) */}
+        {!initialTask && isAdmin && (
+          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMode('classroom')}
+              className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                mode === 'classroom'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <School className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Del Salón (Oficial)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode('private')}
+              className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                mode === 'private'
+                  ? 'bg-zinc-800 text-white shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <span>Mis Pendientes</span>
+            </button>
+          </div>
+        )}
+
+        {/* Formulario */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-contain"
+        >
+          {/* Título de la Tarea */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-xs text-zinc-400">
+              <label htmlFor="task-title" className="font-semibold text-zinc-200">
+                Título de la entrega / tarea *
               </label>
-              <div className="grid grid-cols-4 gap-1.5 w-full">
-                <button
-                  type="button"
-                  onClick={() => setType('individual')}
-                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                    type === 'individual'
-                      ? 'bg-zinc-800 border-zinc-600 text-white'
-                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Individual</span>
-                </button>
+              <span
+                className={`text-[10px] font-mono ${
+                  title.length > MAX_TITLE_LENGTH ? 'text-red-400' : 'text-zinc-500'
+                }`}
+              >
+                {title.length}/{MAX_TITLE_LENGTH}
+              </span>
+            </div>
+            <input
+              id="task-title"
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={MAX_TITLE_LENGTH}
+              placeholder={
+                mode === 'classroom'
+                  ? 'Ej: Ensayo de Historia, Ejercicios Guía 3...'
+                  : 'Ej: Repasar apuntes de Cálculo, Comprar cartulina...'
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors"
+            />
+          </div>
 
-                <button
-                  type="button"
-                  onClick={() => setType('grupal')}
-                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                    type === 'grupal'
-                      ? 'bg-sky-950/60 border-sky-600 text-sky-300'
-                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Grupal</span>
-                </button>
+          {/* ========================================================================= */}
+          {/* SELECCIÓN DE ENTREGA: PRESET HORARIO (1-TAP) VS MANUAL                     */}
+          {/* ========================================================================= */}
+          <div className="space-y-2 pt-1 border-t border-zinc-800/80">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Programación de Entrega *</span>
+              </label>
 
+              {/* Selector de Modo */}
+              <div className="flex items-center p-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => setType('proyecto')}
-                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                    type === 'proyecto'
-                      ? 'bg-purple-950/60 border-purple-600 text-purple-300'
-                      : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
+                  onClick={() => setScheduleMode('preset')}
+                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                    scheduleMode === 'preset'
+                      ? 'bg-zinc-800 text-white font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  <Rocket className="w-3.5 h-3.5" />
-                  <span>Proyecto</span>
+                  Por Horario
                 </button>
-
                 <button
                   type="button"
-                  onClick={() => setType('examen')}
-                  className={`py-2 px-1 rounded-xl border text-[10px] font-medium flex flex-col items-center gap-1 transition-all ${
-                    type === 'examen'
-                      ? 'bg-rose-950/60 border-rose-600 text-rose-300'
-                    : 'bg-zinc-950 border-zinc-800/80 text-zinc-500'
+                  onClick={() => setScheduleMode('manual')}
+                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                    scheduleMode === 'manual'
+                      ? 'bg-zinc-800 text-white font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Examen</span>
+                  Manual
                 </button>
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* PRESET DE ASIGNACIÓN POR HORARIO SEMANAL vs FECHA MANUAL                   */}
-            {/* ========================================================================= */}
-            <div className="space-y-2.5 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
-                  <CalendarCheck className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Programación de Entrega</span>
-                </label>
+            {/* A. MODO PRESET: Matriz Semanal de Clases */}
+            {scheduleMode === 'preset' && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Toca la clase del horario semanal en la que se entregará esta tarea:
+                </p>
 
-                {/* Alternador Preset Horario vs Manual */}
-                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setScheduleMode('preset')}
-                    className={`px-2 py-1 rounded-md transition-all ${
-                      scheduleMode === 'preset'
-                        ? 'bg-zinc-800 text-indigo-300 font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    Por Horario
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduleMode('manual')}
-                    className={`px-2 py-1 rounded-md transition-all ${
-                      scheduleMode === 'manual'
-                        ? 'bg-zinc-800 text-white font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    Manual
-                  </button>
-                </div>
-              </div>
-
-              {scheduleMode === 'preset' ? (
-                /* PRESET 1: MATRIZ SEMANAL DE CLASES (5 DÍAS) */
-                <div className="space-y-2.5 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90">
-                  <span className="text-[10px] text-zinc-400 block">
-                    Toca la clase en la que se entregará esta tarea:
-                  </span>
-
-                  {schedules.length === 0 ? (
-                    <p className="text-xs text-zinc-500 italic py-2 text-center">
-                      Aún no hay clases configuradas en el horario semanal.
-                    </p>
-                  ) : (
-                    <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1 no-scrollbar">
-                      {DAYS_OF_WEEK.map((d) => {
-                        const daySchedules = schedules.filter((s) => s.day_of_week === d.day)
-                        if (daySchedules.length === 0) return null
+                {schedules.length === 0 ? (
+                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 text-center text-xs text-zinc-500">
+                    No hay clases registradas en el horario aún. Usa el modo <strong>Manual</strong>.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {/* Lista de Días con sus Clases */}
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {scheduleMatrix.map((dayData) => {
+                        const hasClasses = dayData.schedules.length > 0
 
                         return (
-                          <div key={d.day} className="space-y-1">
-                            <span className="text-[10px] font-mono uppercase font-bold text-zinc-500 px-1">
-                              {d.name}
+                          <div
+                            key={dayData.day}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center gap-1.5 min-h-[140px] ${
+                              hasClasses
+                                ? 'bg-zinc-950/80 border-zinc-800/90'
+                                : 'bg-zinc-950/30 border-zinc-900 opacity-40'
+                            }`}
+                          >
+                            <span className="text-[10px] font-bold text-zinc-300 uppercase">
+                              {dayData.short}
                             </span>
 
-                            <div className="grid grid-cols-2 gap-1.5">
-                              {daySchedules.map((sched) => {
-                                const blockDef = SCHEDULE_BLOCKS.find((b) => b.block === sched.block_number) || {
-                                  block: sched.block_number,
-                                  startTime: sched.start_time?.slice(0, 5) || '07:00',
+                            {/* 4 Bloques diarios */}
+                            <div className="w-full space-y-1 flex-1 flex flex-col justify-start">
+                              {SCHEDULE_BLOCKS.map((blockDef) => {
+                                const sched = dayData.schedules.find(
+                                  (s) => s.block_number === blockDef.block
+                                )
+                                if (!sched) {
+                                  return (
+                                    <div
+                                      key={blockDef.block}
+                                      className="h-6 rounded-md bg-zinc-900/40 border border-dashed border-zinc-800/40"
+                                    />
+                                  )
                                 }
+
                                 const isSelected =
-                                  selectedScheduleSlot?.day === sched.day_of_week &&
-                                  selectedScheduleSlot?.block === sched.block_number
+                                  selectedScheduleSlot?.day === dayData.day &&
+                                  selectedScheduleSlot?.block === blockDef.block
 
                                 return (
                                   <button
-                                    key={sched.id}
+                                    key={blockDef.block}
                                     type="button"
                                     onClick={() => handleSelectSchedulePreset(sched, blockDef)}
-                                    className={`p-2 rounded-xl border text-left transition-all relative ${
+                                    title={`${sched.subject?.name || 'Clase'} (${blockDef.startTime})`}
+                                    className={`w-full h-7 px-1 rounded-md text-[9px] font-semibold flex items-center justify-center transition-all border text-left truncate ${
                                       isSelected
-                                        ? 'bg-indigo-950/80 border-indigo-500 shadow-sm'
-                                        : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700'
+                                        ? 'bg-indigo-600 border-white text-white shadow-md scale-[1.02]'
+                                        : 'hover:border-zinc-500 bg-zinc-900/90 text-zinc-200 border-zinc-800 active:scale-95'
                                     }`}
+                                    style={{
+                                      borderLeftColor: isSelected
+                                        ? '#FFFFFF'
+                                        : sched.subject?.color || '#6366F1',
+                                      borderLeftWidth: '3px',
+                                    }}
                                   >
-                                    <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-0.5">
-                                      <span className="font-mono">Clase {sched.block_number}</span>
-                                      <span className="font-mono">{blockDef.startTime}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span
-                                        className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
-                                        style={{ backgroundColor: sched.subject?.color || '#FFFFFF' }}
-                                      />
-                                      <span className="text-xs font-semibold text-zinc-100 truncate">
-                                        {sched.subject?.name || 'Materia'}
-                                      </span>
-                                    </div>
+                                    <span className="truncate">
+                                      {sched.subject?.name?.slice(0, 5) || `B${blockDef.block}`}
+                                    </span>
                                   </button>
                                 )
                               })}
@@ -528,101 +537,184 @@ export function CreateTaskModal({
                         )
                       })}
                     </div>
-                  )}
 
-                  {/* Resumen del Preset Seleccionado */}
-                  {selectedScheduleSlot && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center justify-between text-xs animate-fade-in">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                        <div>
-                          <span className="text-[11px] text-indigo-200 block font-semibold">
-                            {selectedScheduleSlot.subjectName}
-                          </span>
-                          <span className="text-[10px] text-indigo-400 font-mono">
-                            {selectedScheduleSlot.dateLabel} • {selectedScheduleSlot.time}
-                          </span>
+                    {/* Resumen del Preset Seleccionado */}
+                    {selectedScheduleSlot ? (
+                      <div className="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <CalendarCheck className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-white truncate">
+                              {selectedScheduleSlot.subjectName}
+                            </p>
+                            <p className="text-[10px] text-indigo-300 capitalize">
+                              {selectedScheduleSlot.dateLabel} • {selectedScheduleSlot.time}
+                            </p>
+                          </div>
                         </div>
+                        <span className="text-[10px] bg-indigo-900/80 text-indigo-200 px-2 py-0.5 rounded font-mono shrink-0">
+                          Bloque {selectedScheduleSlot.block}
+                        </span>
                       </div>
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* PRESET 2: FECHA Y HORA MANUAL */
-                <div className="space-y-3 p-3 rounded-2xl bg-zinc-950 border border-zinc-800/90">
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Fecha Límite de Entrega</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
-                    />
+                    ) : (
+                      <p className="text-[10px] text-zinc-500 text-center italic">
+                        👆 Selecciona una clase arriba para programar la entrega automáticamente
+                      </p>
+                    )}
                   </div>
+                )}
+              </div>
+            )}
 
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-400 mb-1 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Hora Límite</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={dueTime}
-                      onChange={(e) => setDueTime(e.target.value)}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] block box-border"
-                    />
-                  </div>
+            {/* B. MODO MANUAL: Selectores de Fecha y Hora Nativos */}
+            {scheduleMode === 'manual' && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="space-y-1">
+                  <label htmlFor="task-due-date" className="text-[11px] text-zinc-400 font-medium">
+                    Fecha límite
+                  </label>
+                  <input
+                    id="task-due-date"
+                    type="date"
+                    required
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                  />
                 </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="task-due-time" className="text-[11px] text-zinc-400 font-medium">
+                    Hora límite
+                  </label>
+                  <input
+                    id="task-due-time"
+                    type="time"
+                    required
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Selector de Materia Asociada (Solo visible en modo Manual) */}
+          {scheduleMode === 'manual' && (
+            <div className="space-y-1.5 pt-1 border-t border-zinc-800/80">
+              <label htmlFor="task-subject" className="text-xs font-semibold text-zinc-200 block">
+                Materia Asociada
+              </label>
+              {subjects.length > 0 ? (
+                <select
+                  id="task-subject"
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark]"
+                >
+                  <option value="">(Ninguna / General)</option>
+                  {subjects.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-xs text-zinc-500 italic">No hay materias registradas.</p>
               )}
             </div>
+          )}
 
-            {/* Descripción / Notas adicionales con Límite de Caracteres */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[11px] font-medium text-zinc-400">
-                  Notas / Instrucciones adicionales
-                </label>
-                <span
-                  className={`text-[10px] font-mono ${
-                    description.length >= MAX_DESC_LENGTH
-                      ? 'text-red-400 font-bold'
-                      : 'text-zinc-500'
-                  }`}
-                >
-                  {description.length}/{MAX_DESC_LENGTH}
-                </span>
+          {/* Tipo de Tarea (Solo para tareas grupales del salón) */}
+          {mode === 'classroom' && (
+            <div className="space-y-1.5 pt-1 border-t border-zinc-800/80">
+              <label className="text-xs font-semibold text-zinc-200 block">
+                Tipo de Evaluación / Tarea
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: 'individual', label: 'Individual', icon: User },
+                  { id: 'grupal', label: 'Grupal', icon: Users },
+                  { id: 'proyecto', label: 'Proyecto', icon: Rocket },
+                  { id: 'examen', label: 'Examen', icon: FileText },
+                ].map((item) => {
+                  const Icon = item.icon
+                  const isSelected = type === item.id
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setType(item.id as TaskType)}
+                      className={`p-2 rounded-xl border text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
+                        isSelected
+                          ? 'bg-indigo-950/80 border-indigo-700 text-indigo-300 font-semibold'
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">{item.label}</span>
+                    </button>
+                  )
+                })}
               </div>
-              <textarea
-                value={description}
-                maxLength={MAX_DESC_LENGTH}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Detalles, enlaces de entrega o notas de estudio..."
-                rows={3}
-                className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none box-border"
-              />
             </div>
+          )}
 
+          {/* Descripción / Notas */}
+          <div className="space-y-1.5 pt-1 border-t border-zinc-800/80">
+            <div className="flex justify-between items-center text-xs text-zinc-400">
+              <label htmlFor="task-description" className="font-semibold text-zinc-200">
+                Instrucciones / Notas adicionales (Opcional)
+              </label>
+              <span
+                className={`text-[10px] font-mono ${
+                  description.length > MAX_DESC_LENGTH ? 'text-red-400' : 'text-zinc-500'
+                }`}
+              >
+                {description.length}/{MAX_DESC_LENGTH}
+              </span>
+            </div>
+            <textarea
+              id="task-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={MAX_DESC_LENGTH}
+              rows={2}
+              placeholder="Escribe detalles del formato de entrega, rúbrica o recordatorios..."
+              className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
+            />
+          </div>
+
+          {/* Botón Guardar / Publicar */}
+          <div className="pt-2">
             <button
               type="submit"
-              disabled={loading || !title.trim()}
-              className="w-full py-3.5 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+              disabled={loading || !title.trim() || title.length > MAX_TITLE_LENGTH}
+              className="w-full py-3 px-4 rounded-xl bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
             >
               {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+                <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
+              ) : initialTask ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Guardar Cambios</span>
+                </>
+              ) : mode === 'classroom' ? (
+                <>
+                  <School className="w-4 h-4" />
+                  <span>Publicar Tarea Oficial</span>
+                </>
               ) : (
-                <span>
-                  {mode === 'private' ? 'Guardar Mi Pendiente' : 'Publicar Tarea del Salón'}
-                </span>
+                <>
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>Guardar Pendiente</span>
+                </>
               )}
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   )

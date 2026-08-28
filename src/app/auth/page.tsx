@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/context/AuthContext'
 import { Sparkles, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -15,6 +16,18 @@ export default function AuthPage() {
 
   const router = useRouter()
   const supabase = createClient()
+  const { user, classroom, loading: authLoading } = useAuth()
+
+  // Si ya tiene sesión activa, redirigir automáticamente
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (classroom) {
+        router.replace('/app/today')
+      } else {
+        router.replace('/join')
+      }
+    }
+  }, [user, classroom, authLoading, router])
 
   // Iniciar sesión con Google
   const handleGoogleSignIn = async () => {

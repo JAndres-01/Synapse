@@ -20,9 +20,9 @@ export default function JoinClassroomPage() {
   // Si ya pertenece a un salón, redirigir directo al dashboard
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth')
+      router.replace('/auth')
     } else if (!authLoading && classroom) {
-      router.push('/app/today')
+      router.replace('/app/today')
     }
   }, [authLoading, user, classroom, router])
 

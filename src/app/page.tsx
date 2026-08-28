@@ -1,7 +1,34 @@
-import Link from 'next/link';
-import { ArrowRight, BookOpen, Clock, ShieldCheck, Sparkles } from 'lucide-react';
+'use client'
+
+import React, { useEffect } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
+import { ArrowRight, BookOpen, Clock, ShieldCheck, Sparkles, Loader2 } from 'lucide-react'
 
 export default function HomePage() {
+  const { user, classroom, loading } = useAuth()
+  const router = useRouter()
+
+  // Auto-redirección si el usuario ya tiene sesión activa
+  useEffect(() => {
+    if (!loading) {
+      if (user && classroom) {
+        router.replace('/app/today')
+      } else if (user && !classroom) {
+        router.replace('/join')
+      }
+    }
+  }, [user, classroom, loading, router])
+
+  if (loading || user) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[100dvh] bg-zinc-950">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col justify-between p-6 safe-area-top safe-area-bottom">
       {/* Top Header */}
@@ -15,7 +42,7 @@ export default function HomePage() {
           Synapse
         </h1>
         <p className="text-sm text-zinc-400 leading-relaxed">
-          Tu horario de 4 bloques, tareas y fotos de pizarra organizadas en un solo lugar. Adiós al desorden de WhatsApp.
+          Tu horario de 4 clases, tareas y fotos de pizarra organizadas en un solo lugar. Adiós al desorden de WhatsApp.
         </p>
       </div>
 
@@ -26,7 +53,7 @@ export default function HomePage() {
             <Clock className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-zinc-200">Horario de 4 bloques</h3>
+            <h3 className="text-xs font-semibold text-zinc-200">Horario de 4 clases</h3>
             <p className="text-[11px] text-zinc-400">7:00 AM a 1:00 PM con clase en vivo</p>
           </div>
         </div>
@@ -46,8 +73,8 @@ export default function HomePage() {
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-zinc-200">Avisos Oficiales</h3>
-            <p className="text-[11px] text-zinc-400">Cambios de aula y avisos urgentes con hilos</p>
+            <h3 className="text-xs font-semibold text-zinc-200">Acceso Seguro por PIN</h3>
+            <p className="text-[11px] text-zinc-400">Exclusivo para los alumnos y delegados de tu salón</p>
           </div>
         </div>
       </div>
@@ -66,5 +93,5 @@ export default function HomePage() {
         </p>
       </div>
     </div>
-  );
+  )
 }

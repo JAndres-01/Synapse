@@ -97,7 +97,7 @@ export function UrgentTasksCarousel({
         const weekday = date.toLocaleDateString('es-ES', { weekday: 'short' })
         const day = date.getDate()
         return {
-          text: isToday ? `Venció hoy • ${timeStr}` : `Venció • ${weekday} ${day}`,
+          text: isToday ? `Venció • ${timeStr}` : `Venció • ${weekday} ${day}`,
           colorClass: 'text-red-400 font-bold',
         }
       }
@@ -168,15 +168,15 @@ export function UrgentTasksCarousel({
             <div
               key={task.id}
               onClick={handleCardClick}
-              className={`w-[220px] p-3 rounded-2xl border transition-all shrink-0 flex flex-col cursor-pointer select-none gap-2 relative shadow-sm ${
+              className={`w-[250px] p-3 rounded-2xl border transition-all shrink-0 flex flex-col cursor-pointer select-none gap-2 relative shadow-sm ${
                 isCompleted
                   ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
                   : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
               }`}
             >
               {/* Header: Tipo / Privada y Fecha con Pill destacada */}
-              <div className="flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {task.is_private ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400 shrink-0">
                       <Lock className="w-2.5 h-2.5" />

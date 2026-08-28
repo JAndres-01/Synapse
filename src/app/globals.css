@@ -8,6 +8,7 @@
 }
 
 html, body {
+  min-height: 100%;
   height: 100%;
   color: var(--foreground);
   background: var(--background);
@@ -29,11 +30,28 @@ html, body {
 
 /* Soporte para áreas seguras de iPhone (Notch y Home Bar) */
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 1rem);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 .safe-area-top {
-  padding-top: env(safe-area-inset-top, 0.5rem);
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+/* Calibración específica de la barra flotante en PWA Standalone (iOS) */
+.floating-nav-container {
+  bottom: 1rem;
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .floating-nav-container {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (display-mode: standalone) {
+  .floating-nav-container {
+    bottom: 0.85rem;
+  }
 }
 
 /* Scrollbar minimalista estilo Linear */

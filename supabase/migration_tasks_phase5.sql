@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SYNAPSE: MIGRACIÓN DE FASE 5 (TAREAS, HILOS DE DISCUSIÓN Y FOTOS DE APUNTES)
+-- SYNAPSE: MIGRACIÓN DE FASE 5 (TAREAS, HILOS DE DISCUSIÓN, DOCUMENTOS Y FOTOS)
 -- ==============================================================================
 
 -- 1. Añadir columna is_private a la tabla tasks (para tareas personales de alumnos)
@@ -18,8 +18,14 @@ CREATE TABLE IF NOT EXISTS public.task_comments (
     parent_comment_id UUID REFERENCES public.task_comments(id) ON DELETE CASCADE,
     content TEXT NOT NULL DEFAULT '',
     image_url TEXT,
+    file_name TEXT,
+    file_type attachment_type DEFAULT 'image',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Asegurar columnas si la tabla ya existía
+ALTER TABLE public.task_comments ADD COLUMN IF NOT EXISTS file_name TEXT;
+ALTER TABLE public.task_comments ADD COLUMN IF NOT EXISTS file_type attachment_type DEFAULT 'image';
 
 -- 4. Índice para rendimiento de hilos de comentarios
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON public.task_comments(task_id, created_at ASC);

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { Task, TaskComment, Profile, TaskAttachment } from '@/types/database'
+import type { Task, TaskComment, Profile, AttachmentType } from '@/types/database'
 import {
   X,
   Clock,
@@ -19,8 +19,8 @@ import {
   AlertTriangle,
   Pencil,
   Paperclip,
-  Download,
   ExternalLink,
+  Image as ImageIcon,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { compressImageFile } from '@/lib/utils'
@@ -38,8 +38,16 @@ interface TaskDetailModalProps {
     taskId: string,
     content: string,
     parentCommentId?: string | null,
-    imageUrl?: string | null
+    imageUrl?: string | null,
+    fileName?: string | null,
+    fileType?: AttachmentType | null
   ) => Promise<void>
+}
+
+interface CommentAttachment {
+  fileUrl: string
+  fileName: string
+  fileType: AttachmentType
 }
 
 function formatTaskDate(dateStr?: string) {
@@ -95,7 +103,7 @@ export function TaskDetailModal({
   const [replyingTo, setReplyingTo] = useState<TaskComment | null>(null)
   const [commentLoading, setCommentLoading] = useState(false)
   const [selectedImageForLightbox, setSelectedImageForLightbox] = useState<string | null>(null)
-  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [previewAttachment, setPreviewAttachment] = useState<CommentAttachment | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -167,26 +175,34 @@ export function TaskDetailModal({
     onToggleStatus(task.id, isCompleted ? 'completed' : 'pending')
   }
 
-  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Adjuntar imagen o documento en el comentario
+  const handleCommentFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
-      // Compresión nativa GPU (<60ms) para apuntes
-      const { fileUrl } = await compressImageFile(file, 2048, 0.85)
-      setPreviewImage(fileUrl)
-    } catch {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setPreviewImage(event.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+      const isImage = file.type.startsWith('image/')
+      const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf')
+      const fileType: AttachmentType = isImage ? 'image' : isPdf ? 'pdf' : 'link'
+
+      const { fileUrl, fileName } = await compressImageFile(file, 2048, 0.85)
+      setPreviewAttachment({
+        fileUrl,
+        fileName,
+        fileType,
+      })
+    } catch (err) {
+      console.error('Error procesando archivo adjunto en comentario:', err)
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
   const handleSendComment = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!commentText.trim() && !previewImage) return
+    if (!commentText.trim() && !previewAttachment) return
 
     try {
       setCommentLoading(true)
@@ -194,10 +210,12 @@ export function TaskDetailModal({
         task.id,
         commentText.trim(),
         replyingTo ? replyingTo.id : null,
-        previewImage
+        previewAttachment?.fileUrl || null,
+        previewAttachment?.fileName || null,
+        previewAttachment?.fileType || null
       )
       setCommentText('')
-      setPreviewImage(null)
+      setPreviewAttachment(null)
       setReplyingTo(null)
     } catch (err) {
       console.error('Error enviando comentario:', err)
@@ -260,6 +278,52 @@ export function TaskDetailModal({
     comments.filter((c) => c.parent_comment_id === parentId)
 
   const attachments = task.attachments || []
+
+  // Renderizar imagen o documento en un comentario
+  const renderCommentAttachment = (c: TaskComment) => {
+    if (!c.image_url) return null
+    const isImage =
+      c.file_type === 'image' ||
+      (!c.file_type &&
+        (c.image_url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp)$/i.test(c.image_url)))
+
+    if (isImage) {
+      return (
+        <div
+          onClick={() => setSelectedImageForLightbox(c.image_url || null)}
+          className="relative rounded-xl overflow-hidden border border-zinc-800 max-w-xs cursor-pointer group mt-1"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={c.image_url}
+            alt="Apunte adjunto"
+            className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
+          />
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+            <span className="text-xs text-white bg-black/70 px-2 py-1 rounded-md">
+              Ver en pantalla completa
+            </span>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <a
+        href={c.image_url}
+        download={c.file_name || 'documento'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-200 active:scale-[0.98] transition-all mt-1"
+      >
+        <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+        <span className="truncate max-w-[180px] text-[11px] font-medium">
+          {c.file_name || 'Documento adjunto'}
+        </span>
+        <ExternalLink className="w-3 h-3 text-zinc-500 shrink-0 ml-1" />
+      </a>
+    )
+  }
 
   return (
     <>
@@ -471,7 +535,7 @@ export function TaskDetailModal({
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                    <span>Preguntas & Apuntes de Clase</span>
+                    <span>Preguntas, Apuntes & Archivos</span>
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400 font-mono">
                       {comments.length}
                     </span>
@@ -482,7 +546,7 @@ export function TaskDetailModal({
                 <div className="space-y-3">
                   {rootComments.length === 0 ? (
                     <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
-                      No hay comentarios aún. Puedes hacer una pregunta o subir una foto de tu apunte.
+                      No hay comentarios aún. Puedes hacer una pregunta o compartir fotos y archivos de apuntes.
                     </div>
                   ) : (
                     rootComments.map((root) => {
@@ -522,25 +586,8 @@ export function TaskDetailModal({
                               </p>
                             )}
 
-                            {/* Foto de Apunte adjunta */}
-                            {root.image_url && (
-                              <div
-                                onClick={() => setSelectedImageForLightbox(root.image_url || null)}
-                                className="relative rounded-xl overflow-hidden border border-zinc-800 max-w-xs cursor-pointer group"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={root.image_url}
-                                  alt="Apunte adjunto"
-                                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
-                                />
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                  <span className="text-xs text-white bg-black/70 px-2 py-1 rounded-md">
-                                    Ver en pantalla completa
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+                            {/* Imagen o Documento adjunto */}
+                            {renderCommentAttachment(root)}
 
                             {/* Botón Responder */}
                             <div className="pt-1 flex items-center justify-end">
@@ -594,21 +641,8 @@ export function TaskDetailModal({
                                       </p>
                                     )}
 
-                                    {reply.image_url && (
-                                      <div
-                                        onClick={() =>
-                                          setSelectedImageForLightbox(reply.image_url || null)
-                                        }
-                                        className="relative rounded-xl overflow-hidden border border-zinc-800 max-w-xs cursor-pointer group"
-                                      >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                          src={reply.image_url}
-                                          alt="Apunte adjunto"
-                                          className="w-full h-36 object-cover group-hover:scale-105 transition-transform"
-                                        />
-                                      </div>
-                                    )}
+                                    {/* Imagen o Documento adjunto en respuesta */}
+                                    {renderCommentAttachment(reply)}
                                   </div>
                                 )
                               })}
@@ -624,7 +658,7 @@ export function TaskDetailModal({
           </div>
 
           {/* ========================================================================= */}
-          {/* BARRA DE ENTRADA PARA NUEVO COMENTARIO O FOTO DE APUNTE                   */}
+          {/* BARRA DE ENTRADA PARA NUEVO COMENTARIO CON FOTO O DOCUMENTO               */}
           {/* ========================================================================= */}
           {!task.is_private && (
             <div className="pt-2 border-t border-zinc-800 space-y-2 shrink-0">
@@ -650,19 +684,30 @@ export function TaskDetailModal({
                 </div>
               )}
 
-              {/* Previsualización de Imagen antes de enviar */}
-              {previewImage && (
-                <div className="relative inline-block border border-zinc-800 rounded-xl overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={previewImage}
-                    alt="Previsualización"
-                    className="h-20 w-20 object-cover"
-                  />
+              {/* Previsualización de Archivo o Foto antes de enviar */}
+              {previewAttachment && (
+                <div className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 text-xs max-w-fit">
+                  {previewAttachment.fileType === 'image' ? (
+                    <div className="relative inline-block border border-zinc-800 rounded-lg overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={previewAttachment.fileUrl}
+                        alt="Previsualización"
+                        className="h-12 w-12 object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="text-xs text-zinc-200 max-w-[140px] truncate">
+                        {previewAttachment.fileName}
+                      </span>
+                    </div>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setPreviewImage(null)}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-black/80 text-white"
+                    onClick={() => setPreviewAttachment(null)}
+                    className="p-1 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -673,18 +718,18 @@ export function TaskDetailModal({
                 <input
                   type="file"
                   ref={fileInputRef}
-                  onChange={handleImagePick}
-                  accept="image/*"
+                  onChange={handleCommentFilePick}
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                   className="hidden"
                 />
 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Subir foto de libreta o pizarra"
+                  title="Adjuntar foto o documento al comentario"
                   className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-indigo-400 hover:border-indigo-500/50 transition-colors"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Paperclip className="w-4 h-4" />
                 </button>
 
                 <input
@@ -694,7 +739,7 @@ export function TaskDetailModal({
                   placeholder={
                     replyingTo
                       ? `Responde a ${replyingTo.author?.full_name || 'compañero'}...`
-                      : 'Escribe una duda o aporte...'
+                      : 'Escribe una duda o comparte un archivo...'
                   }
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSendComment()
@@ -705,7 +750,7 @@ export function TaskDetailModal({
                 <button
                   type="button"
                   onClick={() => handleSendComment()}
-                  disabled={(!commentText.trim() && !previewImage) || commentLoading}
+                  disabled={(!commentText.trim() && !previewAttachment) || commentLoading}
                   className="p-2.5 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 font-semibold disabled:opacity-40 transition-colors"
                 >
                   {commentLoading ? (

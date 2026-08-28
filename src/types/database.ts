@@ -68,6 +68,39 @@ export interface Schedule {
   subject?: Subject
 }
 
+export interface TaskAttachment {
+  id: string
+  task_id: string
+  uploaded_by: string
+  file_type: AttachmentType
+  file_url: string
+  file_name: string
+  created_at: string
+  uploader?: Profile
+}
+
+export interface TaskComment {
+  id: string
+  task_id: string
+  author_id: string
+  parent_comment_id?: string | null
+  content: string
+  image_url?: string | null
+  file_name?: string | null
+  file_type?: AttachmentType | null
+  created_at: string
+  author?: Profile
+  replies?: TaskComment[]
+}
+
+export interface UserTaskStatus {
+  id: string
+  user_id: string
+  task_id: string
+  status: TaskStatus
+  completed_at?: string | null
+}
+
 export interface Task {
   id: string
   classroom_id: string
@@ -85,63 +118,14 @@ export interface Task {
   comments?: TaskComment[]
 }
 
-export interface TaskComment {
-  id: string
-  task_id: string
-  author_id: string
-  parent_comment_id?: string | null
-  content: string
-  image_url?: string | null
-  created_at: string
-  author?: Profile
-  replies?: TaskComment[]
-}
-
-export interface TaskAttachment {
-  id: string
-  task_id: string
-  uploaded_by: string
-  file_type: AttachmentType
-  file_url: string
-  file_name: string
-  created_at: string
-  uploader?: Profile
-}
-
-export interface UserTaskStatus {
-  id: string
-  user_id: string
-  task_id: string
-  status: TaskStatus
-  completed_at: string | null
-}
-
 export interface Notice {
   id: string
   classroom_id: string
   author_id: string
+  title: string
+  content: string
   category: NoticeCategory
-  content: string
-  is_urgent: boolean
-  is_pinned?: boolean
+  is_pinned: boolean
   created_at: string
   author?: Profile
-  comments?: NoticeComment[]
-}
-
-export interface NoticeComment {
-  id: string
-  notice_id: string
-  author_id: string
-  content: string
-  created_at: string
-  author?: Profile
-}
-
-export interface PushSubscriptionRecord {
-  id: string
-  user_id: string
-  endpoint: string
-  keys: Json
-  created_at: string
 }

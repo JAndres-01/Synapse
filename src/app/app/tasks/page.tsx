@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
-import type { Task, Subject, TaskType, Schedule, AttachmentType, TaskAttachment } from '@/types/database'
+import type { Task, Subject, TaskType, Schedule, AttachmentType, TaskAttachment, TaskComment } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
@@ -410,7 +410,9 @@ export default function TasksPage() {
     taskId: string,
     content: string,
     parentCommentId?: string | null,
-    imageUrl?: string | null
+    imageUrl?: string | null,
+    fileName?: string | null,
+    fileType?: AttachmentType | null
   ) => {
     if (!user) return
 
@@ -427,12 +429,18 @@ export default function TasksPage() {
       .single()
 
     if (!error && newComment) {
+      if (fileName) {
+        ;(newComment as unknown as TaskComment).file_name = fileName
+      }
+      if (fileType) {
+        ;(newComment as unknown as TaskComment).file_type = fileType
+      }
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id === taskId) {
             return {
               ...t,
-              comments: [...(t.comments || []), newComment],
+              comments: [...(t.comments || []), newComment as unknown as TaskComment],
             }
           }
           return t

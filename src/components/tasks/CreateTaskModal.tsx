@@ -624,7 +624,7 @@ export function CreateTaskModal({
                     </div>
 
                     {/* Resumen del Preset Seleccionado */}
-                    {selectedScheduleSlot ? (
+                    {selectedScheduleSlot && (
                       <div className="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <CalendarCheck className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -641,10 +641,6 @@ export function CreateTaskModal({
                           Bloque {selectedScheduleSlot.block}
                         </span>
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-zinc-500 text-center italic">
-                        👆 Selecciona una clase arriba para programar la entrega automáticamente
-                      </p>
                     )}
                   </div>
                 )}

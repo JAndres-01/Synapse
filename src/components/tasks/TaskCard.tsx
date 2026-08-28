@@ -21,10 +21,10 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) {
-  const isCompleted =
-    Array.isArray(task.user_status) &&
-    task.user_status.length > 0 &&
-    task.user_status[0]?.status === 'completed'
+  const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string }> }).user_task_status
+  const isCompleted = Array.isArray(statuses)
+    ? statuses.some((s) => s.status === 'completed')
+    : Boolean(statuses && (statuses as { status?: string }).status === 'completed')
 
   const getTypeBadge = (type: string) => {
     switch (type) {

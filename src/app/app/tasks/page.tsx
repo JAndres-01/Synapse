@@ -19,6 +19,30 @@ import {
   ChevronDown,
 } from 'lucide-react'
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+
+// Helper para verificar si una tarea está completada por el usuario
+const isTaskCompleted = (t: Task, userId?: string): boolean => {
+  const statuses = t.user_status || (t as unknown as { user_task_status?: Array<{ status: string; user_id: string }> }).user_task_status
+  if (!statuses) return false
+  if (Array.isArray(statuses)) {
+    return statuses.some((s) => s.status === 'completed' && (!userId || s.user_id === userId))
+  }
+  return Boolean(statuses && (statuses as { status?: string }).status === 'completed')
+}
+
+// Helper para obtener la fecha de completado
+const getTaskCompletedDate = (t: Task, userId?: string): Date | null => {
+  const statuses = t.user_status || (t as unknown as { user_task_status?: Array<{ status: string; user_id: string; completed_at?: string }> }).user_task_status
+  if (!statuses) return null
+  if (Array.isArray(statuses)) {
+    const match = statuses.find((s) => s.status === 'completed' && (!userId || s.user_id === userId))
+    return match?.completed_at ? new Date(match.completed_at) : null
+  }
+  const statusObj = statuses as { completed_at?: string }
+  return statusObj?.completed_at ? new Date(statusObj.completed_at) : null
+}
+
 export default function TasksPage() {
   const { user, profile, classroom } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -44,7 +68,6 @@ export default function TasksPage() {
     profile?.role === 'admin' ||
     (profile?.role as string) === 'delegate'
 
-  // Determinar si puede crear tareas en la pestaña activa
   const canCreateInActiveTab = activeTab === 'private' || isAdmin
 
   // Cargar Tareas, Materias y Horarios
@@ -74,7 +97,7 @@ export default function TasksPage() {
         setSchedules(scheduleData as unknown as Schedule[])
       }
 
-      // 2. Cargar Tareas con fallback inteligente
+      // 3. Cargar Tareas con fallback inteligente
       let loadedTasks: Task[] = []
 
       const { data: taskData, error: taskErr } = await supabase
@@ -91,7 +114,6 @@ export default function TasksPage() {
       if (!taskErr && taskData) {
         loadedTasks = taskData as unknown as Task[]
       } else {
-        // Fallback: Si task_comments aún no ha sido migrado en Supabase
         const { data: fallbackData } = await supabase
           .from('tasks')
           .select(`
@@ -107,11 +129,36 @@ export default function TasksPage() {
         }
       }
 
-      setTasks(loadedTasks)
-      if (offlineDB && loadedTasks.length > 0) {
-        const validTasks = loadedTasks.filter((t) => !!t && !!t.id)
+      // 4. Limpieza de tareas completadas hace más de 7 días
+      const now = Date.now()
+      const expiredTaskIds: string[] = []
+
+      const activeTasks = loadedTasks.filter((t) => {
+        const isComp = isTaskCompleted(t, user.id)
+        if (!isComp) return true
+        const compDate = getTaskCompletedDate(t, user.id)
+        if (compDate && now - compDate.getTime() > SEVEN_DAYS_MS) {
+          expiredTaskIds.push(t.id)
+          return false
+        }
+        return true
+      })
+
+      setTasks(activeTasks)
+
+      if (offlineDB && activeTasks.length > 0) {
+        const validTasks = activeTasks.filter((t) => !!t && !!t.id)
         if (validTasks.length > 0) {
           await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
+        }
+      }
+
+      // Eliminar registros expirados de más de 7 días en segundo plano
+      if (expiredTaskIds.length > 0) {
+        for (const expId of expiredTaskIds) {
+          supabase.from('tasks').delete().eq('id', expId).eq('created_by', user.id).then(() => {})
+          supabase.from('user_task_status').delete().eq('task_id', expId).eq('user_id', user.id).then(() => {})
+          offlineDB?.tasks.delete(expId)
         }
       }
     } catch (err) {
@@ -160,22 +207,28 @@ export default function TasksPage() {
     }
   }, [tasks, selectedTaskForDetail])
 
+  // Alternar completada / pendiente
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     if (!user) return
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const nowIso = new Date().toISOString()
 
+    // Actualización optimista inmediata
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
+          const currentStatuses = t.user_status || []
+          const filtered = currentStatuses.filter((s) => s.user_id !== user.id)
           return {
             ...t,
             user_status: [
+              ...filtered,
               {
-                id: 'temp',
+                id: 'temp-' + Date.now(),
                 user_id: user.id,
                 task_id: taskId,
                 status: newStatus,
-                completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+                completed_at: newStatus === 'completed' ? nowIso : null,
               },
             ],
           }
@@ -190,7 +243,7 @@ export default function TasksPage() {
           user_id: user.id,
           task_id: taskId,
           status: newStatus,
-          completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+          completed_at: newStatus === 'completed' ? nowIso : null,
         },
         { onConflict: 'user_id,task_id' }
       )
@@ -297,10 +350,15 @@ export default function TasksPage() {
       if (t.created_by !== user?.id) return false
     }
 
-    const isCompleted =
-      Array.isArray(t.user_status) &&
-      t.user_status.length > 0 &&
-      t.user_status[0]?.status === 'completed'
+    const isCompleted = isTaskCompleted(t, user?.id)
+
+    // Regla de 7 días: Si ya pasaron 7 días desde que se completó, no mostrarla
+    if (isCompleted) {
+      const compDate = getTaskCompletedDate(t, user?.id)
+      if (compDate && Date.now() - compDate.getTime() > SEVEN_DAYS_MS) {
+        return false
+      }
+    }
 
     if (statusFilter === 'pending' && isCompleted) return false
     if (statusFilter === 'completed' && !isCompleted) return false
@@ -318,7 +376,7 @@ export default function TasksPage() {
       activeTab === 'classroom'
         ? !t.is_private
         : t.is_private && t.created_by === user?.id
-    const isComp = Array.isArray(t.user_status) && t.user_status[0]?.status === 'completed'
+    const isComp = isTaskCompleted(t, user?.id)
     return isScopeMatch && !isComp
   }).length
 
@@ -332,7 +390,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col space-y-4 relative min-h-full pb-20">
-      {/* Header Principal con posición fija y estable (Nunca mueve el texto) */}
+      {/* Header Principal */}
       <header className="flex items-center justify-between pt-1">
         <div className="flex-1 min-w-0 pr-2">
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -497,7 +555,7 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* 4. Botón Flotante (FAB) para Crear Tarea con separación amplia sobre la isla de navegación */}
+      {/* 4. Botón Flotante (FAB) para Crear Tarea */}
       {canCreateInActiveTab && (
         <button
           type="button"

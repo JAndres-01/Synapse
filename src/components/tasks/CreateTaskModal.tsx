@@ -724,34 +724,34 @@ export function CreateTaskModal({
             <label className="text-xs font-semibold text-zinc-200 block">
               Tipo de Evaluación / Tarea
             </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5 p-0.5">
               {[
                 {
                   id: 'individual',
                   label: 'Individual',
                   icon: User,
-                  activeClass: 'bg-zinc-800 border-zinc-500 text-zinc-100 font-semibold shadow-sm scale-[1.02]',
+                  activeClass: 'bg-zinc-800 border-zinc-500 text-zinc-100 font-semibold shadow-sm',
                   activeIconClass: 'text-zinc-200',
                 },
                 {
                   id: 'grupal',
                   label: 'Grupal',
                   icon: Users,
-                  activeClass: 'bg-sky-950/90 border-sky-500 text-sky-300 font-semibold shadow-sm scale-[1.02]',
+                  activeClass: 'bg-sky-950/90 border-sky-500 text-sky-300 font-semibold shadow-sm',
                   activeIconClass: 'text-sky-400',
                 },
                 {
                   id: 'proyecto',
                   label: 'Proyecto',
                   icon: Rocket,
-                  activeClass: 'bg-purple-950/90 border-purple-500 text-purple-300 font-semibold shadow-sm scale-[1.02]',
+                  activeClass: 'bg-purple-950/90 border-purple-500 text-purple-300 font-semibold shadow-sm',
                   activeIconClass: 'text-purple-400',
                 },
                 {
                   id: 'examen',
                   label: 'Examen',
                   icon: FileText,
-                  activeClass: 'bg-rose-950/90 border-rose-500 text-rose-300 font-semibold shadow-sm scale-[1.02]',
+                  activeClass: 'bg-rose-950/90 border-rose-500 text-rose-300 font-semibold shadow-sm',
                   activeIconClass: 'text-rose-400',
                 },
               ].map((item) => {

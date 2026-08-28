@@ -30,28 +30,28 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
     switch (type) {
       case 'grupal':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/60 border border-sky-800/50 text-[10px] font-semibold text-sky-400">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/60 border border-sky-800/50 text-[10px] font-semibold text-sky-400 shrink-0">
             <Users className="w-2.5 h-2.5" />
             <span>Grupal</span>
           </span>
         )
       case 'proyecto':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-950/60 border border-purple-800/50 text-[10px] font-semibold text-purple-400">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-950/60 border border-purple-800/50 text-[10px] font-semibold text-purple-400 shrink-0">
             <Rocket className="w-2.5 h-2.5" />
             <span>Proyecto</span>
           </span>
         )
       case 'examen':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/60 border border-rose-800/50 text-[10px] font-semibold text-rose-400">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/60 border border-rose-800/50 text-[10px] font-semibold text-rose-400 shrink-0">
             <FileText className="w-2.5 h-2.5" />
             <span>Examen</span>
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 shrink-0">
             <User className="w-2.5 h-2.5 text-zinc-400" />
             <span>Individual</span>
           </span>
@@ -71,20 +71,20 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
       tomorrow.setDate(tomorrow.getDate() + 1)
       const isTomorrow = date.toDateString() === tomorrow.toDateString()
 
-      const timeStr = date.toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      })
+      const hours = date.getHours()
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const formattedHour = hours % 12 || 12
+      const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isToday) return { text: `Hoy • ${timeStr}`, isUrgent: true }
       if (isTomorrow) return { text: `Mañana • ${timeStr}`, isUrgent: false }
 
-      const formatted = date.toLocaleDateString('es-ES', {
+      const formattedDate = date.toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'short',
       })
-      return { text: `${formatted} • ${timeStr}`, isUrgent: false }
+      return { text: `${formattedDate} • ${timeStr}`, isUrgent: false }
     } catch {
       return { text: 'Fecha pendiente', isUrgent: false }
     }
@@ -112,17 +112,17 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
   return (
     <div
       onClick={() => onOpenDetail(task)}
-      className={`p-4 rounded-2xl border transition-all cursor-pointer select-none space-y-2.5 relative shadow-sm ${
+      className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none space-y-2 relative shadow-sm ${
         isCompleted
           ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
           : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
       }`}
     >
-      {/* Header: Tipo, Materia, Fecha */}
+      {/* Header: Tipo, Materia (izq) y Fecha Límite Antidesborde (der) */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {task.is_private ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400 shrink-0">
               <Lock className="w-2.5 h-2.5" />
               <span>Privada</span>
             </span>
@@ -131,21 +131,21 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
           )}
 
           {task.subject ? (
-            <div className="flex items-center gap-1 text-[11px] font-medium text-zinc-300 pl-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-300 min-w-0 flex-1">
               <span
                 className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
                 style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
               />
-              <span className="truncate max-w-[120px]">{task.subject.name}</span>
+              <span className="truncate">{task.subject.name}</span>
             </div>
           ) : (
-            <span className="text-[11px] text-zinc-500 italic pl-1">General</span>
+            <span className="text-[11px] text-zinc-500 italic shrink-0">General</span>
           )}
         </div>
 
-        {/* Fecha Límite */}
+        {/* Fecha Límite en una sola línea protegida */}
         <span
-          className={`text-[10px] font-mono font-medium ${
+          className={`text-[10px] font-mono font-medium shrink-0 whitespace-nowrap text-right pl-1 ${
             dueInfo.isUrgent ? 'text-amber-400 font-bold' : 'text-zinc-400'
           }`}
         >
@@ -154,12 +154,12 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
       </div>
 
       {/* Contenido Principal: Checkbox y Título */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 pt-0.5">
         <button
           type="button"
           onClick={handleCheck}
           aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-          className={`w-6 h-6 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+          className={`w-5.5 h-5.5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
             isCompleted
               ? 'bg-emerald-500 border-emerald-500 text-white'
               : 'border-zinc-700 hover:border-zinc-400 bg-zinc-950/80 active:scale-90'
@@ -170,7 +170,7 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
 
         <div className="flex-1 min-w-0">
           <h3
-            className={`text-sm font-semibold tracking-tight leading-snug line-clamp-2 ${
+            className={`text-sm font-semibold tracking-tight leading-snug break-words ${
               isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
             }`}
           >
@@ -178,28 +178,28 @@ export function TaskCard({ task, onToggleStatus, onOpenDetail }: TaskCardProps) 
           </h3>
 
           {task.description && (
-            <p className="text-xs text-zinc-400 line-clamp-1 mt-1 leading-normal">
+            <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5 leading-relaxed">
               {task.description}
             </p>
           )}
         </div>
       </div>
 
-      {/* Footer: Contador de respuestas y fotos de apuntes */}
+      {/* Footer: Contador de Respuntas y Fotos de Apuntes (solo para tareas grupales del salón) */}
       {!task.is_private && (commentsCount > 0 || photosCount > 0) && (
-        <div className="pt-2 border-t border-zinc-800/60 flex items-center gap-3 text-[11px] text-zinc-400">
+        <div className="flex items-center gap-3 pt-1 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-medium">
           {commentsCount > 0 && (
-            <span className="flex items-center gap-1 hover:text-zinc-200">
+            <div className="flex items-center gap-1">
               <MessageSquare className="w-3 h-3 text-zinc-500" />
               <span>{commentsCount} {commentsCount === 1 ? 'respuesta' : 'respuestas'}</span>
-            </span>
+            </div>
           )}
 
           {photosCount > 0 && (
-            <span className="flex items-center gap-1 text-indigo-400">
+            <div className="flex items-center gap-1 text-indigo-400">
               <ImageIcon className="w-3 h-3" />
               <span>{photosCount} {photosCount === 1 ? 'apunte' : 'apuntes'}</span>
-            </span>
+            </div>
           )}
         </div>
       )}

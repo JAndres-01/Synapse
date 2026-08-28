@@ -229,25 +229,25 @@ export function TaskDetailModal({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
         onClick={onClose}
       >
         <div
-          className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[92vh] flex flex-col shadow-2xl transition-transform"
+          className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
           style={{
             transform: `translateY(${dragOffsetY}px)`,
             transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag Handle */}
+          {/* Drag Handle & Header Top Area */}
           <div
-            className="w-full py-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
+            className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="w-10 h-1 rounded-full bg-zinc-700 active:bg-zinc-500 transition-colors" />
+            <div className="w-12 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-2.5" />
           </div>
 
           {/* Header del Modal */}

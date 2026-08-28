@@ -210,11 +210,11 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-x-hidden touch-none"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[92vh] overflow-hidden flex flex-col shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] overflow-hidden flex flex-col shadow-2xl transition-transform"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -222,7 +222,7 @@ export function CreateTaskModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ========================================================================= */}
-        {/* ÁREA DE ARRASTRE SUPERIOR EXCLUSIVA                                       */}
+        {/* ÁREA DE ARRASTRE SUPERIOR EXCLUSIVA (TOTALMENTE DESPEJADA DE NOTCH)       */}
         {/* ========================================================================= */}
         <div
           className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
@@ -231,7 +231,7 @@ export function CreateTaskModal({
           onTouchEnd={handleTouchEnd}
         >
           {/* Drag Handle */}
-          <div className="w-10 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-3" />
+          <div className="w-12 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-2.5" />
 
           {/* Header del Modal */}
           <div className="flex items-center justify-between">

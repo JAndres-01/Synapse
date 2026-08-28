@@ -34,94 +34,121 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const supabase = createClient()
 
-  const refreshProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setProfile(null)
-        return
-      }
+  const refreshProfile = async (targetUser?: User | null) => {
+    const currentUser = targetUser !== undefined ? targetUser : user
+    if (!currentUser) {
+      setProfile(null)
+      return
+    }
 
+    try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', currentUser.id)
         .single()
 
       if (data && !error) {
         setProfile(data as Profile)
-        // Guardar en caché offline
         if (offlineDB) {
           await offlineDB.profile.put(data as Profile)
         }
       }
     } catch (err) {
       console.error('Error cargando perfil:', err)
-      // Intentar cargar desde IndexedDB si estamos offline
-      if (offlineDB && user) {
-        const cached = await offlineDB.profile.get(user.id)
+      if (offlineDB && currentUser) {
+        const cached = await offlineDB.profile.get(currentUser.id)
         if (cached) setProfile(cached)
       }
     }
   }
 
-  const refreshClassroom = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setClassroom(null)
-        return
-      }
+  const refreshClassroom = async (targetUser?: User | null) => {
+    const currentUser = targetUser !== undefined ? targetUser : user
+    if (!currentUser) {
+      setClassroom(null)
+      return
+    }
 
+    try {
       // Buscar si el usuario ya es miembro de un salón
       const { data: memberData } = await supabase
         .from('classroom_members')
         .select('classroom_id, classrooms(*)')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .limit(1)
         .single()
 
       if (memberData && memberData.classrooms) {
-        setClassroom(memberData.classrooms as unknown as Classroom)
+        const room = memberData.classrooms as unknown as Classroom
+        setClassroom(room)
+        try {
+          localStorage.setItem('synapse_active_classroom', JSON.stringify(room))
+        } catch {}
       } else {
         // Verificar si es creador de un salón
         const { data: createdRoom } = await supabase
           .from('classrooms')
           .select('*')
-          .eq('created_by', user.id)
+          .eq('created_by', currentUser.id)
           .limit(1)
           .single()
 
         if (createdRoom) {
-          setClassroom(createdRoom as Classroom)
+          const room = createdRoom as Classroom
+          setClassroom(room)
+          try {
+            localStorage.setItem('synapse_active_classroom', JSON.stringify(room))
+          } catch {}
         } else {
           setClassroom(null)
+          try {
+            localStorage.removeItem('synapse_active_classroom')
+          } catch {}
         }
       }
     } catch (err) {
       console.error('Error cargando salón:', err)
+      // Recuperar de localStorage si no hay red
+      try {
+        const savedRoom = localStorage.getItem('synapse_active_classroom')
+        if (savedRoom) setClassroom(JSON.parse(savedRoom))
+      } catch {}
     }
   }
 
   useEffect(() => {
     const initializeAuth = async () => {
-      setLoading(true)
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const activeUser = session?.user ?? null
+        setUser(activeUser)
 
-      if (session?.user) {
-        await Promise.all([refreshProfile(), refreshClassroom()])
+        if (activeUser) {
+          await Promise.all([
+            refreshProfile(activeUser),
+            refreshClassroom(activeUser),
+          ])
+        }
+      } catch (err) {
+        console.error('Error inicializando sesión:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          await Promise.all([refreshProfile(), refreshClassroom()])
+        const activeUser = session?.user ?? null
+        setUser(activeUser)
+
+        if (activeUser) {
+          await Promise.all([
+            refreshProfile(activeUser),
+            refreshClassroom(activeUser),
+          ])
         } else {
           setProfile(null)
           setClassroom(null)
@@ -136,10 +163,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch {}
     setUser(null)
     setProfile(null)
     setClassroom(null)
+    if (offlineDB) {
+      try {
+        await offlineDB.profile.clear()
+      } catch {}
+    }
+    try {
+      localStorage.removeItem('synapse_active_classroom')
+    } catch {}
     window.location.href = '/auth'
   }
 

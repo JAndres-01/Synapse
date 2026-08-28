@@ -300,7 +300,7 @@ export default function SchedulePage() {
         </button>
       </div>
 
-      {/* Contenido según la vista seleccionada */}
+      {/* 2. Vistas del Horario */}
       {activeView === 'day' ? (
         <DayViewSchedule
           selectedDay={selectedDay}
@@ -317,7 +317,19 @@ export default function SchedulePage() {
           }
         />
       ) : (
-        <WeeklyMatrixSchedule schedules={schedules} subjects={subjects} />
+        <WeeklyMatrixSchedule
+          schedules={schedules}
+          subjects={subjects}
+          isAdmin={isAdmin}
+          onOpenAssignModal={(day, block, existing) =>
+            setAssignModalData({
+              isOpen: true,
+              day,
+              block,
+              existingSchedule: existing,
+            })
+          }
+        />
       )}
 
       {/* Modales de Gestión (Delegado) */}

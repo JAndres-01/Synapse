@@ -174,7 +174,7 @@ export function UrgentTasksCarousel({
             <div
               key={task.id}
               onClick={handleCardClick}
-              className={`min-w-[250px] max-w-[270px] p-3.5 rounded-2xl border transition-all shrink-0 flex flex-col justify-between cursor-pointer select-none space-y-2.5 relative shadow-sm ${
+              className={`min-w-[250px] max-w-[270px] p-3 rounded-2xl border transition-all shrink-0 flex flex-col cursor-pointer select-none gap-2 relative shadow-sm ${
                 isCompleted
                   ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
                   : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'

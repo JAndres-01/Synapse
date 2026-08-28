@@ -9,6 +9,7 @@ import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { offlineDB } from '@/lib/db'
+import { memoryCache } from '@/lib/cache'
 import {
   CheckSquare,
   Plus,
@@ -46,10 +47,10 @@ const getTaskCompletedDate = (t: Task, userId?: string): Date | null => {
 
 function TasksPageContent() {
   const { user, profile, classroom } = useAuth()
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [loading, setLoading] = useState(true)
+  const [tasks, setTasks] = useState<Task[]>(() => memoryCache.tasks)
+  const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
+  const [schedules, setSchedules] = useState<Schedule[]>(() => memoryCache.schedules)
+  const [loading, setLoading] = useState(() => memoryCache.tasks.length === 0 && memoryCache.subjects.length === 0)
   const [refreshing, setRefreshing] = useState(false)
 
   // 1. Selector de Panel Principal: "classroom" (Del Salón) vs "private" (Mis Pendientes)

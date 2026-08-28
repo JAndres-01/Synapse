@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { offlineDB } from '@/lib/db'
+import { memoryCache } from '@/lib/cache'
 import type { Schedule, Subject } from '@/types/database'
 import { SCHEDULE_BLOCKS } from '@/lib/utils'
 import { DayViewSchedule } from '@/components/schedule/DayViewSchedule'
@@ -21,9 +22,9 @@ import {
 
 export default function SchedulePage() {
   const { user, classroom, profile } = useAuth()
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [loading, setLoading] = useState(true)
+  const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
+  const [schedules, setSchedules] = useState<Schedule[]>(() => memoryCache.schedules)
+  const [loading, setLoading] = useState(() => memoryCache.subjects.length === 0 && memoryCache.schedules.length === 0)
   const [refreshing, setRefreshing] = useState(false)
   const [activeView, setActiveView] = useState<'day' | 'week'>('day')
 

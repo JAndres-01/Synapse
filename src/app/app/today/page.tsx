@@ -3,20 +3,29 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
-import type { Schedule, Task } from '@/types/database'
+import type { Schedule, Task, Subject, TaskType, TaskStatus, AttachmentType, TaskComment } from '@/types/database'
 import { LiveClassHeroCard } from '@/components/today/LiveClassHeroCard'
 import { UrgentTasksCarousel } from '@/components/today/UrgentTasksCarousel'
 import { DayScheduleTimeline } from '@/components/today/DayScheduleTimeline'
+import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { offlineDB } from '@/lib/db'
+import { memoryCache } from '@/lib/cache'
 import { Loader2, RefreshCw, Calendar, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 export default function TodayPage() {
   const { user, profile, classroom } = useAuth()
-  const [schedulesToday, setSchedulesToday] = useState<Schedule[]>([])
-  const [urgentTasks, setUrgentTasks] = useState<Task[]>([])
-  const [loading, setLoading] = useState(true)
+  const [schedulesToday, setSchedulesToday] = useState<Schedule[]>(() => memoryCache.schedules)
+  const [urgentTasks, setUrgentTasks] = useState<Task[]>(() => memoryCache.tasks)
+  const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
+  const [loading, setLoading] = useState(() => memoryCache.tasks.length === 0 && memoryCache.schedules.length === 0)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Modales interactivos directos (Apertura instantánea en 0ms sin saltar de página)
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null)
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const supabase = createClient()
   const isAdmin =
@@ -38,7 +47,7 @@ export default function TodayPage() {
       if (!offlineDB) return
       try {
         const todayNum = getTodayDayOfWeek()
-        const [cachedSchedules, cachedTasks] = await Promise.all([
+        const [cachedSchedules, cachedTasks, cachedSubjects] = await Promise.all([
           offlineDB.schedules
             .where('classroom_id')
             .equals(classroom.id)
@@ -48,10 +57,24 @@ export default function TodayPage() {
             .where('classroom_id')
             .equals(classroom.id)
             .toArray(),
+          offlineDB.subjects
+            .where('classroom_id')
+            .equals(classroom.id)
+            .toArray(),
         ])
 
-        if (cachedSchedules.length > 0) setSchedulesToday(cachedSchedules)
-        if (cachedTasks.length > 0) setUrgentTasks(cachedTasks)
+        if (cachedSchedules.length > 0) {
+          setSchedulesToday(cachedSchedules)
+          memoryCache.schedules = cachedSchedules
+        }
+        if (cachedTasks.length > 0) {
+          setUrgentTasks(cachedTasks)
+          memoryCache.tasks = cachedTasks
+        }
+        if (cachedSubjects.length > 0) {
+          setSubjects(cachedSubjects)
+          memoryCache.subjects = cachedSubjects
+        }
 
         if (cachedSchedules.length > 0 || cachedTasks.length > 0) {
           setLoading(false)
@@ -81,6 +104,7 @@ export default function TodayPage() {
 
       if (!schedErr && scheduleData) {
         setSchedulesToday(scheduleData as unknown as Schedule[])
+        memoryCache.schedules = scheduleData as unknown as Schedule[]
         if (offlineDB && scheduleData.length > 0) {
           const validRecords = scheduleData.filter((s) => !!s && !!s.id)
           if (validRecords.length > 0) {
@@ -92,19 +116,31 @@ export default function TodayPage() {
       // B. Cargar Tareas próximas
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
-        .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*)')
+        .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
-        .limit(20)
+        .limit(30)
 
       if (!taskErr && taskData) {
         setUrgentTasks(taskData as unknown as Task[])
+        memoryCache.tasks = taskData as unknown as Task[]
         if (offlineDB && taskData.length > 0) {
           const validTasks = taskData.filter((t) => !!t && !!t.id)
           if (validTasks.length > 0) {
             await offlineDB.tasks.bulkPut(validTasks as unknown as Task[])
           }
         }
+      }
+
+      // C. Cargar Materias
+      const { data: subjectsData } = await supabase
+        .from('subjects')
+        .select('*')
+        .eq('classroom_id', classroom.id)
+
+      if (subjectsData) {
+        setSubjects(subjectsData as Subject[])
+        memoryCache.subjects = subjectsData as Subject[]
       }
     } catch (err) {
       console.error('Error sincronizando datos de hoy:', err)
@@ -148,20 +184,34 @@ export default function TodayPage() {
   // Alternar estado de tarea completada / pendiente
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     if (!user) return
-    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const newStatus: TaskStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const nowIso = new Date().toISOString()
 
-    // Actualización optimista en interfaz
-    setUrgentTasks((prev) =>
-      prev.map((t) => {
+    // Actualización optimista en interfaz y en caché
+    setUrgentTasks((prev) => {
+      const updated = prev.map((t) => {
         if (t.id === taskId) {
           return {
             ...t,
-            user_status: [{ id: 'temp', user_id: user.id, task_id: taskId, status: newStatus, completed_at: new Date().toISOString() }],
+            user_status: [{ id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso }],
           }
         }
         return t
       })
-    )
+      memoryCache.tasks = updated
+      return updated
+    })
+
+    if (selectedTaskForDetail?.id === taskId) {
+      setSelectedTaskForDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              user_status: [{ id: 'temp-' + Date.now(), user_id: user.id, task_id: taskId, status: newStatus, completed_at: nowIso }],
+            }
+          : null
+      )
+    }
 
     try {
       await supabase.from('user_task_status').upsert(
@@ -169,7 +219,7 @@ export default function TodayPage() {
           user_id: user.id,
           task_id: taskId,
           status: newStatus,
-          completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+          completed_at: newStatus === 'completed' ? nowIso : null,
         },
         { onConflict: 'user_id,task_id' }
       )
@@ -179,6 +229,141 @@ export default function TodayPage() {
     } catch (err) {
       console.error('Error actualizando estado de tarea:', err)
       loadTodayData()
+    }
+  }
+
+  // Eliminar tarea desde Today
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      setUrgentTasks((prev) => {
+        const filtered = prev.filter((t) => t.id !== taskId)
+        memoryCache.tasks = filtered
+        return filtered
+      })
+      setSelectedTaskForDetail(null)
+
+      await supabase.from('tasks').delete().eq('id', taskId)
+      if (offlineDB) {
+        await offlineDB.tasks.delete(taskId)
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
+    } catch (err) {
+      console.error('Error eliminando tarea:', err)
+      loadTodayData()
+    }
+  }
+
+  // Comentarios en Today
+  const handleAddComment = async (
+    taskId: string,
+    content: string,
+    parentCommentId?: string | null,
+    imageUrl?: string | null,
+    fileName?: string | null,
+    fileType?: AttachmentType | null
+  ) => {
+    if (!user) return
+
+    try {
+      const { data: newComment, error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          content,
+          parent_id: parentCommentId || null,
+          image_url: imageUrl || null,
+          file_name: fileName || null,
+          file_type: fileType || null,
+        })
+        .select('*, author:profiles(*)')
+        .single()
+
+      if (error || !newComment) {
+        throw new Error(error?.message || 'Error publicando comentario')
+      }
+
+      setUrgentTasks((prev) =>
+        prev.map((t) => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              comments: [...(t.comments || []), newComment as TaskComment],
+            }
+          }
+          return t
+        })
+      )
+
+      if (selectedTaskForDetail?.id === taskId) {
+        setSelectedTaskForDetail((prev) =>
+          prev
+            ? {
+                ...prev,
+                comments: [...(prev.comments || []), newComment as TaskComment],
+              }
+            : null
+        )
+      }
+    } catch (err) {
+      console.error('Error agregando comentario:', err)
+      throw err
+    }
+  }
+
+  // Guardar tarea editada
+  const handleUpdateTask = async (
+    taskId: string,
+    taskData: {
+      title: string
+      description?: string
+      subject_id?: string | null
+      type: TaskType
+      due_date: string
+      attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
+    }
+  ) => {
+    if (!user) return
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: taskData.title,
+          description: taskData.description || null,
+          subject_id: taskData.subject_id || null,
+          type: taskData.type,
+          due_date: taskData.due_date || null,
+        })
+        .eq('id', taskId)
+
+      if (error) throw error
+
+      if (taskData.attachments && taskData.attachments.length > 0) {
+        await supabase.from('task_attachments').delete().eq('task_id', taskId)
+
+        const rowsToInsert = taskData.attachments.map((att) => ({
+          task_id: taskId,
+          uploaded_by: user.id,
+          file_type: att.file_type,
+          file_url: att.file_url,
+          file_name: att.file_name,
+        }))
+
+        await supabase.from('task_attachments').insert(rowsToInsert)
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('tasks_updated'))
+      }
+
+      await loadTodayData()
+    } catch (err) {
+      console.error('Error actualizando tarea:', err)
+      throw err
     }
   }
 
@@ -269,6 +454,7 @@ export default function TodayPage() {
       <UrgentTasksCarousel
         tasks={tasksThisWeek}
         onToggleTaskStatus={handleToggleTaskStatus}
+        onOpenDetail={(task) => setSelectedTaskForDetail(task)}
       />
 
       {/* 3. Cronograma de las 4 Clases de Hoy con Tareas Integradas */}
@@ -279,6 +465,40 @@ export default function TodayPage() {
           return new Date(t.due_date).toDateString() === new Date().toDateString()
         })}
         onToggleTaskStatus={handleToggleTaskStatus}
+        onOpenDetail={(task) => setSelectedTaskForDetail(task)}
+      />
+
+      {/* Modal de Detalle de Tarea (Apertura Instantánea en 0ms en Today) */}
+      <TaskDetailModal
+        task={selectedTaskForDetail}
+        onClose={() => setSelectedTaskForDetail(null)}
+        currentUser={user}
+        currentProfile={profile}
+        isAdmin={isAdmin}
+        onToggleStatus={handleToggleTaskStatus}
+        onDeleteTask={handleDeleteTask}
+        onEditTask={(t) => {
+          setSelectedTaskForDetail(null)
+          setTaskToEdit(t)
+          setShowCreateModal(true)
+        }}
+        onAddComment={handleAddComment}
+      />
+
+      {/* Modal para Editar Tarea si el delegado lo solicita desde Today */}
+      <CreateTaskModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false)
+          setTaskToEdit(null)
+        }}
+        subjects={subjects}
+        schedules={schedulesToday}
+        defaultMode="classroom"
+        isAdmin={isAdmin}
+        initialTask={taskToEdit}
+        onSaveTask={async () => {}}
+        onUpdateTask={handleUpdateTask}
       />
     </div>
   )

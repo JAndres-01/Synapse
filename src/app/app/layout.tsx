@@ -6,10 +6,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { FloatingIslandBar } from '@/components/navigation/FloatingIslandBar'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { memoryCache } from '@/lib/cache'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, classroom, loading } = useAuth()
-  const [pendingTasksCount, setPendingTasksCount] = useState(0)
+  const [pendingTasksCount, setPendingTasksCount] = useState<number>(() => memoryCache.pendingTasksCount)
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
@@ -55,13 +56,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }).length
 
         setPendingTasksCount(pending)
+        memoryCache.pendingTasksCount = pending
       }
     } catch (err) {
       console.error('Error cargando conteo de tareas:', err)
     }
   }, [classroom, user, supabase])
 
-  // Carga inicial y suscripción Realtime en vivo
+  // Carga inicial y suscripción Realtime en vivo (SIN dependencia en pathname para evitar reconexiones al cambiar pestañas)
   useEffect(() => {
     if (!classroom || !user) return
 
@@ -90,9 +92,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(tasksChannel)
       window.removeEventListener('tasks_updated', handleLocalUpdate)
     }
-  }, [classroom, user, supabase, fetchPendingCount, pathname])
+  }, [classroom, user, supabase, fetchPendingCount])
 
-  if (loading) {
+  if (loading && !classroom && !user) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[80vh]">
         <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
@@ -100,17 +102,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user || !classroom) {
-    return null
-  }
-
   return (
-    <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto relative overflow-hidden bg-zinc-950">
-      {/* Contenedor scrolleable con margen superior seguro para Dynamic Island/Notch y despeje inferior */}
-      <div className="flex-1 overflow-y-auto overscroll-y-contain px-5 pt-[calc(env(safe-area-inset-top,47px)+16px)] pb-24 no-scrollbar">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-zinc-800 relative">
+      {/* Contenedor Principal Centrado y Ajustado a Mobile First */}
+      <main className="w-full max-w-md mx-auto px-4 pt-4 pb-28 flex-1 flex flex-col">
         {children}
-      </div>
-      {/* Barra de navegación anclada fija sobre el marco */}
+      </main>
+
+      {/* Floating Island Navigation Bar */}
       <FloatingIslandBar pendingTasksCount={pendingTasksCount} />
     </div>
   )

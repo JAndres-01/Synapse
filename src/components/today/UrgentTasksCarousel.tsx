@@ -22,11 +22,13 @@ import confetti from 'canvas-confetti'
 interface UrgentTasksCarouselProps {
   tasks?: Task[]
   onToggleTaskStatus: (taskId: string, currentStatus: string) => Promise<void>
+  onOpenDetail?: (task: Task) => void
 }
 
 export function UrgentTasksCarousel({
   tasks = [],
   onToggleTaskStatus,
+  onOpenDetail,
 }: UrgentTasksCarouselProps) {
   const router = useRouter()
 
@@ -161,7 +163,11 @@ export function UrgentTasksCarousel({
           }
 
           const handleCardClick = () => {
-            router.push(`/app/tasks?taskId=${task.id}`)
+            if (onOpenDetail) {
+              onOpenDetail(task)
+            } else {
+              router.push(`/app/tasks?taskId=${task.id}`)
+            }
           }
 
           return (

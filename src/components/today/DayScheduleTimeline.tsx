@@ -11,12 +11,14 @@ interface DayScheduleTimelineProps {
   schedulesToday?: Schedule[]
   tasksToday?: Task[]
   onToggleTaskStatus?: (taskId: string, currentStatus: string) => Promise<void>
+  onOpenDetail?: (task: Task) => void
 }
 
 export function DayScheduleTimeline({
   schedulesToday = [],
   tasksToday = [],
   onToggleTaskStatus,
+  onOpenDetail,
 }: DayScheduleTimelineProps) {
   const router = useRouter()
 
@@ -140,7 +142,11 @@ export function DayScheduleTimeline({
                         }
 
                         const handleTaskClick = () => {
-                          router.push(`/app/tasks?taskId=${task.id}`)
+                          if (onOpenDetail) {
+                            onOpenDetail(task)
+                          } else {
+                            router.push(`/app/tasks?taskId=${task.id}`)
+                          }
                         }
 
                         return (

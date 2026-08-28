@@ -725,6 +725,7 @@ function TasksPageContent() {
         onClose={() => {
           setShowCreateModal(false)
           setTaskToEdit(null)
+          setSelectedTaskForDetail(null)
         }}
         subjects={subjects}
         schedules={schedules}
@@ -732,7 +733,12 @@ function TasksPageContent() {
         isAdmin={isAdmin}
         initialTask={taskToEdit}
         onSaveTask={handleSaveTask}
-        onUpdateTask={handleUpdateTask}
+        onUpdateTask={async (taskId, taskData) => {
+          await handleUpdateTask(taskId, taskData)
+          setShowCreateModal(false)
+          setTaskToEdit(null)
+          setSelectedTaskForDetail(null)
+        }}
       />
 
       {/* 6. Modal de Detalle de Tarea con Hilos & Fotos de Apuntes */}
@@ -745,7 +751,6 @@ function TasksPageContent() {
         onToggleStatus={handleToggleTaskStatus}
         onDeleteTask={handleDeleteTask}
         onEditTask={(t) => {
-          setSelectedTaskForDetail(null)
           setTaskToEdit(t)
           setShowCreateModal(true)
         }}

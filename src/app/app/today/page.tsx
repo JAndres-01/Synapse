@@ -496,7 +496,6 @@ export default function TodayPage() {
         onToggleStatus={handleToggleTaskStatus}
         onDeleteTask={handleDeleteTask}
         onEditTask={(t) => {
-          setSelectedTaskForDetail(null)
           setTaskToEdit(t)
           setShowCreateModal(true)
         }}
@@ -509,6 +508,7 @@ export default function TodayPage() {
         onClose={() => {
           setShowCreateModal(false)
           setTaskToEdit(null)
+          setSelectedTaskForDetail(null)
         }}
         subjects={subjects}
         schedules={schedulesToday}
@@ -516,7 +516,12 @@ export default function TodayPage() {
         isAdmin={isAdmin}
         initialTask={taskToEdit}
         onSaveTask={async () => {}}
-        onUpdateTask={handleUpdateTask}
+        onUpdateTask={async (taskId, taskData) => {
+          await handleUpdateTask(taskId, taskData)
+          setShowCreateModal(false)
+          setTaskToEdit(null)
+          setSelectedTaskForDetail(null)
+        }}
       />
     </div>
   )

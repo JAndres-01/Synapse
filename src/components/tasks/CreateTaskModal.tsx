@@ -371,7 +371,7 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div

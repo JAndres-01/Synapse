@@ -834,7 +834,7 @@ export function CreateTaskModal({
               </div>
             ) : (
               <p className="text-[11px] text-zinc-500 italic">
-                Puedes adjuntar guías PDF, rúbricas o fotos de pizarrones (hasta 5MB c/u).
+                Puedes adjuntar PDFs e imágenes (hasta 15MB c/u).
               </p>
             )}
           </div>

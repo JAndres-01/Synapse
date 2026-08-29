@@ -173,61 +173,28 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
   return (
     <div
       onClick={() => onOpenDetail(task)}
-      className={`p-3 rounded-2xl border transition-all cursor-pointer select-none space-y-2 relative ${
-        isCompleted
-          ? 'bg-zinc-950/40 border-zinc-900 opacity-50'
-          : 'bg-zinc-900/40 border-zinc-800/60 hover:border-zinc-700/80 hover:bg-zinc-900/70 active:scale-[0.99]'
+      className={`group py-3 px-1.5 transition-all cursor-pointer select-none flex items-start gap-3 border-b border-zinc-900/80 hover:bg-zinc-900/30 active:bg-zinc-900/50 rounded-xl ${
+        isCompleted ? 'opacity-40' : ''
       }`}
     >
-      {/* Header: Tipo, Materia (izq) y Fecha Límite (der) */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {task.is_private ? (
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
-              <Lock className="w-2.5 h-2.5 text-zinc-400" />
-              <span>Privada</span>
-            </span>
-          ) : (
-            getTypeBadge(task.type)
-          )}
+      {/* Checkbox minimalista */}
+      <button
+        type="button"
+        onClick={handleCheck}
+        aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
+        className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+          isCompleted
+            ? 'bg-zinc-200 border-zinc-200 text-zinc-950'
+            : 'border-zinc-600 hover:border-zinc-400 bg-transparent active:scale-90'
+        }`}
+      >
+        {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
+      </button>
 
-          {task.subject ? (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 min-w-0 flex-1">
-              <span
-                className="w-1.5 h-1.5 rounded-full shrink-0 border border-zinc-700"
-                style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
-              />
-              <span className="truncate">{task.subject.name}</span>
-            </div>
-          ) : (
-            <span className="text-[11px] text-zinc-500 italic shrink-0">General</span>
-          )}
-        </div>
-
-        {/* Fecha Límite */}
-        <span
-          className={`text-[10px] font-mono shrink-0 whitespace-nowrap text-right pl-1 ${dueInfo.colorClass}`}
-        >
-          {dueInfo.text}
-        </span>
-      </div>
-
-      {/* Contenido Principal: Checkbox y Título */}
-      <div className="flex items-start gap-2.5 pt-0.5">
-        <button
-          type="button"
-          onClick={handleCheck}
-          aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-          className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
-            isCompleted
-              ? 'bg-zinc-100 border-zinc-100 text-zinc-950'
-              : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/60 active:scale-90'
-          }`}
-        >
-          {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
-        </button>
-
-        <div className="flex-1 min-w-0">
+      {/* Contenido de la tarea */}
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Título y Fecha en una sola línea superior */}
+        <div className="flex items-baseline justify-between gap-2">
           <h3
             className={`text-sm font-medium tracking-tight leading-snug break-words ${
               isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
@@ -236,39 +203,84 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
             {task.title}
           </h3>
 
-          {task.description && (
-            <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5 leading-relaxed">
-              {task.description}
-            </p>
+          {dueInfo.text && (
+            <span
+              className={`text-[11px] font-mono shrink-0 whitespace-nowrap text-right ${dueInfo.colorClass}`}
+            >
+              {dueInfo.text}
+            </span>
           )}
         </div>
-      </div>
 
-      {/* Footer: Adjuntos, Imágenes, Respuestas en tono minimalista */}
-      {(attachmentsCount > 0 || (!task.is_private && (photosCount > 0 || commentsCount > 0))) && (
-        <div className="flex items-center gap-3 pt-1 border-t border-zinc-800/40 text-[10px] text-zinc-500 font-medium flex-wrap">
-          {attachmentsCount > 0 && (
-            <div className="flex items-center gap-1 text-zinc-400">
-              <Paperclip className="w-3 h-3 text-zinc-500" />
-              <span>{attachmentsCount} {attachmentsCount === 1 ? 'adjunto' : 'adjuntos'}</span>
+        {/* Descripción corta si existe */}
+        {task.description && !isCompleted && (
+          <p className="text-xs text-zinc-400 line-clamp-1 leading-relaxed">
+            {task.description}
+          </p>
+        )}
+
+        {/* Metadatos en línea: Materia, Tipo, Privada, Adjuntos, Comentarios */}
+        <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-medium flex-wrap pt-0.5">
+          {task.is_private && (
+            <span className="flex items-center gap-1 text-zinc-400">
+              <Lock className="w-2.5 h-2.5" />
+              <span>Privada</span>
+            </span>
+          )}
+
+          {task.subject && (
+            <div className="flex items-center gap-1.5 text-zinc-400">
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: task.subject.color || '#a1a1aa' }}
+              />
+              <span className="truncate max-w-[140px]">{task.subject.name}</span>
             </div>
+          )}
+
+          {task.type === 'grupal' && (
+            <span className="flex items-center gap-1 text-zinc-400">
+              <Users className="w-2.5 h-2.5" />
+              <span>Grupal</span>
+            </span>
+          )}
+
+          {task.type === 'proyecto' && (
+            <span className="flex items-center gap-1 text-zinc-400">
+              <Rocket className="w-2.5 h-2.5" />
+              <span>Proyecto</span>
+            </span>
+          )}
+
+          {task.type === 'examen' && (
+            <span className="flex items-center gap-1 text-zinc-400">
+              <FileText className="w-2.5 h-2.5" />
+              <span>Examen</span>
+            </span>
+          )}
+
+          {attachmentsCount > 0 && (
+            <span className="flex items-center gap-1 text-zinc-500">
+              <Paperclip className="w-2.5 h-2.5" />
+              <span>{attachmentsCount}</span>
+            </span>
           )}
 
           {!task.is_private && photosCount > 0 && (
-            <div className="flex items-center gap-1 text-zinc-400">
-              <ImageIcon className="w-3 h-3 text-zinc-500" />
-              <span>{photosCount} {photosCount === 1 ? 'foto' : 'fotos'}</span>
-            </div>
+            <span className="flex items-center gap-1 text-zinc-500">
+              <ImageIcon className="w-2.5 h-2.5" />
+              <span>{photosCount}</span>
+            </span>
           )}
 
           {!task.is_private && commentsCount > 0 && (
-            <div className="flex items-center gap-1 text-zinc-400">
-              <MessageSquare className="w-3 h-3 text-zinc-500" />
-              <span>{commentsCount} {commentsCount === 1 ? 'comentario' : 'comentarios'}</span>
-            </div>
+            <span className="flex items-center gap-1 text-zinc-500">
+              <MessageSquare className="w-2.5 h-2.5" />
+              <span>{commentsCount}</span>
+            </span>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

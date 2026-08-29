@@ -115,6 +115,7 @@ export function TaskDetailModal({
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [expandedThreads, setExpandedThreads] = useState<Record<string, boolean>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Gestos táctiles
   const [dragOffsetY, setDragOffsetY] = useState(0)
@@ -133,18 +134,6 @@ export function TaskDetailModal({
     task &&
     ((task.is_private && currentUser && task.created_by === currentUser.id) ||
       (!task.is_private && isAdmin))
-
-  useEffect(() => {
-    if (task) {
-      document.body.classList.add('body-scroll-lock')
-    } else {
-      document.body.classList.remove('body-scroll-lock')
-      setDragOffsetY(0)
-    }
-    return () => {
-      document.body.classList.remove('body-scroll-lock')
-    }
-  }, [task])
 
   const comments = task?.comments || []
 
@@ -185,8 +174,6 @@ export function TaskDetailModal({
   }, [task])
 
   if (!task) return null
-
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartYRef.current = e.touches[0].clientY

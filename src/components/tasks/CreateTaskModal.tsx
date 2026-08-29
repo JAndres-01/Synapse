@@ -155,7 +155,6 @@ export function CreateTaskModal({
   const [type, setType] = useState<TaskType>('individual')
   const [attachments, setAttachments] = useState<AttachedFileItem[]>([])
   const [fileError, setFileError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Modo de programación: 'schedule' (Mini calendario de clases) vs 'manual' (Fecha manual)
   const [scheduleMode, setScheduleMode] = useState<'schedule' | 'manual'>('schedule')
@@ -170,7 +169,9 @@ export function CreateTaskModal({
   const [dueTime, setDueTime] = useState('23:59')
   const [loading, setLoading] = useState(false)
 
-  // Gestos táctiles
+  // Referencias y gestos táctiles
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const [dragOffsetY, setDragOffsetY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
@@ -286,8 +287,6 @@ export function CreateTaskModal({
   }, [isOpen])
 
   if (!isOpen) return null
-
-  const formRef = useRef<HTMLFormElement>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartYRef.current = e.touches[0].clientY

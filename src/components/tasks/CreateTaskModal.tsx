@@ -21,6 +21,7 @@ import {
   Check,
   CalendarCheck,
   ChevronDown,
+  Tag,
 } from 'lucide-react'
 
 export interface AttachedFileItem {
@@ -497,7 +498,7 @@ export function CreateTaskModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <Calendar className="w-3.5 h-3.5 text-white" />
                 <span className="font-medium">Programación de Entrega</span>
               </div>
 
@@ -612,7 +613,7 @@ export function CreateTaskModal({
                     {selectedSlotInfo && (
                       <div className="p-2 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between text-xs animate-fade-in">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <CalendarCheck className="w-3.5 h-3.5 text-white shrink-0" />
                           <span className="text-zinc-200 font-medium truncate">
                             {selectedSlotInfo.dateLabel} • {selectedSlotInfo.time}
                           </span>
@@ -680,7 +681,10 @@ export function CreateTaskModal({
 
           {/* 4. Tipo de Evaluación */}
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-zinc-300 block">Tipo</span>
+            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+              <Tag className="w-3.5 h-3.5 text-white" />
+              <span className="font-medium">Tipo</span>
+            </div>
             <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-800/60">
               {[
                 { id: 'individual', label: 'Individual', icon: User },
@@ -790,6 +794,8 @@ export function CreateTaskModal({
             <button
               type="submit"
               disabled={loading || !title.trim() || title.length > MAX_TITLE_LENGTH}
+              onClick={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
               className="w-full py-3 px-4 rounded-xl bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
             >
               {loading ? (

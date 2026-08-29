@@ -13,11 +13,23 @@ interface FloatingIslandBarProps {
 export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarProps) {
   const pathname = usePathname()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isClickBlocked, setIsClickBlocked] = useState(false)
 
   // Observar si algún modal está activo en la pantalla (usando body-scroll-lock)
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null
+
     const checkModal = () => {
-      setIsModalOpen(document.body.classList.contains('body-scroll-lock'))
+      const locked = document.body.classList.contains('body-scroll-lock')
+      setIsModalOpen(locked)
+      if (locked) {
+        setIsClickBlocked(true)
+      } else {
+        // Debounce: mantener los clicks bloqueados durante 350ms para absorber ghost-clicks de iOS
+        timer = setTimeout(() => {
+          setIsClickBlocked(false)
+        }, 350)
+      }
     }
 
     checkModal()
@@ -31,7 +43,10 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
       attributeFilter: ['class'],
     })
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      if (timer) clearTimeout(timer)
+    }
   }, [])
 
   const tabs = [
@@ -62,15 +77,22 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
     },
   ]
 
+  const shouldHide = isModalOpen || isClickBlocked
+
   return (
     <nav
       aria-label="Navegación principal"
       className={cn(
-        'fixed bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] left-0 right-0 z-40 max-w-md mx-auto px-4 pointer-events-none transition-all duration-200 ease-out',
-        isModalOpen ? 'opacity-0 translate-y-10 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100'
+        'fixed bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] left-0 right-0 z-40 max-w-md mx-auto px-4 transition-all duration-200 ease-out',
+        shouldHide ? 'opacity-0 translate-y-10 scale-95 pointer-events-none' : 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
       )}
     >
-      <div className="flex items-center justify-around px-3 py-2 rounded-2xl bg-zinc-900/95 backdrop-blur-lg border border-zinc-800 shadow-2xl shadow-black pointer-events-auto">
+      <div
+        className={cn(
+          'flex items-center justify-around px-3 py-2 rounded-2xl bg-zinc-900/95 backdrop-blur-lg border border-zinc-800 shadow-2xl shadow-black transition-all',
+          shouldHide ? 'pointer-events-none invisible' : 'pointer-events-auto'
+        )}
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (

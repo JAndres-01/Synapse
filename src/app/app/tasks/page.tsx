@@ -810,52 +810,70 @@ function TasksPageContent() {
         </button>
       </header>
 
-      {/* 1. Selector de Ámbito: Tareas del Salón vs Mis Pendientes */}
-      <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-800/60">
+      {/* 1. Selector de Ámbito: Tareas del Salón vs Mis Pendientes con Colores de Acento */}
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-950 border border-zinc-800">
         <button
           type="button"
           onClick={() => setActiveTab('classroom')}
-          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
             activeTab === 'classroom'
-              ? 'bg-zinc-800 text-white shadow-xs font-semibold'
-              : 'text-zinc-400 hover:text-zinc-200'
+              ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
+              : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
           }`}
         >
+          <School className={`w-3.5 h-3.5 ${activeTab === 'classroom' ? 'text-indigo-400' : 'text-zinc-500'}`} />
           <span>Del Salón</span>
           {classroomTasksCount > 0 && (
-            <span className="text-[10px] text-zinc-400 font-mono">({classroomTasksCount})</span>
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${
+                activeTab === 'classroom'
+                  ? 'bg-indigo-500/25 text-indigo-200 border-indigo-500/40'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}
+            >
+              {classroomTasksCount}
+            </span>
           )}
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('private')}
-          className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
             activeTab === 'private'
-              ? 'bg-zinc-800 text-white shadow-xs font-semibold'
-              : 'text-zinc-400 hover:text-zinc-200'
+              ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
+              : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
           }`}
         >
+          <Lock className={`w-3.5 h-3.5 ${activeTab === 'private' ? 'text-amber-400' : 'text-zinc-500'}`} />
           <span>Mis Pendientes</span>
           {privateTasksCount > 0 && (
-            <span className="text-[10px] text-zinc-400 font-mono">({privateTasksCount})</span>
+            <span
+              className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full border ${
+                activeTab === 'private'
+                  ? 'bg-amber-500/25 text-amber-200 border-amber-500/40'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+              }`}
+            >
+              {privateTasksCount}
+            </span>
           )}
         </button>
       </div>
 
-      {/* 2. Filtros integrados en una sola fila minimalista */}
-      <div className="flex items-center justify-between gap-2 pt-0.5">
+      {/* 2. Filtros: Estados arriba y Materias abajo */}
+      <div className="space-y-2 pt-0.5">
         {/* Píldoras de Estado */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 w-fit">
           {(['pending', 'completed', 'all'] as const).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`py-1 px-2.5 rounded-lg text-xs font-medium transition-all ${
+              className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
                 statusFilter === st
-                  ? 'bg-zinc-800 text-white font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-zinc-800 text-white shadow-xs font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               {st === 'pending'
@@ -867,13 +885,13 @@ function TasksPageContent() {
           ))}
         </div>
 
-        {/* Dropdown Materias sutil */}
+        {/* Dropdown Materias abajo de los filtros de estado */}
         {subjects.length > 0 && (
-          <div className="relative">
+          <div className="relative w-full">
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="appearance-none text-xs py-1 pl-2.5 pr-6 rounded-lg bg-zinc-900/60 border border-zinc-800/60 text-zinc-400 focus:outline-none focus:border-zinc-600 font-medium"
+              className="w-full appearance-none text-xs py-2 pl-3 pr-8 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 font-medium transition-colors"
             >
               <option value="all">Todas las materias</option>
               {subjects.map((sub) => (
@@ -882,7 +900,7 @@ function TasksPageContent() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 text-zinc-500 absolute right-2 top-2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
           </div>
         )}
       </div>

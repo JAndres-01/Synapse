@@ -471,42 +471,42 @@ export function CreateTaskModal({
 
         {/* Selector de Ámbito (Salón vs Privado) */}
         {!initialTask && isAdmin && (
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 shrink-0">
+          <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 shrink-0">
             <button
               type="button"
               onClick={() => setMode('classroom')}
-              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
+              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
                 mode === 'classroom'
                   ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
               }`}
             >
-              <School className={`w-3 h-3 ${mode === 'classroom' ? 'text-indigo-400' : 'text-zinc-500'}`} />
+              <School className={`w-3.5 h-3.5 ${mode === 'classroom' ? 'text-indigo-400' : 'text-zinc-500'}`} />
               <span>Del Salón</span>
             </button>
 
             <button
               type="button"
               onClick={() => setMode('private')}
-              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
+              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
                 mode === 'private'
                   ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
               }`}
             >
-              <Lock className={`w-3 h-3 ${mode === 'private' ? 'text-amber-400' : 'text-zinc-500'}`} />
+              <Lock className={`w-3.5 h-3.5 ${mode === 'private' ? 'text-amber-400' : 'text-zinc-500'}`} />
               <span>Mis Pendientes</span>
             </button>
           </div>
         )}
 
-        {/* Formulario */}
+        {/* Formulario con Ritmo y Simetría Consistente */}
         <form
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto space-y-4 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
+          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
         >
           {/* 1. Título del Pendiente / Tarea */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <input
               id="task-title"
               type="text"
@@ -519,16 +519,16 @@ export function CreateTaskModal({
                   ? 'Título de la tarea o entrega...'
                   : 'Actividad o pendiente personal por realizar...'
               }
-              className="w-full px-3.5 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
+              className="w-full h-11 px-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
             />
           </div>
 
           {/* 2. Programación de Entrega: Mini Calendario Semanal vs Fecha Manual */}
-          <div className="space-y-2 pt-1 border-t border-zinc-900/80">
+          <div className="space-y-2 pt-3 border-t border-zinc-900/80">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <Calendar className="w-3.5 h-3.5 text-white" />
-                <span className="font-medium">Programación de Entrega</span>
+              <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+                <Calendar className="w-3.5 h-3.5 text-white shrink-0" />
+                <span>Programación de Entrega</span>
               </div>
 
               {/* Selector de Modo */}
@@ -562,7 +562,7 @@ export function CreateTaskModal({
             {scheduleMode === 'schedule' && (
               <div className="space-y-2">
                 {schedules.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500 italic text-center py-2 bg-zinc-900/30 rounded-xl border border-zinc-800/60">
+                  <p className="text-[11px] text-zinc-500 italic text-center py-2.5 bg-zinc-900/30 rounded-xl border border-zinc-800/60">
                     No hay clases registradas. Usa la opción de <strong>Fecha manual</strong>.
                   </p>
                 ) : (
@@ -576,7 +576,7 @@ export function CreateTaskModal({
                         return (
                           <div
                             key={d.day}
-                            className={`p-1 rounded-xl flex flex-col gap-1 border transition-all ${
+                            className={`p-1.5 rounded-xl flex flex-col gap-1 border transition-all ${
                               isToday
                                 ? 'bg-indigo-950/20 border-indigo-500/40'
                                 : 'bg-zinc-900/30 border-zinc-800/50'
@@ -631,14 +631,14 @@ export function CreateTaskModal({
 
                     {/* Confirmación Visual de la Clase Seleccionada */}
                     {selectedSlotInfo && (
-                      <div className="p-2 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between text-xs animate-fade-in">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="p-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between text-xs animate-fade-in">
+                        <div className="flex items-center gap-2 min-w-0">
                           <CalendarCheck className="w-3.5 h-3.5 text-white shrink-0" />
                           <span className="text-zinc-200 font-medium truncate">
                             {selectedSlotInfo.dateLabel} • {selectedSlotInfo.time}
                           </span>
                         </div>
-                        <span className="text-[10px] text-zinc-400 font-semibold truncate shrink-0 ml-1">
+                        <span className="text-[10px] text-zinc-400 font-semibold truncate shrink-0 ml-2">
                           {selectedSlotInfo.subjectName}
                         </span>
                       </div>
@@ -648,12 +648,12 @@ export function CreateTaskModal({
               </div>
             )}
 
-            {/* B. FECHA MANUAL (Centrado perfecto garantizado en iOS) */}
+            {/* B. FECHA MANUAL (Centrado simétrico y perfecto) */}
             {scheduleMode === 'manual' && (
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-400 font-medium block text-center">Fecha límite</span>
-                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
+                  <div className="relative flex items-center justify-center bg-zinc-900/50 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
                     <span className="text-xs font-semibold text-zinc-100 select-none text-center truncate">
                       {formatDisplayDate(dueDate)}
                     </span>
@@ -667,7 +667,7 @@ export function CreateTaskModal({
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-400 font-medium block text-center">Hora límite</span>
-                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
+                  <div className="relative flex items-center justify-center bg-zinc-900/50 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
                     <span className="text-xs font-semibold text-zinc-100 select-none text-center truncate">
                       {formatDisplayTime(dueTime)}
                     </span>
@@ -685,17 +685,17 @@ export function CreateTaskModal({
 
           {/* 3. Materia Asociada (Solo visible en modo Fecha Manual) */}
           {scheduleMode === 'manual' && subjects.length > 0 && (
-            <div className="space-y-1.5 pt-1 border-t border-zinc-900/80">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <BookOpen className="w-3.5 h-3.5 text-white" />
-                <span className="font-medium">Materia</span>
+            <div className="space-y-2 pt-3 border-t border-zinc-900/80">
+              <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+                <BookOpen className="w-3.5 h-3.5 text-white shrink-0" />
+                <span>Materia</span>
               </div>
               <div className="relative w-full">
                 <select
                   id="task-subject"
                   value={subjectId}
                   onChange={(e) => setSubjectId(e.target.value)}
-                  className="w-full appearance-none text-xs py-2.5 pl-3 pr-8 rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-zinc-600 font-medium transition-colors"
+                  className="w-full h-11 appearance-none text-xs px-3.5 pr-9 rounded-xl bg-zinc-900/50 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-zinc-500 font-medium transition-colors"
                 >
                   <option value="">(Sin materia / General)</option>
                   {subjects.map((sub) => (
@@ -704,18 +704,18 @@ export function CreateTaskModal({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-3 pointer-events-none" />
+                <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3.5 top-3.5 pointer-events-none" />
               </div>
             </div>
           )}
 
           {/* 4. Tipo de Evaluación */}
-          <div className="space-y-1.5 pt-1 border-t border-zinc-900/80">
-            <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-              <Tag className="w-3.5 h-3.5 text-white" />
-              <span className="font-medium">Tipo</span>
+          <div className="space-y-2 pt-3 border-t border-zinc-900/80">
+            <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+              <Tag className="w-3.5 h-3.5 text-white shrink-0" />
+              <span>Tipo</span>
             </div>
-            <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-800/60">
+            <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
               {[
                 { id: 'individual', label: 'Individual', icon: User },
                 { id: 'grupal', label: 'Grupal', icon: Users },
@@ -730,7 +730,7 @@ export function CreateTaskModal({
                     key={item.id}
                     type="button"
                     onClick={() => setType(item.id as TaskType)}
-                    className={`flex-1 py-1.5 px-1.5 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
+                    className={`py-2 px-1 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
                       isSelected
                         ? 'bg-zinc-800 text-white font-semibold shadow-xs'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -745,7 +745,7 @@ export function CreateTaskModal({
           </div>
 
           {/* 5. Notas opcionales */}
-          <div className="space-y-1 pt-1 border-t border-zinc-900/80">
+          <div className="space-y-2 pt-3 border-t border-zinc-900/80">
             <textarea
               id="task-description"
               value={description}
@@ -753,15 +753,15 @@ export function CreateTaskModal({
               maxLength={MAX_DESC_LENGTH}
               rows={2}
               placeholder="Instrucciones o notas adicionales (opcional)..."
-              className="w-full px-3.5 py-2 rounded-xl bg-zinc-900/40 border border-zinc-800/80 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 resize-none transition-colors"
+              className="w-full p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none transition-colors"
             />
           </div>
 
           {/* 6. Adjuntos & Fotos */}
-          <div className="space-y-1.5 pt-1 border-t border-zinc-900/80">
+          <div className="space-y-2 pt-3 border-t border-zinc-900/80">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <Paperclip className="w-3.5 h-3.5 text-white" />
+              <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+                <Paperclip className="w-3.5 h-3.5 text-white shrink-0" />
                 <span>Adjuntos ({attachments.length}/{MAX_ATTACHMENTS})</span>
               </div>
 
@@ -787,7 +787,7 @@ export function CreateTaskModal({
             />
 
             {fileError && (
-              <div className="flex items-center gap-1.5 text-[11px] text-amber-300 bg-amber-950/30 p-2 rounded-xl border border-amber-800/40">
+              <div className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/30 p-2.5 rounded-xl border border-amber-800/40">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{fileError}</span>
               </div>
@@ -798,7 +798,7 @@ export function CreateTaskModal({
                 {attachments.map((att, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-300 shrink-0"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-300 shrink-0"
                   >
                     {att.file_type === 'image' ? (
                       <ImageIcon className="w-3 h-3 text-zinc-400 shrink-0" />
@@ -826,7 +826,7 @@ export function CreateTaskModal({
               disabled={loading || !title.trim() || title.length > MAX_TITLE_LENGTH}
               onClick={(e) => e.stopPropagation()}
               onTouchEnd={(e) => e.stopPropagation()}
-              className="w-full py-3 px-4 rounded-xl bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
+              className="w-full py-3.5 px-4 rounded-xl bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />

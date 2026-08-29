@@ -369,7 +369,6 @@ function TasksPageContent() {
     }
   }
 
-  // Guardar nueva tarea (Del Salón o Mis Pendientes)
   // Guardar nueva tarea (Del Salón o Mis Pendientes) con renderizado optimista instantáneo (0ms)
   const handleSaveTask = async (taskData: {
     title: string
@@ -380,7 +379,19 @@ function TasksPageContent() {
     is_private: boolean
     attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
   }) => {
-    if (!classroom || !user) return
+    // Obtener sesión activa y salón garantizados
+    const { data: sessionData } = await supabase.auth.getSession()
+    const activeUserId = user?.id || sessionData?.session?.user?.id || (typeof window !== 'undefined' ? (() => {
+      try { return JSON.parse(localStorage.getItem('synapse_cached_user') || '{}')?.id } catch { return null }
+    })() : null)
+
+    const activeClassroomId = classroom?.id || (typeof window !== 'undefined' ? (() => {
+      try { return JSON.parse(localStorage.getItem('synapse_active_classroom') || '{}')?.id } catch { return null }
+    })() : null)
+
+    if (!activeClassroomId || !activeUserId) {
+      throw new Error('No se encontró salón o usuario autenticado para guardar la tarea.')
+    }
 
     const tempId = 'temp-' + Date.now()
     const nowIso = new Date().toISOString()
@@ -389,8 +400,8 @@ function TasksPageContent() {
     // 1. Inyección Optimista Instantánea (0ms)
     const optimisticTask: Task = {
       id: tempId,
-      classroom_id: classroom.id,
-      created_by: user.id,
+      classroom_id: activeClassroomId,
+      created_by: activeUserId,
       subject_id: taskData.subject_id || null,
       title: taskData.title,
       description: taskData.description || null,
@@ -402,7 +413,7 @@ function TasksPageContent() {
       attachments: (taskData.attachments || []).map((a, i) => ({
         id: `att-temp-${i}`,
         task_id: tempId,
-        uploaded_by: user.id,
+        uploaded_by: activeUserId,
         file_type: a.file_type,
         file_url: a.file_url,
         file_name: a.file_name,
@@ -427,8 +438,8 @@ function TasksPageContent() {
       const { data: newTask, error } = await supabase
         .from('tasks')
         .insert({
-          classroom_id: classroom.id,
-          created_by: user.id,
+          classroom_id: activeClassroomId,
+          created_by: activeUserId,
           subject_id: taskData.subject_id || null,
           title: taskData.title,
           description: taskData.description || null,
@@ -446,13 +457,17 @@ function TasksPageContent() {
       if (taskData.attachments && taskData.attachments.length > 0) {
         const rowsToInsert = taskData.attachments.map((att) => ({
           task_id: newTask.id,
-          uploaded_by: user.id,
+          uploaded_by: activeUserId,
           file_type: att.file_type,
           file_url: att.file_url,
           file_name: att.file_name,
         }))
 
         await supabase.from('task_attachments').insert(rowsToInsert)
+      }
+
+      if (offlineDB && newTask) {
+        await offlineDB.tasks.put(newTask as Task)
       }
 
       // Reconciliar id temporal con el id real de la base de datos
@@ -484,7 +499,12 @@ function TasksPageContent() {
       attachments?: Array<{ file_name: string; file_url: string; file_type: AttachmentType }>
     }
   ) => {
-    if (!user) return
+    const { data: sessionData } = await supabase.auth.getSession()
+    const activeUserId = user?.id || sessionData?.session?.user?.id || (typeof window !== 'undefined' ? (() => {
+      try { return JSON.parse(localStorage.getItem('synapse_cached_user') || '{}')?.id } catch { return null }
+    })() : null)
+
+    if (!activeUserId) return
 
     const selectedSubject = subjects.find((s) => s.id === taskData.subject_id)
 
@@ -504,7 +524,7 @@ function TasksPageContent() {
               ? taskData.attachments.map((a, i) => ({
                   id: `att-temp-${i}`,
                   task_id: taskId,
-                  uploaded_by: user.id,
+                  uploaded_by: activeUserId,
                   file_type: a.file_type,
                   file_url: a.file_url,
                   file_name: a.file_name,
@@ -557,7 +577,7 @@ function TasksPageContent() {
 
         const rowsToInsert = taskData.attachments.map((att) => ({
           task_id: taskId,
-          uploaded_by: user.id,
+          uploaded_by: activeUserId,
           file_type: att.file_type,
           file_url: att.file_url,
           file_name: att.file_name,

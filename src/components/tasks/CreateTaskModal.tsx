@@ -340,12 +340,24 @@ export function CreateTaskModal({
 
     try {
       setLoading(true)
+      setFileError(null)
 
-      // Convertir fecha y hora local exactamente a ISO UTC para la base de datos
-      const [year, month, day] = dueDate.split('-').map(Number)
-      const [hour, minute] = dueTime.split(':').map(Number)
-      const localDate = new Date(year, month - 1, day, hour, minute, 0)
-      const combinedDateTime = localDate.toISOString()
+      // Convertir fecha y hora local exactamente a ISO UTC de manera 100% segura
+      let combinedDateTime = new Date().toISOString()
+      if (dueDate) {
+        try {
+          const parts = dueDate.split('-').map(Number)
+          const timeParts = (dueTime || '23:59').split(':').map(Number)
+          if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            const h = timeParts.length >= 2 && !isNaN(timeParts[0]) ? timeParts[0] : 23
+            const m = timeParts.length >= 2 && !isNaN(timeParts[1]) ? timeParts[1] : 59
+            const localDate = new Date(parts[0], parts[1] - 1, parts[2], h, m, 0)
+            combinedDateTime = localDate.toISOString()
+          }
+        } catch {
+          combinedDateTime = new Date().toISOString()
+        }
+      }
 
       const taskPayload = {
         title: title.trim(),
@@ -367,8 +379,9 @@ export function CreateTaskModal({
       setDescription('')
       setAttachments([])
       onClose()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error guardando tarea:', err)
+      setFileError(err?.message || 'Ocurrió un error al guardar la tarea. Intenta de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -391,36 +404,36 @@ export function CreateTaskModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-4 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-4 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Handle & Header Top Area */}
+        {/* Drag Handle */}
         <div
           className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-12 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-2.5" />
+          <div className="w-10 h-1.5 rounded-full bg-zinc-800 active:bg-zinc-600 mx-auto transition-colors mb-2" />
         </div>
 
         {/* Encabezado del Modal */}
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             {initialTask ? (
-              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
+              <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
                 <Pencil className="w-4 h-4" />
               </div>
             ) : mode === 'classroom' ? (
-              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
                 <School className="w-4 h-4" />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-300">
                 <Lock className="w-4 h-4" />
               </div>
             )}
@@ -449,38 +462,38 @@ export function CreateTaskModal({
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Selector de Ámbito (Solo para delegado en creación nueva) */}
+        {/* Selector de Ámbito (Solo para delegado en creación nueva con colores de acento) */}
         {!initialTask && isAdmin && (
-          <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0">
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-950 border border-zinc-800 shrink-0">
             <button
               type="button"
               onClick={() => setMode('classroom')}
-              className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
                 mode === 'classroom'
-                  ? 'bg-zinc-800 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
               }`}
             >
-              <School className="w-3.5 h-3.5 text-zinc-300" />
+              <School className={`w-3.5 h-3.5 ${mode === 'classroom' ? 'text-indigo-400' : 'text-zinc-500'}`} />
               <span>Del Salón</span>
             </button>
 
             <button
               type="button"
               onClick={() => setMode('private')}
-              className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
                 mode === 'private'
-                  ? 'bg-zinc-800 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
               }`}
             >
-              <Lock className="w-3.5 h-3.5 text-zinc-300" />
+              <Lock className={`w-3.5 h-3.5 ${mode === 'private' ? 'text-amber-400' : 'text-zinc-500'}`} />
               <span>Mis Pendientes</span>
             </button>
           </div>
@@ -746,21 +759,29 @@ export function CreateTaskModal({
                   id: 'individual',
                   label: 'Individual',
                   icon: User,
+                  activeClass: 'bg-zinc-800 border-zinc-600 text-white',
+                  iconClass: 'text-zinc-200',
                 },
                 {
                   id: 'grupal',
                   label: 'Grupal',
                   icon: Users,
+                  activeClass: 'bg-sky-950/70 border-sky-800/60 text-sky-300',
+                  iconClass: 'text-sky-400',
                 },
                 {
                   id: 'proyecto',
                   label: 'Proyecto',
                   icon: Rocket,
+                  activeClass: 'bg-purple-950/70 border-purple-800/60 text-purple-300',
+                  iconClass: 'text-purple-400',
                 },
                 {
                   id: 'examen',
                   label: 'Examen',
                   icon: FileText,
+                  activeClass: 'bg-rose-950/70 border-rose-800/60 text-rose-300',
+                  iconClass: 'text-rose-400',
                 },
               ].map((item) => {
                 const Icon = item.icon
@@ -773,13 +794,13 @@ export function CreateTaskModal({
                     onClick={() => setType(item.id as TaskType)}
                     className={`p-2 rounded-xl border text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
                       isSelected
-                        ? 'bg-zinc-800 border-zinc-600 text-white font-semibold shadow-xs'
-                        : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        ? `${item.activeClass} font-semibold shadow-xs`
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     <Icon
                       className={`w-3.5 h-3.5 ${
-                        isSelected ? 'text-zinc-200' : 'text-zinc-500'
+                        isSelected ? item.iconClass : 'text-zinc-500'
                       }`}
                     />
                     <span className="text-[10px]">{item.label}</span>

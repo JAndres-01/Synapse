@@ -312,33 +312,6 @@ export function CreateTaskModal({
     }
   }
 
-  const handleFormTouchStart = (e: React.TouchEvent) => {
-    if (formRef.current && formRef.current.scrollTop <= 0) {
-      dragStartYRef.current = e.touches[0].clientY
-    }
-  }
-
-  const handleFormTouchMove = (e: React.TouchEvent) => {
-    if (formRef.current && formRef.current.scrollTop <= 0) {
-      const deltaY = e.touches[0].clientY - dragStartYRef.current
-      if (deltaY > 15) {
-        setIsDragging(true)
-        setDragOffsetY(deltaY - 15)
-      }
-    }
-  }
-
-  const handleFormTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false)
-      if (dragOffsetY > 45) {
-        onClose()
-      } else {
-        setDragOffsetY(0)
-      }
-    }
-  }
-
   // Seleccionar una clase del mini calendario semanal
   const handleSelectClassSlot = (sched: Schedule) => {
     const time = sched.start_time ? sched.start_time.slice(0, 5) : '08:00'
@@ -462,45 +435,34 @@ export function CreateTaskModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Zona superior ampliada para gesto de deslizar hacia abajo */}
+        {/* Zona superior: Handle de arrastre y título (Única zona activa para swipe-to-dismiss) */}
         <div
-          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-0.5"
+          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-1 cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           {/* Handle de arrastre */}
-          <div className="w-full py-1 flex items-center justify-center cursor-grab active:cursor-grabbing">
+          <div className="w-full py-1 flex items-center justify-center">
             <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
           </div>
 
-          {/* Encabezado Simple y Limpio */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  mode === 'classroom' ? 'bg-indigo-400' : 'bg-amber-400'
-                }`}
-              />
-              <h2 className="text-sm font-semibold text-white tracking-tight">
-                {initialTask
-                  ? initialTask.is_private
-                    ? 'Editar Pendiente'
-                    : 'Editar Tarea'
-                  : mode === 'classroom'
-                  ? 'Nueva Tarea del Salón'
-                  : 'Nuevo pendiente'}
-              </h2>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Cerrar modal"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-900/60 border border-zinc-800 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+          {/* Encabezado Simple y Limpio (Sin botón X) */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                mode === 'classroom' ? 'bg-indigo-400' : 'bg-amber-400'
+              }`}
+            />
+            <h2 className="text-sm font-semibold text-white tracking-tight">
+              {initialTask
+                ? initialTask.is_private
+                  ? 'Editar Pendiente'
+                  : 'Editar Tarea'
+                : mode === 'classroom'
+                ? 'Nueva Tarea del Salón'
+                : 'Nuevo pendiente'}
+            </h2>
           </div>
         </div>
 
@@ -539,10 +501,7 @@ export function CreateTaskModal({
         <form
           ref={formRef}
           onSubmit={handleSubmit}
-          onTouchStart={handleFormTouchStart}
-          onTouchMove={handleFormTouchMove}
-          onTouchEnd={handleFormTouchEnd}
-          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain touch-pan-y"
+          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
         >
           {/* 1. Título del Pendiente / Tarea */}
           <div className="space-y-1.5">

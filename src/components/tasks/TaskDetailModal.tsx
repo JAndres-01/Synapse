@@ -314,28 +314,28 @@ export function TaskDetailModal({
     switch (type) {
       case 'grupal':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/60 border border-sky-800/50 text-[10px] font-semibold text-sky-400">
-            <Users className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
+            <Users className="w-2.5 h-2.5 text-zinc-400" />
             <span>Grupal</span>
           </span>
         )
       case 'proyecto':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-950/60 border border-purple-800/50 text-[10px] font-semibold text-purple-400">
-            <Rocket className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
+            <Rocket className="w-2.5 h-2.5 text-zinc-400" />
             <span>Proyecto</span>
           </span>
         )
       case 'examen':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/60 border border-rose-800/50 text-[10px] font-semibold text-rose-400">
-            <FileText className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
+            <FileText className="w-2.5 h-2.5 text-zinc-400" />
             <span>Examen</span>
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
             <User className="w-2.5 h-2.5 text-zinc-400" />
             <span>Individual</span>
           </span>
@@ -408,7 +408,7 @@ export function TaskDetailModal({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-200 active:scale-[0.98] transition-all max-w-fit"
             >
-              <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+              <FileText className="w-4 h-4 text-zinc-400 shrink-0" />
               <span className="truncate max-w-[180px] text-[11px] font-medium">
                 {item.fileName}
               </span>
@@ -461,7 +461,7 @@ export function TaskDetailModal({
                 {root.author?.full_name || 'Compañero'}
               </span>
               {isAuthorDelegate && (
-                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-indigo-950 text-indigo-400 font-semibold border border-indigo-800/50">
+                <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 font-semibold border border-zinc-700">
                   Delegado
                 </span>
               )}
@@ -537,7 +537,7 @@ export function TaskDetailModal({
                             {reply.author?.full_name || 'Compañero'}
                           </span>
                           {isReplyDelegate && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-950 text-indigo-400 font-semibold border border-indigo-800/40">
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-300 font-semibold border border-zinc-700">
                               Delegado
                             </span>
                           )}
@@ -612,8 +612,8 @@ export function TaskDetailModal({
           <div className="flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 flex-wrap">
               {task.is_private ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400">
-                  <Lock className="w-2.5 h-2.5" />
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
+                  <Lock className="w-2.5 h-2.5 text-zinc-400" />
                   <span>Privada</span>
                 </span>
               ) : (
@@ -678,13 +678,13 @@ export function TaskDetailModal({
                   type="button"
                   onClick={handleCheck}
                   aria-label="Marcar completada"
-                  className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+                  className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
                     isCompleted
-                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                      ? 'bg-zinc-100 border-zinc-100 text-zinc-950'
                       : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
                   }`}
                 >
-                  {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
                 </button>
 
                 <div className="space-y-1 min-w-0 flex-1">
@@ -724,7 +724,7 @@ export function TaskDetailModal({
               {attachments.length > 0 && (
                 <div className="pt-3 border-t border-zinc-800/80 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
-                    <Paperclip className="w-3.5 h-3.5 text-indigo-400" />
+                    <Paperclip className="w-3.5 h-3.5 text-zinc-400" />
                     <span>Archivos y Recursos Adjuntos ({attachments.length})</span>
                   </div>
 
@@ -747,7 +747,7 @@ export function TaskDetailModal({
                               <p className="text-xs font-medium text-zinc-200 truncate">
                                 {att.file_name}
                               </p>
-                              <span className="text-[10px] text-indigo-400 font-medium">
+                              <span className="text-[10px] text-zinc-400 font-medium">
                                 Ver en pantalla completa
                               </span>
                             </div>
@@ -764,7 +764,7 @@ export function TaskDetailModal({
                           rel="noopener noreferrer"
                           className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center gap-2.5 hover:border-zinc-700 transition-colors active:scale-[0.99]"
                         >
-                          <div className="w-9 h-9 rounded-lg bg-amber-950/60 border border-amber-800/60 flex items-center justify-center text-amber-400 shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0">
                             <FileText className="w-4 h-4" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -821,12 +821,12 @@ export function TaskDetailModal({
             <div className="pt-2 border-t border-zinc-800 space-y-2 shrink-0">
               {/* Indicador de Respuesta */}
               {replyingTo && (
-                <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-xl border border-indigo-900/60 text-xs shadow-sm">
+                <div className="flex items-center justify-between bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 text-xs shadow-sm">
                   <div className="flex items-center gap-2 text-zinc-400 min-w-0 flex-1">
-                    <CornerDownRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <CornerDownRight className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
                     <span className="truncate">
                       Respondiendo a{' '}
-                      <strong className="text-indigo-300">
+                      <strong className="text-zinc-200">
                         @{replyingTo.author?.full_name || 'Compañero'}
                       </strong>
                       {replyingTo.content && (
@@ -856,9 +856,9 @@ export function TaskDetailModal({
                       className="flex items-center gap-1.5 bg-zinc-950 px-2 py-1.5 rounded-xl border border-zinc-800 text-xs shrink-0"
                     >
                       {att.fileType === 'image' ? (
-                        <ImageIcon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                        <ImageIcon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                       ) : (
-                        <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                       )}
                       <span className="text-[11px] text-zinc-200 max-w-[120px] truncate">
                         {att.fileName}
@@ -889,7 +889,7 @@ export function TaskDetailModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   title="Adjuntar fotos o documentos al comentario"
-                  className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-indigo-400 hover:border-indigo-500/50 transition-colors"
+                  className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition-colors"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>

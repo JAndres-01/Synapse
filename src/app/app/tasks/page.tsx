@@ -792,7 +792,7 @@ function TasksPageContent() {
       <header className="flex items-center justify-between pt-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <CheckSquare className="w-5 h-5 text-indigo-400" />
+            <CheckSquare className="w-5 h-5 text-zinc-300" />
             <span>Tareas & Entregas</span>
           </h1>
           <p className="text-xs text-zinc-400 mt-0.5">
@@ -807,7 +807,7 @@ function TasksPageContent() {
           aria-label="Actualizar tareas"
           className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-indigo-400' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-zinc-200' : ''}`} />
         </button>
       </header>
 
@@ -822,10 +822,10 @@ function TasksPageContent() {
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <School className="w-3.5 h-3.5 text-indigo-400" />
+          <School className="w-3.5 h-3.5 text-zinc-300" />
           <span>Del Salón</span>
           {classroomTasksCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 text-[10px] font-mono">
+            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700 text-[10px] font-mono">
               {classroomTasksCount}
             </span>
           )}
@@ -840,10 +840,10 @@ function TasksPageContent() {
               : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Lock className="w-3.5 h-3.5 text-amber-400" />
+          <Lock className="w-3.5 h-3.5 text-zinc-300" />
           <span>Mis Pendientes</span>
           {privateTasksCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-mono">
+            <span className="px-1.5 py-0.5 rounded-full bg-zinc-900 text-zinc-300 border border-zinc-700 text-[10px] font-mono">
               {privateTasksCount}
             </span>
           )}
@@ -896,8 +896,8 @@ function TasksPageContent() {
       <div className="space-y-2.5">
         {filteredTasks.length === 0 ? (
           <div className="p-8 rounded-2xl bg-zinc-950/60 border border-zinc-900 text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-500">
-              <Sparkles className="w-5 h-5 text-indigo-400" />
+            <div className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-400">
+              <Sparkles className="w-5 h-5 text-zinc-300" />
             </div>
             <div>
               <p className="text-xs font-semibold text-zinc-300">
@@ -921,7 +921,7 @@ function TasksPageContent() {
                   setTaskToEdit(null)
                   setShowCreateModal(true)
                 }}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 hover:text-indigo-300 pt-1"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-200 hover:text-white pt-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>
@@ -945,7 +945,7 @@ function TasksPageContent() {
         )}
       </div>
 
-      {/* 4. Botón Flotante para Crear Tarea / Pendiente */}
+      {/* 4. Botón Flotante para Crear Tarea / Pendiente (Ubicado encima del island nav bar) */}
       {canCreateInActiveTab && (
         <button
           type="button"
@@ -953,7 +953,7 @@ function TasksPageContent() {
             setTaskToEdit(null)
             setShowCreateModal(true)
           }}
-          className="fixed bottom-24 right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-2 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-1.5 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>

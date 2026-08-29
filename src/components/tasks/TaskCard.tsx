@@ -32,28 +32,28 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
     switch (type) {
       case 'grupal':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-950/60 border border-sky-800/50 text-[10px] font-semibold text-sky-400 shrink-0">
-            <Users className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
+            <Users className="w-2.5 h-2.5 text-zinc-400" />
             <span>Grupal</span>
           </span>
         )
       case 'proyecto':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-950/60 border border-purple-800/50 text-[10px] font-semibold text-purple-400 shrink-0">
-            <Rocket className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
+            <Rocket className="w-2.5 h-2.5 text-zinc-400" />
             <span>Proyecto</span>
           </span>
         )
       case 'examen':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-950/60 border border-rose-800/50 text-[10px] font-semibold text-rose-400 shrink-0">
-            <FileText className="w-2.5 h-2.5" />
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
+            <FileText className="w-2.5 h-2.5 text-zinc-400" />
             <span>Examen</span>
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-800 border border-zinc-700 text-[10px] font-semibold text-zinc-300 shrink-0">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
             <User className="w-2.5 h-2.5 text-zinc-400" />
             <span>Individual</span>
           </span>
@@ -93,29 +93,29 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
         return { text: formattedDate, colorClass: 'text-zinc-500 line-through' }
       }
 
-      // 1. Fecha Vencida (Rojo llamativo)
+      // 1. Fecha Vencida
       if (isPast) {
         if (isToday) {
-          return { text: `Venció hoy • ${timeStr}`, colorClass: 'text-red-400 font-bold' }
+          return { text: `Venció hoy • ${timeStr}`, colorClass: 'text-red-400 font-medium' }
         }
         if (isYesterday) {
-          return { text: `Venció ayer • ${timeStr}`, colorClass: 'text-red-400 font-bold' }
+          return { text: `Venció ayer • ${timeStr}`, colorClass: 'text-red-400 font-medium' }
         }
         const formattedDate = date.toLocaleDateString('es-ES', {
           day: 'numeric',
           month: 'short',
         })
-        return { text: `Venció • ${formattedDate}`, colorClass: 'text-red-400 font-bold' }
+        return { text: `Venció • ${formattedDate}`, colorClass: 'text-red-400 font-medium' }
       }
 
-      // 2. Entrega para Hoy (Ámbar / Urgente)
+      // 2. Entrega para Hoy
       if (isToday) {
-        return { text: `Hoy • ${timeStr}`, colorClass: 'text-amber-400 font-bold' }
+        return { text: `Hoy • ${timeStr}`, colorClass: 'text-zinc-200 font-medium' }
       }
 
-      // 3. Entrega para Mañana (Índigo)
+      // 3. Entrega para Mañana
       if (isTomorrow) {
-        return { text: `Mañana • ${timeStr}`, colorClass: 'text-indigo-300 font-medium' }
+        return { text: `Mañana • ${timeStr}`, colorClass: 'text-zinc-300 font-normal' }
       }
 
       // 4. Fechas futuras normales
@@ -123,7 +123,7 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
         day: 'numeric',
         month: 'short',
       })
-      return { text: `${formattedDate} • ${timeStr}`, colorClass: 'text-zinc-400 font-medium' }
+      return { text: `${formattedDate} • ${timeStr}`, colorClass: 'text-zinc-400 font-normal' }
     } catch {
       return { text: 'Fecha pendiente', colorClass: 'text-zinc-500' }
     }
@@ -160,10 +160,10 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
     if (!isCompleted) {
       try {
         confetti({
-          particleCount: 30,
-          spread: 50,
+          particleCount: 25,
+          spread: 45,
           origin: { y: 0.8 },
-          colors: ['#6366F1', '#10B981', '#ffffff'],
+          colors: ['#ffffff', '#a1a1aa', '#71717a'],
         })
       } catch {}
     }
@@ -173,18 +173,18 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
   return (
     <div
       onClick={() => onOpenDetail(task)}
-      className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none space-y-2 relative shadow-sm ${
+      className={`p-3 rounded-2xl border transition-all cursor-pointer select-none space-y-2 relative ${
         isCompleted
-          ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
-          : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 active:scale-[0.99]'
+          ? 'bg-zinc-950/40 border-zinc-900 opacity-50'
+          : 'bg-zinc-900/40 border-zinc-800/60 hover:border-zinc-700/80 hover:bg-zinc-900/70 active:scale-[0.99]'
       }`}
     >
-      {/* Header: Tipo, Materia (izq) y Fecha Límite Antidesborde con colores de prioridad (der) */}
+      {/* Header: Tipo, Materia (izq) y Fecha Límite (der) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {task.is_private ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/50 border border-amber-800/50 text-[10px] font-semibold text-amber-400 shrink-0">
-              <Lock className="w-2.5 h-2.5" />
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300 shrink-0">
+              <Lock className="w-2.5 h-2.5 text-zinc-400" />
               <span>Privada</span>
             </span>
           ) : (
@@ -192,9 +192,9 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
           )}
 
           {task.subject ? (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-300 min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 min-w-0 flex-1">
               <span
-                className="w-2 h-2 rounded-full shrink-0 border border-zinc-700"
+                className="w-1.5 h-1.5 rounded-full shrink-0 border border-zinc-700"
                 style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
               />
               <span className="truncate">{task.subject.name}</span>
@@ -204,7 +204,7 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
           )}
         </div>
 
-        {/* Fecha Límite con Color de Prioridad en una sola línea protegida */}
+        {/* Fecha Límite */}
         <span
           className={`text-[10px] font-mono shrink-0 whitespace-nowrap text-right pl-1 ${dueInfo.colorClass}`}
         >
@@ -213,23 +213,23 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
       </div>
 
       {/* Contenido Principal: Checkbox y Título */}
-      <div className="flex items-start gap-3 pt-0.5">
+      <div className="flex items-start gap-2.5 pt-0.5">
         <button
           type="button"
           onClick={handleCheck}
           aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-          className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+          className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
             isCompleted
-              ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
-              : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/90 active:scale-90'
+              ? 'bg-zinc-100 border-zinc-100 text-zinc-950'
+              : 'border-zinc-600 hover:border-zinc-400 bg-zinc-950/60 active:scale-90'
           }`}
         >
-          {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+          {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
         </button>
 
         <div className="flex-1 min-w-0">
           <h3
-            className={`text-sm font-semibold tracking-tight leading-snug break-words ${
+            className={`text-sm font-medium tracking-tight leading-snug break-words ${
               isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
             }`}
           >
@@ -244,30 +244,27 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
         </div>
       </div>
 
-      {/* Footer: 1. Adjuntos, 2. Imágenes, 3. Respuestas */}
+      {/* Footer: Adjuntos, Imágenes, Respuestas en tono minimalista */}
       {(attachmentsCount > 0 || (!task.is_private && (photosCount > 0 || commentsCount > 0))) && (
-        <div className="flex items-center gap-3 pt-1 border-t border-zinc-800/60 text-[10px] text-zinc-400 font-medium flex-wrap">
-          {/* 1. Adjuntos */}
+        <div className="flex items-center gap-3 pt-1 border-t border-zinc-800/40 text-[10px] text-zinc-500 font-medium flex-wrap">
           {attachmentsCount > 0 && (
-            <div className="flex items-center gap-1 text-indigo-300 font-medium">
-              <Paperclip className="w-3 h-3 text-indigo-400" />
+            <div className="flex items-center gap-1 text-zinc-400">
+              <Paperclip className="w-3 h-3 text-zinc-500" />
               <span>{attachmentsCount} {attachmentsCount === 1 ? 'adjunto' : 'adjuntos'}</span>
             </div>
           )}
 
-          {/* 2. Imágenes */}
           {!task.is_private && photosCount > 0 && (
-            <div className="flex items-center gap-1 text-emerald-400">
-              <ImageIcon className="w-3 h-3" />
-              <span>{photosCount} {photosCount === 1 ? 'imagen' : 'imagenes'}</span>
+            <div className="flex items-center gap-1 text-zinc-400">
+              <ImageIcon className="w-3 h-3 text-zinc-500" />
+              <span>{photosCount} {photosCount === 1 ? 'foto' : 'fotos'}</span>
             </div>
           )}
 
-          {/* 3. Respuestas */}
           {!task.is_private && commentsCount > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 text-zinc-400">
               <MessageSquare className="w-3 h-3 text-zinc-500" />
-              <span>{commentsCount} {commentsCount === 1 ? 'respuesta' : 'respuestas'}</span>
+              <span>{commentsCount} {commentsCount === 1 ? 'comentario' : 'comentarios'}</span>
             </div>
           )}
         </div>

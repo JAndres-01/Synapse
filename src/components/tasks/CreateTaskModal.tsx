@@ -410,17 +410,17 @@ export function CreateTaskModal({
 
         {/* Encabezado del Modal */}
         <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {initialTask ? (
-              <div className="w-8 h-8 rounded-xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400">
+              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
                 <Pencil className="w-4 h-4" />
               </div>
             ) : mode === 'classroom' ? (
-              <div className="w-8 h-8 rounded-xl bg-indigo-950/80 border border-indigo-800/80 flex items-center justify-center text-indigo-400">
+              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
                 <School className="w-4 h-4" />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400">
+              <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300">
                 <Lock className="w-4 h-4" />
               </div>
             )}
@@ -467,7 +467,7 @@ export function CreateTaskModal({
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <School className="w-3.5 h-3.5 text-indigo-400" />
+              <School className="w-3.5 h-3.5 text-zinc-300" />
               <span>Del Salón</span>
             </button>
 
@@ -480,7 +480,7 @@ export function CreateTaskModal({
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
+              <Lock className="w-3.5 h-3.5 text-zinc-300" />
               <span>Mis Pendientes</span>
             </button>
           </div>
@@ -653,19 +653,19 @@ export function CreateTaskModal({
 
                     {/* Resumen del Preset Seleccionado */}
                     {selectedScheduleSlot && (
-                      <div className="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center justify-between text-xs">
+                      <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
-                          <CalendarCheck className="w-4 h-4 text-indigo-400 shrink-0" />
+                          <CalendarCheck className="w-4 h-4 text-zinc-300 shrink-0" />
                           <div className="min-w-0">
                             <p className="font-semibold text-white truncate">
                               {selectedScheduleSlot.subjectName}
                             </p>
-                            <p className="text-[10px] text-indigo-300 capitalize">
+                            <p className="text-[10px] text-zinc-400 capitalize">
                               {selectedScheduleSlot.dateLabel} • {selectedScheduleSlot.time}
                             </p>
                           </div>
                         </div>
-                        <span className="text-[10px] bg-indigo-900/80 text-indigo-200 px-2 py-0.5 rounded font-mono shrink-0">
+                        <span className="text-[10px] bg-zinc-900 text-zinc-300 border border-zinc-700 px-2 py-0.5 rounded font-mono shrink-0">
                           Bloque {selectedScheduleSlot.block}
                         </span>
                       </div>
@@ -746,29 +746,21 @@ export function CreateTaskModal({
                   id: 'individual',
                   label: 'Individual',
                   icon: User,
-                  activeClass: 'bg-zinc-800 border-zinc-500 text-zinc-100 font-semibold shadow-sm',
-                  activeIconClass: 'text-zinc-200',
                 },
                 {
                   id: 'grupal',
                   label: 'Grupal',
                   icon: Users,
-                  activeClass: 'bg-sky-950/90 border-sky-500 text-sky-300 font-semibold shadow-sm',
-                  activeIconClass: 'text-sky-400',
                 },
                 {
                   id: 'proyecto',
                   label: 'Proyecto',
                   icon: Rocket,
-                  activeClass: 'bg-purple-950/90 border-purple-500 text-purple-300 font-semibold shadow-sm',
-                  activeIconClass: 'text-purple-400',
                 },
                 {
                   id: 'examen',
                   label: 'Examen',
                   icon: FileText,
-                  activeClass: 'bg-rose-950/90 border-rose-500 text-rose-300 font-semibold shadow-sm',
-                  activeIconClass: 'text-rose-400',
                 },
               ].map((item) => {
                 const Icon = item.icon
@@ -781,13 +773,13 @@ export function CreateTaskModal({
                     onClick={() => setType(item.id as TaskType)}
                     className={`p-2 rounded-xl border text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
                       isSelected
-                        ? item.activeClass
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-zinc-800 border-zinc-600 text-white font-semibold shadow-xs'
+                        : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                     }`}
                   >
                     <Icon
                       className={`w-3.5 h-3.5 ${
-                        isSelected ? item.activeIconClass : 'text-zinc-500'
+                        isSelected ? 'text-zinc-200' : 'text-zinc-500'
                       }`}
                     />
                     <span className="text-[10px]">{item.label}</span>

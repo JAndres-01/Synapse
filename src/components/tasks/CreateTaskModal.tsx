@@ -506,18 +506,18 @@ export function CreateTaskModal({
                 <button
                   type="button"
                   onClick={() => setScheduleMode('schedule')}
-                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
                     scheduleMode === 'schedule'
                       ? 'bg-zinc-800 text-white font-semibold'
                       : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  Clases de la semana
+                  Clase
                 </button>
                 <button
                   type="button"
                   onClick={() => setScheduleMode('manual')}
-                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
                     scheduleMode === 'manual'
                       ? 'bg-zinc-800 text-white font-semibold'
                       : 'text-zinc-400 hover:text-zinc-200'
@@ -540,21 +540,29 @@ export function CreateTaskModal({
                     {/* 5 Columnas Semanales (Lun - Vie) */}
                     <div className="grid grid-cols-5 gap-1.5">
                       {weeklyScheduleDays.map((d) => {
-                        const todayDay = new Date().getDay() || 7
+                        const todayDay = new Date().getDay() || 7 // 1=Lun ... 7=Dom
                         const isToday = d.day === todayDay
+                        // Si hoy es entre lunes y viernes, los días anteriores son pasados
+                        const isPastDay = todayDay <= 5 && d.day < todayDay
 
                         return (
                           <div
                             key={d.day}
                             className={`p-1 rounded-xl flex flex-col gap-1 border transition-all ${
-                              isToday
+                              isPastDay
+                                ? 'bg-zinc-950/40 border-zinc-900 opacity-30 pointer-events-none'
+                                : isToday
                                 ? 'bg-indigo-950/20 border-indigo-500/40'
                                 : 'bg-zinc-900/30 border-zinc-800/50'
                             }`}
                           >
                             <span
                               className={`text-[9px] font-bold text-center tracking-wider ${
-                                isToday ? 'text-indigo-400 font-extrabold' : 'text-zinc-400'
+                                isPastDay
+                                  ? 'text-zinc-600'
+                                  : isToday
+                                  ? 'text-indigo-400 font-extrabold'
+                                  : 'text-zinc-400'
                               }`}
                             >
                               {d.short}
@@ -572,6 +580,7 @@ export function CreateTaskModal({
                                     <button
                                       key={sched.id}
                                       type="button"
+                                      disabled={isPastDay}
                                       onClick={() => handleSelectClassSlot(sched)}
                                       title={`${sched.subject?.name} (${sched.start_time?.slice(0, 5)})`}
                                       className={`w-full py-1 px-1 rounded-md text-[9px] font-medium transition-all text-center truncate border ${
@@ -643,8 +652,8 @@ export function CreateTaskModal({
             )}
           </div>
 
-          {/* 3. Materia Asociada */}
-          {subjects.length > 0 && (
+          {/* 3. Materia Asociada (Solo visible en modo Fecha Manual) */}
+          {scheduleMode === 'manual' && subjects.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <BookOpen className="w-3.5 h-3.5 text-zinc-400" />

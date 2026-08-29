@@ -108,6 +108,35 @@ const getTomorrowDate = () => {
   return `${y}-${m}-${day}`
 }
 
+function formatDisplayDate(dateStr: string) {
+  if (!dateStr) return 'Elegir fecha'
+  try {
+    const parts = dateStr.split('-').map(Number)
+    if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return dateStr
+    const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+    const mName = monthNames[parts[1] - 1] || ''
+    return `${parts[2]} ${mName} ${parts[0]}`
+  } catch {
+    return dateStr
+  }
+}
+
+function formatDisplayTime(timeStr: string) {
+  if (!timeStr) return 'Elegir hora'
+  try {
+    const [hStr, mStr] = timeStr.split(':')
+    const h = Number(hStr)
+    const m = Number(mStr)
+    if (isNaN(h)) return timeStr
+    const period = h >= 12 ? 'p.m.' : 'a.m.'
+    const displayH = h % 12 === 0 ? 12 : h % 12
+    const displayM = String(isNaN(m) ? 0 : m).padStart(2, '0')
+    return `${displayH}:${displayM} ${period}`
+  } catch {
+    return timeStr
+  }
+}
+
 export function CreateTaskModal({
   isOpen,
   onClose,
@@ -619,28 +648,34 @@ export function CreateTaskModal({
               </div>
             )}
 
-            {/* B. FECHA MANUAL (Alineación y altura limpia para iOS) */}
+            {/* B. FECHA MANUAL (Centrado perfecto garantizado en iOS) */}
             {scheduleMode === 'manual' && (
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-400 font-medium block text-center">Fecha límite</span>
-                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2 focus-within:border-zinc-500">
+                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
+                    <span className="text-xs font-semibold text-zinc-100 select-none text-center truncate">
+                      {formatDisplayDate(dueDate)}
+                    </span>
                     <input
                       type="date"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full h-full bg-transparent text-xs font-semibold text-zinc-100 focus:outline-none [color-scheme:dark] text-center"
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 [color-scheme:dark]"
                     />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] text-zinc-400 font-medium block text-center">Hora límite</span>
-                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2 focus-within:border-zinc-500">
+                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2.5 focus-within:border-zinc-500 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform">
+                    <span className="text-xs font-semibold text-zinc-100 select-none text-center truncate">
+                      {formatDisplayTime(dueTime)}
+                    </span>
                     <input
                       type="time"
                       value={dueTime}
                       onChange={(e) => setDueTime(e.target.value)}
-                      className="w-full h-full bg-transparent text-xs font-semibold text-zinc-100 focus:outline-none [color-scheme:dark] text-center"
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 [color-scheme:dark]"
                     />
                   </div>
                 </div>

@@ -186,6 +186,8 @@ export function TaskDetailModal({
 
   if (!task) return null
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartYRef.current = e.touches[0].clientY
     setIsDragging(true)
@@ -194,16 +196,48 @@ export function TaskDetailModal({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return
     const deltaY = e.touches[0].clientY - dragStartYRef.current
-    if (deltaY > 0) setDragOffsetY(deltaY)
+    if (deltaY > 0) {
+      setDragOffsetY(deltaY)
+    } else {
+      setDragOffsetY(0)
+    }
   }
 
   const handleTouchEnd = () => {
     setIsDragging(false)
-    if (dragOffsetY > 65) {
+    if (dragOffsetY > 45) {
       document.body.classList.remove('body-scroll-lock')
       onClose()
     } else {
       setDragOffsetY(0)
+    }
+  }
+
+  const handleContainerTouchStart = (e: React.TouchEvent) => {
+    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 0) {
+      dragStartYRef.current = e.touches[0].clientY
+    }
+  }
+
+  const handleContainerTouchMove = (e: React.TouchEvent) => {
+    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 0) {
+      const deltaY = e.touches[0].clientY - dragStartYRef.current
+      if (deltaY > 15) {
+        setIsDragging(true)
+        setDragOffsetY(deltaY - 15)
+      }
+    }
+  }
+
+  const handleContainerTouchEnd = () => {
+    if (isDragging) {
+      setIsDragging(false)
+      if (dragOffsetY > 45) {
+        document.body.classList.remove('body-scroll-lock')
+        onClose()
+      } else {
+        setDragOffsetY(0)
+      }
     }
   }
 
@@ -591,86 +625,95 @@ export function TaskDetailModal({
         }}
       >
         <div
-          className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-3 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
+          className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-24px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-contain"
           style={{
             transform: `translateY(${dragOffsetY}px)`,
             transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag Handle & Header Top Area */}
+          {/* Zona superior ampliada para gesto de deslizar hacia abajo */}
           <div
-            className="w-full pt-1 pb-1 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
+            className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-0.5"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="w-12 h-1.5 rounded-full bg-zinc-700 active:bg-zinc-500 mx-auto transition-colors mb-2.5" />
-          </div>
-
-          {/* Header del Modal */}
-          <div className="flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {task.is_private ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
-                  <Lock className="w-2.5 h-2.5 text-zinc-400" />
-                  <span>Privada</span>
-                </span>
-              ) : (
-                getTypeBadge(task.type)
-              )}
-
-              {task.subject && (
-                <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                  <span
-                    className="w-2 h-2 rounded-full border border-zinc-700"
-                    style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
-                  />
-                  <span>{task.subject.name}</span>
-                </span>
-              )}
+            {/* Drag Handle */}
+            <div className="w-full py-1 flex items-center justify-center cursor-grab active:cursor-grabbing">
+              <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* Botón Editar Tarea (Solo si tiene permisos) */}
-              {canManageTask && onEditTask && (
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 flex-wrap">
+                {task.is_private ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-800/80 border border-zinc-700/60 text-[10px] font-medium text-zinc-300">
+                    <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                    <span>Privada</span>
+                  </span>
+                ) : (
+                  getTypeBadge(task.type)
+                )}
+
+                {task.subject && (
+                  <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <span
+                      className="w-2 h-2 rounded-full border border-zinc-700"
+                      style={{ backgroundColor: task.subject.color || '#FFFFFF' }}
+                    />
+                    <span>{task.subject.name}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {/* Botón Editar Tarea (Solo si tiene permisos) */}
+                {canManageTask && onEditTask && (
+                  <button
+                    type="button"
+                    onClick={() => onEditTask(task)}
+                    title="Editar tarea"
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-700/60 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Botón Eliminar Tarea */}
+                {canManageTask && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    title="Eliminar tarea"
+                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => onEditTask(task)}
-                  title="Editar tarea"
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-700/60 transition-colors"
+                  onClick={() => {
+                    document.body.classList.remove('body-scroll-lock')
+                    onClose()
+                  }}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <X className="w-4 h-4" />
                 </button>
-              )}
-
-              {/* Botón Eliminar Tarea */}
-              {canManageTask && (
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  title="Eliminar tarea"
-                  className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  document.body.classList.remove('body-scroll-lock')
-                  onClose()
-                }}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              </div>
             </div>
           </div>
 
           {/* Contenido scrolleable del Detalle y Comentarios */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-contain">
+          <div
+            ref={scrollContainerRef}
+            onTouchStart={handleContainerTouchStart}
+            onTouchMove={handleContainerTouchMove}
+            onTouchEnd={handleContainerTouchEnd}
+            className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-contain touch-pan-y"
+          >
             {/* Tarjeta de Información Principal */}
             <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-3">
               <div className="flex items-start gap-3">

@@ -287,6 +287,8 @@ export function CreateTaskModal({
 
   if (!isOpen) return null
 
+  const formRef = useRef<HTMLFormElement>(null)
+
   const handleTouchStart = (e: React.TouchEvent) => {
     dragStartYRef.current = e.touches[0].clientY
     setIsDragging(true)
@@ -295,15 +297,46 @@ export function CreateTaskModal({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return
     const deltaY = e.touches[0].clientY - dragStartYRef.current
-    if (deltaY > 0) setDragOffsetY(deltaY)
+    if (deltaY > 0) {
+      setDragOffsetY(deltaY)
+    } else {
+      setDragOffsetY(0)
+    }
   }
 
   const handleTouchEnd = () => {
     setIsDragging(false)
-    if (dragOffsetY > 65) {
+    if (dragOffsetY > 45) {
       onClose()
     } else {
       setDragOffsetY(0)
+    }
+  }
+
+  const handleFormTouchStart = (e: React.TouchEvent) => {
+    if (formRef.current && formRef.current.scrollTop <= 0) {
+      dragStartYRef.current = e.touches[0].clientY
+    }
+  }
+
+  const handleFormTouchMove = (e: React.TouchEvent) => {
+    if (formRef.current && formRef.current.scrollTop <= 0) {
+      const deltaY = e.touches[0].clientY - dragStartYRef.current
+      if (deltaY > 15) {
+        setIsDragging(true)
+        setDragOffsetY(deltaY - 15)
+      }
+    }
+  }
+
+  const handleFormTouchEnd = () => {
+    if (isDragging) {
+      setIsDragging(false)
+      if (dragOffsetY > 45) {
+        onClose()
+      } else {
+        setDragOffsetY(0)
+      }
     }
   }
 
@@ -419,54 +452,57 @@ export function CreateTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2.5 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden"
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-contain"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Handle de arrastre */}
+        {/* Zona superior ampliada para gesto de deslizar hacia abajo */}
         <div
-          className="w-full pt-1 pb-0.5 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
+          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-0.5"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-9 h-1 rounded-full bg-zinc-800 mx-auto" />
-        </div>
-
-        {/* Encabezado Simple y Limpio */}
-        <div className="flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                mode === 'classroom' ? 'bg-indigo-400' : 'bg-amber-400'
-              }`}
-            />
-            <h2 className="text-sm font-semibold text-white tracking-tight">
-              {initialTask
-                ? initialTask.is_private
-                  ? 'Editar Pendiente'
-                  : 'Editar Tarea'
-                : mode === 'classroom'
-                ? 'Nueva Tarea del Salón'
-                : 'Nuevo pendiente'}
-            </h2>
+          {/* Handle de arrastre */}
+          <div className="w-full py-1 flex items-center justify-center cursor-grab active:cursor-grabbing">
+            <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar modal"
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-900/60 border border-zinc-800 transition-colors"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          {/* Encabezado Simple y Limpio */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  mode === 'classroom' ? 'bg-indigo-400' : 'bg-amber-400'
+                }`}
+              />
+              <h2 className="text-sm font-semibold text-white tracking-tight">
+                {initialTask
+                  ? initialTask.is_private
+                    ? 'Editar Pendiente'
+                    : 'Editar Tarea'
+                  : mode === 'classroom'
+                  ? 'Nueva Tarea del Salón'
+                  : 'Nuevo pendiente'}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar modal"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-900/60 border border-zinc-800 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Selector de Ámbito (Salón vs Privado) */}
@@ -502,8 +538,12 @@ export function CreateTaskModal({
 
         {/* Formulario con Ritmo y Simetría Consistente */}
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
+          onTouchStart={handleFormTouchStart}
+          onTouchMove={handleFormTouchMove}
+          onTouchEnd={handleFormTouchEnd}
+          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain touch-pan-y"
         >
           {/* 1. Título del Pendiente / Tarea */}
           <div className="space-y-1.5">

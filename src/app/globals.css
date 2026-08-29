@@ -38,10 +38,12 @@ body {
   position: relative;
 }
 
-/* Bloqueo de scroll cuando un modal está abierto y ocultamiento de barra flotante */
+/* Bloqueo estricto de scroll y rebote cuando un modal está abierto */
 .body-scroll-lock {
   overflow: hidden !important;
   touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
 }
 
 body.body-scroll-lock nav[aria-label="Navegación principal"] {

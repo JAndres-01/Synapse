@@ -543,27 +543,19 @@ export function CreateTaskModal({
                       {weeklyScheduleDays.map((d) => {
                         const todayDay = new Date().getDay() || 7 // 1=Lun ... 7=Dom
                         const isToday = d.day === todayDay
-                        // Si hoy es entre lunes y viernes, los días anteriores son pasados
-                        const isPastDay = todayDay <= 5 && d.day < todayDay
 
                         return (
                           <div
                             key={d.day}
                             className={`p-1 rounded-xl flex flex-col gap-1 border transition-all ${
-                              isPastDay
-                                ? 'bg-zinc-950/40 border-zinc-900 opacity-30 pointer-events-none'
-                                : isToday
+                              isToday
                                 ? 'bg-indigo-950/20 border-indigo-500/40'
                                 : 'bg-zinc-900/30 border-zinc-800/50'
                             }`}
                           >
                             <span
                               className={`text-[9px] font-bold text-center tracking-wider ${
-                                isPastDay
-                                  ? 'text-zinc-600'
-                                  : isToday
-                                  ? 'text-indigo-400 font-extrabold'
-                                  : 'text-zinc-400'
+                                isToday ? 'text-indigo-400 font-extrabold' : 'text-zinc-400'
                               }`}
                             >
                               {d.short}
@@ -581,7 +573,6 @@ export function CreateTaskModal({
                                     <button
                                       key={sched.id}
                                       type="button"
-                                      disabled={isPastDay}
                                       onClick={() => handleSelectClassSlot(sched)}
                                       title={`${sched.subject?.name} (${sched.start_time?.slice(0, 5)})`}
                                       className={`w-full py-1 px-1 rounded-md text-[9px] font-medium transition-all text-center truncate border ${
@@ -632,22 +623,26 @@ export function CreateTaskModal({
             {scheduleMode === 'manual' && (
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-400 font-medium block">Fecha límite</span>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs font-medium text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] text-center"
-                  />
+                  <span className="text-[10px] text-zinc-400 font-medium block text-center">Fecha límite</span>
+                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2 focus-within:border-zinc-500">
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="w-full h-full bg-transparent text-xs font-semibold text-zinc-100 focus:outline-none [color-scheme:dark] text-center"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-zinc-400 font-medium block">Hora límite</span>
-                  <input
-                    type="time"
-                    value={dueTime}
-                    onChange={(e) => setDueTime(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs font-medium text-zinc-100 focus:outline-none focus:border-zinc-500 [color-scheme:dark] text-center"
-                  />
+                  <span className="text-[10px] text-zinc-400 font-medium block text-center">Hora límite</span>
+                  <div className="relative flex items-center justify-center bg-zinc-900/60 border border-zinc-800 rounded-xl h-11 px-2 focus-within:border-zinc-500">
+                    <input
+                      type="time"
+                      value={dueTime}
+                      onChange={(e) => setDueTime(e.target.value)}
+                      className="w-full h-full bg-transparent text-xs font-semibold text-zinc-100 focus:outline-none [color-scheme:dark] text-center"
+                    />
+                  </div>
                 </div>
               </div>
             )}

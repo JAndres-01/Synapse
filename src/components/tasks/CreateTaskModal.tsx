@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Check,
+  CalendarCheck,
   ChevronDown,
 } from 'lucide-react'
 
@@ -66,9 +67,10 @@ const MAX_ATTACHMENTS = 5
 const MAX_FILE_SIZE_MB = 15
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
+// Helper para calcular la próxima fecha exacta de una clase (1=Lun ... 5=Vie)
 function getNextClassOccurrence(targetDay: number, timeStr?: string): { dateStr: string; label: string } {
   const now = new Date()
-  const currentDayOfWeek = now.getDay() || 7
+  const currentDayOfWeek = now.getDay() || 7 // 1=Lun ... 7=Dom
 
   let daysToAdd = targetDay - currentDayOfWeek
   if (daysToAdd < 0) {
@@ -91,17 +93,9 @@ function getNextClassOccurrence(targetDay: number, timeStr?: string): { dateStr:
 
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
   const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-  const label = `${dayNames[target.getDay()]} ${target.getDate()} ${monthNames[target.getMonth()]}`
+  const label = `${dayNames[target.getDay()]} ${target.getDate()} de ${monthNames[target.getMonth()]}`
 
   return { dateStr: `${y}-${m}-${d}`, label }
-}
-
-const getTodayDate = () => {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }
 
 const getTomorrowDate = () => {
@@ -133,37 +127,48 @@ export function CreateTaskModal({
   const [fileError, setFileError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [datePreset, setDatePreset] = useState<'tomorrow' | 'today' | 'class' | 'custom'>('tomorrow')
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string>('')
+  // Modo de programación: 'schedule' (Mini calendario de clases) vs 'manual' (Fecha manual)
+  const [scheduleMode, setScheduleMode] = useState<'schedule' | 'manual'>('schedule')
+  const [selectedSlotInfo, setSelectedSlotInfo] = useState<{
+    id: string
+    subjectName: string
+    time: string
+    dateLabel: string
+  } | null>(null)
+
   const [dueDate, setDueDate] = useState(getTomorrowDate())
   const [dueTime, setDueTime] = useState('23:59')
   const [loading, setLoading] = useState(false)
 
+  // Gestos táctiles
   const [dragOffsetY, setDragOffsetY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const dragStartYRef = useRef(0)
   const prevIsOpenRef = useRef(false)
   const prevTaskIdRef = useRef<string | null | undefined>(undefined)
 
-  const availableClassSlots = React.useMemo(() => {
-    const dayNames = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-    return schedules
-      .filter((s) => !!s && !!s.subject)
-      .map((s) => {
-        const time = s.start_time ? s.start_time.slice(0, 5) : '08:00'
-        const { dateStr, label } = getNextClassOccurrence(s.day_of_week, time)
-        return {
-          id: s.id,
-          subjectId: s.subject_id,
-          subjectName: s.subject?.name || 'Materia',
-          dayName: dayNames[s.day_of_week] || '',
-          time,
-          dateStr,
-          dateLabel: label,
-        }
-      })
+  // Matriz de clases por día para el mini calendario semanal
+  const weeklyScheduleDays = React.useMemo(() => {
+    const dayDefs = [
+      { day: 1, name: 'Lunes', short: 'LUN' },
+      { day: 2, name: 'Martes', short: 'MAR' },
+      { day: 3, name: 'Miércoles', short: 'MIÉ' },
+      { day: 4, name: 'Jueves', short: 'JUE' },
+      { day: 5, name: 'Viernes', short: 'VIE' },
+    ]
+
+    return dayDefs.map((d) => {
+      const dayClasses = schedules
+        .filter((s) => s.day_of_week === d.day && s.subject)
+        .sort((a, b) => (a.block_number || 0) - (b.block_number || 0))
+      return {
+        ...d,
+        classes: dayClasses,
+      }
+    })
   }, [schedules])
 
+  // Inicializar al abrir o cambiar de tarea
   useEffect(() => {
     if (!isOpen) {
       prevIsOpenRef.current = false
@@ -184,7 +189,8 @@ export function CreateTaskModal({
         setSubjectId(initialTask.subject_id || (subjects[0]?.id ?? ''))
         setType(initialTask.type || 'individual')
         setMode(initialTask.is_private ? 'private' : 'classroom')
-        setDatePreset('custom')
+        setScheduleMode('manual')
+        setSelectedSlotInfo(null)
         setFileError(null)
 
         if (initialTask.attachments && initialTask.attachments.length > 0) {
@@ -226,7 +232,8 @@ export function CreateTaskModal({
         setType('individual')
         setAttachments([])
         setFileError(null)
-        setDatePreset('tomorrow')
+        setScheduleMode(schedules.length > 0 ? 'schedule' : 'manual')
+        setSelectedSlotInfo(null)
         setDueDate(getTomorrowDate())
         setDueTime('23:59')
         if (subjects.length > 0) {
@@ -234,7 +241,7 @@ export function CreateTaskModal({
         }
       }
     }
-  }, [isOpen, initialTask, defaultMode, isAdmin, subjects])
+  }, [isOpen, initialTask, defaultMode, isAdmin, subjects, schedules])
 
   useEffect(() => {
     if (isOpen) {
@@ -270,33 +277,23 @@ export function CreateTaskModal({
     }
   }
 
-  const handleSelectPreset = (preset: 'tomorrow' | 'today' | 'class' | 'custom') => {
-    setDatePreset(preset)
-    if (preset === 'today') {
-      setDueDate(getTodayDate())
-      setDueTime('23:59')
-    } else if (preset === 'tomorrow') {
-      setDueDate(getTomorrowDate())
-      setDueTime('23:59')
-    } else if (preset === 'class') {
-      if (availableClassSlots.length > 0) {
-        const firstSlot = availableClassSlots[0]
-        setSelectedScheduleId(firstSlot.id)
-        setDueDate(firstSlot.dateStr)
-        setDueTime(firstSlot.time)
-        if (firstSlot.subjectId) setSubjectId(firstSlot.subjectId)
-      }
-    }
-  }
+  // Seleccionar una clase del mini calendario semanal
+  const handleSelectClassSlot = (sched: Schedule) => {
+    const time = sched.start_time ? sched.start_time.slice(0, 5) : '08:00'
+    const { dateStr, label } = getNextClassOccurrence(sched.day_of_week, time)
 
-  const handleSelectClassSlot = (slotId: string) => {
-    setSelectedScheduleId(slotId)
-    const slot = availableClassSlots.find((s) => s.id === slotId)
-    if (slot) {
-      setDueDate(slot.dateStr)
-      setDueTime(slot.time)
-      if (slot.subjectId) setSubjectId(slot.subjectId)
+    setDueDate(dateStr)
+    setDueTime(time)
+    if (sched.subject_id) {
+      setSubjectId(sched.subject_id)
     }
+
+    setSelectedSlotInfo({
+      id: sched.id,
+      subjectName: sched.subject?.name || 'Materia',
+      time,
+      dateLabel: label,
+    })
   }
 
   const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -403,6 +400,7 @@ export function CreateTaskModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Handle de arrastre */}
         <div
           className="w-full pt-1 pb-0.5 cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
           onTouchStart={handleTouchStart}
@@ -412,6 +410,7 @@ export function CreateTaskModal({
           <div className="w-9 h-1 rounded-full bg-zinc-800 mx-auto" />
         </div>
 
+        {/* Encabezado Simple y Limpio */}
         <div className="flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <span
@@ -426,7 +425,7 @@ export function CreateTaskModal({
                   : 'Editar Tarea'
                 : mode === 'classroom'
                 ? 'Nueva Tarea del Salón'
-                : 'Nuevo Pendiente Personal'}
+                : 'Nuevo pendiente'}
             </h2>
           </div>
 
@@ -440,6 +439,7 @@ export function CreateTaskModal({
           </button>
         </div>
 
+        {/* Selector de Ámbito (Salón vs Privado) */}
         {!initialTask && isAdmin && (
           <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 shrink-0">
             <button
@@ -470,10 +470,12 @@ export function CreateTaskModal({
           </div>
         )}
 
+        {/* Formulario */}
         <form
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto space-y-3 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
         >
+          {/* 1. Título del Pendiente / Tarea */}
           <div className="space-y-1">
             <input
               id="task-title"
@@ -485,105 +487,163 @@ export function CreateTaskModal({
               placeholder={
                 mode === 'classroom'
                   ? 'Título de la tarea o entrega...'
-                  : '¿Qué necesitas recordar o hacer?...'
+                  : 'Actividad o pendiente personal por realizar...'
               }
               className="w-full px-3 py-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-              <span className="font-medium text-zinc-300">Fecha de Entrega</span>
-            </div>
+          {/* 2. Programación de Entrega: Mini Calendario Semanal vs Fecha Manual */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="font-medium">Programación de Entrega</span>
+              </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('tomorrow')}
-                className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                  datePreset === 'tomorrow'
-                    ? 'bg-zinc-800 text-white border-zinc-600 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/40 border-zinc-800/60'
-                }`}
-              >
-                Mañana
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('today')}
-                className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                  datePreset === 'today'
-                    ? 'bg-zinc-800 text-white border-zinc-600 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/40 border-zinc-800/60'
-                }`}
-              >
-                Hoy
-              </button>
-
-              {availableClassSlots.length > 0 && (
+              {/* Selector de Modo */}
+              <div className="flex items-center p-0.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px]">
                 <button
                   type="button"
-                  onClick={() => handleSelectPreset('class')}
-                  className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                    datePreset === 'class'
-                      ? 'bg-indigo-500/20 text-indigo-200 border-indigo-500/40 font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/40 border-zinc-800/60'
+                  onClick={() => setScheduleMode('schedule')}
+                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                    scheduleMode === 'schedule'
+                      ? 'bg-zinc-800 text-white font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
-                  Próx. Clase
+                  Clases de la semana
                 </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('custom')}
-                className={`py-1 px-2.5 rounded-lg text-xs font-medium border transition-all ${
-                  datePreset === 'custom'
-                    ? 'bg-zinc-800 text-white border-zinc-600 font-semibold'
-                    : 'text-zinc-400 hover:text-zinc-200 bg-zinc-900/40 border-zinc-800/60'
-                }`}
-              >
-                Otra fecha...
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleMode('manual')}
+                  className={`px-2 py-1 rounded-md font-medium transition-all ${
+                    scheduleMode === 'manual'
+                      ? 'bg-zinc-800 text-white font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  Fecha manual
+                </button>
+              </div>
             </div>
 
-            {datePreset === 'class' && availableClassSlots.length > 0 && (
-              <div className="relative w-full pt-1">
-                <select
-                  value={selectedScheduleId}
-                  onChange={(e) => handleSelectClassSlot(e.target.value)}
-                  className="w-full appearance-none text-xs py-2 pl-3 pr-8 rounded-xl bg-zinc-900/60 border border-zinc-800 text-zinc-200 focus:outline-none focus:border-zinc-600 font-medium"
-                >
-                  {availableClassSlots.map((slot) => (
-                    <option key={slot.id} value={slot.id}>
-                      {slot.dayName} • {slot.subjectName} ({slot.time}) — {slot.dateLabel}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-3.5 pointer-events-none" />
+            {/* A. MINI CALENDARIO SEMANAL DE CLASES */}
+            {scheduleMode === 'schedule' && (
+              <div className="space-y-2">
+                {schedules.length === 0 ? (
+                  <p className="text-[11px] text-zinc-500 italic text-center py-2 bg-zinc-900/30 rounded-xl border border-zinc-800/60">
+                    No hay clases registradas. Usa la opción de <strong>Fecha manual</strong>.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {/* 5 Columnas Semanales (Lun - Vie) */}
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {weeklyScheduleDays.map((d) => {
+                        const todayDay = new Date().getDay() || 7
+                        const isToday = d.day === todayDay
+
+                        return (
+                          <div
+                            key={d.day}
+                            className={`p-1 rounded-xl flex flex-col gap-1 border transition-all ${
+                              isToday
+                                ? 'bg-indigo-950/20 border-indigo-500/40'
+                                : 'bg-zinc-900/30 border-zinc-800/50'
+                            }`}
+                          >
+                            <span
+                              className={`text-[9px] font-bold text-center tracking-wider ${
+                                isToday ? 'text-indigo-400 font-extrabold' : 'text-zinc-400'
+                              }`}
+                            >
+                              {d.short}
+                            </span>
+
+                            <div className="space-y-1">
+                              {d.classes.length === 0 ? (
+                                <div className="h-6 flex items-center justify-center text-[10px] text-zinc-700">
+                                  -
+                                </div>
+                              ) : (
+                                d.classes.map((sched) => {
+                                  const isSelected = selectedSlotInfo?.id === sched.id
+                                  return (
+                                    <button
+                                      key={sched.id}
+                                      type="button"
+                                      onClick={() => handleSelectClassSlot(sched)}
+                                      title={`${sched.subject?.name} (${sched.start_time?.slice(0, 5)})`}
+                                      className={`w-full py-1 px-1 rounded-md text-[9px] font-medium transition-all text-center truncate border ${
+                                        isSelected
+                                          ? 'bg-indigo-600 text-white border-white font-semibold shadow-xs scale-[1.02]'
+                                          : 'bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border-zinc-800 active:scale-95'
+                                      }`}
+                                      style={{
+                                        borderLeftColor: isSelected
+                                          ? '#ffffff'
+                                          : sched.subject?.color || '#6366f1',
+                                        borderLeftWidth: '2.5px',
+                                      }}
+                                    >
+                                      <span className="truncate block font-semibold">
+                                        {sched.subject?.name?.slice(0, 5) || 'Clase'}
+                                      </span>
+                                    </button>
+                                  )
+                                })
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Confirmación Visual de la Clase Seleccionada */}
+                    {selectedSlotInfo && (
+                      <div className="p-2 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between text-xs animate-fade-in">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <CalendarCheck className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <span className="text-zinc-200 font-medium truncate">
+                            {selectedSlotInfo.dateLabel} • {selectedSlotInfo.time}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-400 font-semibold truncate shrink-0 ml-1">
+                          {selectedSlotInfo.subjectName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {datePreset === 'custom' && (
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 [color-scheme:dark]"
-                />
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 [color-scheme:dark]"
-                />
+            {/* B. FECHA MANUAL */}
+            {scheduleMode === 'manual' && (
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-400 font-medium block">Fecha límite</span>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 [color-scheme:dark]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-zinc-400 font-medium block">Hora límite</span>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 [color-scheme:dark]"
+                  />
+                </div>
               </div>
             )}
           </div>
 
+          {/* 3. Materia Asociada */}
           {subjects.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5 text-xs text-zinc-400">
@@ -609,6 +669,7 @@ export function CreateTaskModal({
             </div>
           )}
 
+          {/* 4. Tipo de Evaluación */}
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-zinc-300 block">Tipo</span>
             <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-800/60">
@@ -640,6 +701,7 @@ export function CreateTaskModal({
             </div>
           </div>
 
+          {/* 5. Notas opcionales */}
           <div className="space-y-1">
             <textarea
               id="task-description"
@@ -652,6 +714,7 @@ export function CreateTaskModal({
             />
           </div>
 
+          {/* 6. Adjuntos & Fotos */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 text-xs text-zinc-400">
@@ -713,6 +776,7 @@ export function CreateTaskModal({
             )}
           </div>
 
+          {/* 7. Botón Guardar Principal */}
           <div className="pt-2">
             <button
               type="submit"

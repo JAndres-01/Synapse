@@ -95,56 +95,53 @@ export function ManageSubjectsModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-none select-none"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Handle */}
+        {/* Zona superior: Handle de arrastre y título (Única zona activa para swipe-to-dismiss) */}
         <div
-          className="w-full py-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-1 cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-10 h-1 rounded-full bg-zinc-700 active:bg-zinc-500 transition-colors" />
+          {/* Drag Handle */}
+          <div className="w-full py-1 flex items-center justify-center">
+            <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
+          </div>
+
+          {/* Encabezado Simple y Limpio (Sin botón X) */}
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            <h3 className="text-sm font-semibold text-white tracking-tight">
+              Materias del Salón
+            </h3>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-indigo-400" />
-            <span>Materias del Salón</span>
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Lista de Materias Creadas */}
-        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+        {/* Lista de Materias Creadas (Diseño plano y limpio) */}
+        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5 no-scrollbar min-h-0">
           {subjects.length === 0 ? (
-            <p className="text-center text-xs text-zinc-500 py-3">
+            <p className="text-center text-xs text-zinc-500 py-4 italic">
               Aún no hay materias registradas.
             </p>
           ) : (
             subjects.map((sub) => (
               <div
                 key={sub.id}
-                className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-between gap-2"
+                className="p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between gap-2 transition-colors hover:border-zinc-700"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span
-                    className="w-3.5 h-3.5 rounded-full shrink-0 border border-zinc-700 shadow-sm"
+                    className="w-3 h-3 rounded-full shrink-0 border border-zinc-700 shadow-xs"
                     style={{ backgroundColor: sub.color }}
                   />
                   <div className="min-w-0">
@@ -162,7 +159,7 @@ export function ManageSubjectsModal({
                   type="button"
                   onClick={() => onDeleteSubject(sub.id)}
                   aria-label="Eliminar materia"
-                  className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 transition-colors shrink-0"
+                  className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/20 transition-colors shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -176,16 +173,16 @@ export function ManageSubjectsModal({
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="w-full py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700/80 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+            className="w-full h-11 px-3 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 text-zinc-200 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5 text-white" />
             <span>Añadir Nueva Materia</span>
           </button>
         ) : (
-          /* Formulario de creación */
-          <form onSubmit={handleCreate} className="space-y-3 pt-2 border-t border-zinc-800">
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+          /* Formulario de creación limpio */
+          <form onSubmit={handleCreate} className="space-y-3 pt-3 border-t border-zinc-900/80">
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-zinc-300">
                 Nombre de la Materia *
               </label>
               <input
@@ -194,41 +191,41 @@ export function ManageSubjectsModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej. Algoritmos y Estructuras"
                 required
-                className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                className="w-full h-11 px-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                  Código (Opcional)
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-zinc-300">
+                  Código
                 </label>
                 <input
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="CC-401"
-                  className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 uppercase font-mono"
+                  className="w-full h-11 px-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 uppercase font-mono transition-colors"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                  Docente (Opcional)
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-zinc-300">
+                  Docente
                 </label>
                 <input
                   type="text"
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
                   placeholder="Prof. Juan Pérez"
-                  className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                  className="w-full h-11 px-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 transition-colors"
                 />
               </div>
             </div>
 
             {/* Paleta de Colores Básicos */}
-            <div>
-              <label className="block text-[11px] font-medium text-zinc-400 mb-1.5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-zinc-300">
                 Color Distintivo
               </label>
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
@@ -257,23 +254,23 @@ export function ManageSubjectsModal({
               </div>
             </div>
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-medium hover:bg-zinc-700"
+                className="flex-1 h-11 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-medium hover:bg-zinc-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 text-xs font-semibold hover:bg-white disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="flex-1 h-11 rounded-xl bg-white text-zinc-950 text-xs font-bold hover:bg-zinc-100 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg active:scale-[0.98] transition-all"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
                 ) : (
-                  <span>Guardar</span>
+                  <span>Guardar Materia</span>
                 )}
               </button>
             </div>

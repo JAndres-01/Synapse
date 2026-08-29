@@ -1011,6 +1011,7 @@ function TasksPageContent() {
         onToggleStatus={handleToggleTaskStatus}
         onDeleteTask={handleDeleteTask}
         onEditTask={(t) => {
+          setSelectedTaskForDetail(null)
           setTaskToEdit(t)
           setShowCreateModal(true)
         }}

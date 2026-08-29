@@ -124,49 +124,48 @@ export function AssignScheduleModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-900 border-t border-zinc-800 rounded-t-3xl p-5 pt-2 pb-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl transition-transform"
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-none select-none"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag Handle */}
+        {/* Zona superior: Handle de arrastre y título (Única zona activa para swipe-to-dismiss) */}
         <div
-          className="w-full py-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-1 cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-10 h-1 rounded-full bg-zinc-700 active:bg-zinc-500 transition-colors" />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-indigo-400" />
-              <span>Configurar Clase #{blockNumber}</span>
-            </h3>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
-              {dayName} • {blockDef?.startTime} - {blockDef?.endTime}
-            </p>
+          {/* Drag Handle */}
+          <div className="w-full py-1 flex items-center justify-center">
+            <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* Encabezado Simple y Limpio (Sin botón X) */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-white tracking-tight">
+                  Configurar Clase #{blockNumber}
+                </h3>
+                <p className="text-[10px] text-zinc-400">
+                  {dayName} • {blockDef?.startTime} - {blockDef?.endTime}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-3.5">
-          <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+          <div className="space-y-1.5 pt-2 border-t border-zinc-900/80">
+            <label className="block text-xs font-medium text-zinc-300">
               Materia Asignada
             </label>
             {subjects.length === 0 ? (
@@ -178,7 +177,7 @@ export function AssignScheduleModal({
                 value={selectedSubjectId}
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
                 required
-                className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500"
+                className="w-full h-11 px-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500 font-medium"
               >
                 {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -189,25 +188,25 @@ export function AssignScheduleModal({
             )}
           </div>
 
-          <div>
-            <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+          <div className="space-y-1.5 pt-2 border-t border-zinc-900/80">
+            <label className="block text-xs font-medium text-zinc-300">
               Aula / Salón
             </label>
             <div className="relative">
-              <MapPin className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-3" />
+              <MapPin className="w-3.5 h-3.5 text-zinc-500 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={classroomRoom}
                 onChange={(e) => setClassroomRoom(e.target.value)}
                 placeholder="Ej. Aula 302 o Laboratorio 1"
                 disabled={isVirtual}
-                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+                className="w-full h-11 pl-9 pr-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
               />
             </div>
           </div>
 
           {/* Opción Virtual / Hora Libre */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50 border border-zinc-800 pt-2 border-t border-zinc-900/80">
             <div className="flex items-center gap-2">
               <Video className="w-4 h-4 text-indigo-400" />
               <div>
@@ -223,13 +222,13 @@ export function AssignScheduleModal({
             />
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-2">
             {existingSchedule && (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={loading}
-                className="p-3 rounded-xl bg-red-950/40 border border-red-900/50 text-red-400 hover:bg-red-900/60 transition-colors"
+                className="p-3.5 rounded-xl bg-red-950/40 border border-red-900/50 text-red-400 hover:bg-red-900/60 transition-colors"
                 title="Desasignar clase"
               >
                 <Trash2 className="w-4 h-4" />
@@ -239,7 +238,7 @@ export function AssignScheduleModal({
             <button
               type="submit"
               disabled={loading || !selectedSubjectId}
-              className="flex-1 py-3 px-4 rounded-xl bg-zinc-100 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all disabled:opacity-50"
+              className="flex-1 py-3.5 px-4 rounded-xl bg-white text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 hover:bg-zinc-100 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />

@@ -200,33 +200,7 @@ export function TaskDetailModal({
     }
   }
 
-  const handleContainerTouchStart = (e: React.TouchEvent) => {
-    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 0) {
-      dragStartYRef.current = e.touches[0].clientY
-    }
-  }
 
-  const handleContainerTouchMove = (e: React.TouchEvent) => {
-    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 0) {
-      const deltaY = e.touches[0].clientY - dragStartYRef.current
-      if (deltaY > 15) {
-        setIsDragging(true)
-        setDragOffsetY(deltaY - 15)
-      }
-    }
-  }
-
-  const handleContainerTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false)
-      if (dragOffsetY > 45) {
-        document.body.classList.remove('body-scroll-lock')
-        onClose()
-      } else {
-        setDragOffsetY(0)
-      }
-    }
-  }
 
   const handleCheck = () => {
     if (!isCompleted) {
@@ -678,17 +652,6 @@ export function TaskDetailModal({
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    document.body.classList.remove('body-scroll-lock')
-                    onClose()
-                  }}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-zinc-800/60 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
             </div>
           </div>
@@ -696,10 +659,7 @@ export function TaskDetailModal({
           {/* Contenido scrolleable del Detalle y Comentarios */}
           <div
             ref={scrollContainerRef}
-            onTouchStart={handleContainerTouchStart}
-            onTouchMove={handleContainerTouchMove}
-            onTouchEnd={handleContainerTouchEnd}
-            className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-contain touch-pan-y"
+            className="flex-1 overflow-y-auto space-y-4 pr-1 no-scrollbar min-h-0 overscroll-none"
           >
             {/* Tarjeta de Información Principal */}
             <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-3">

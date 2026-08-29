@@ -708,6 +708,7 @@ export default function TodayPage() {
         onToggleStatus={handleToggleTaskStatus}
         onDeleteTask={handleDeleteTask}
         onEditTask={(t) => {
+          setSelectedTaskForDetail(null)
           setTaskToEdit(t)
           setShowCreateModal(true)
         }}

@@ -23,9 +23,11 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
       const locked = document.body.classList.contains('body-scroll-lock')
       setIsModalOpen(locked)
       if (locked) {
+        if (timer) clearTimeout(timer)
         setIsClickBlocked(true)
       } else {
         // Debounce: mantener los clicks bloqueados durante 350ms para absorber ghost-clicks de iOS
+        if (timer) clearTimeout(timer)
         timer = setTimeout(() => {
           setIsClickBlocked(false)
         }, 350)

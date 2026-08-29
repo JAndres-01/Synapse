@@ -44,6 +44,10 @@ body {
   touch-action: none !important;
   overscroll-behavior: none !important;
   -webkit-overflow-scrolling: auto !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+  inset: 0 !important;
 }
 
 body.body-scroll-lock nav[aria-label="Navegación principal"] {

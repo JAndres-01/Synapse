@@ -501,7 +501,7 @@ export function CreateTaskModal({
         <form
           ref={formRef}
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-contain"
+          className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 no-scrollbar min-h-0 overscroll-none touch-pan-y"
         >
           {/* 1. Título del Pendiente / Tarea */}
           <div className="space-y-1.5">

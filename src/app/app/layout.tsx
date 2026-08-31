@@ -142,18 +142,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen w-full max-w-full bg-zinc-950 text-zinc-100 flex flex-col selection:bg-zinc-800 relative overflow-x-hidden">
       {/* Contenedor Principal Centrado Mobile First con despeje seguro para Dynamic Island / Notch y margen inferior amplio */}
       <main className="w-full max-w-md mx-auto px-4 pt-[calc(env(safe-area-inset-top,44px)+16px)] pb-36 flex-1 flex flex-col overflow-x-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.16, ease: [0.25, 1, 0.5, 1] }}
-            className="flex-1 flex flex-col"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
+        {children}
       </main>
 
       {/* Floating Island Navigation Bar */}

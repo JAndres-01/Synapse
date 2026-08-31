@@ -5,6 +5,7 @@ import type { Subject, Schedule, TaskType, Task, AttachmentType } from '@/types/
 import { compressImageFile } from '@/lib/utils'
 import { registerModal, unregisterModal } from '@/lib/modalManager'
 import { triggerHaptic } from '@/lib/native'
+import { motion } from 'framer-motion'
 import {
   X,
   Plus,
@@ -430,21 +431,21 @@ export function CreateTaskModal({
       className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-backdrop-fade p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-contain animate-sheet-up"
-        style={{
-          transform: `translateY(${dragOffsetY}px)`,
-          transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+      <motion.div
+        drag="y"
+        dragConstraints={{ top: 0 }}
+        dragElastic={{ top: 0, bottom: 0.6 }}
+        onDragEnd={(e, { offset, velocity }) => {
+          if (offset.y > 65 || velocity.y > 300) {
+            triggerHaptic('light')
+            onClose()
+          }
         }}
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl overflow-hidden overscroll-contain animate-sheet-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Zona superior: Handle de arrastre y título (Única zona activa para swipe-to-dismiss) */}
-        <div
-          className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-1 cursor-grab active:cursor-grabbing"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
+        {/* Zona superior: Handle de arrastre y título (Zona activa para swipe-to-dismiss) */}
+        <div className="w-full shrink-0 touch-none select-none space-y-2 pt-1 pb-1 cursor-grab active:cursor-grabbing">
           {/* Handle de arrastre */}
           <div className="w-full py-1 flex items-center justify-center">
             <div className="w-10 h-1.5 rounded-full bg-zinc-700 mx-auto transition-colors" />
@@ -860,7 +861,7 @@ export function CreateTaskModal({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
   )
 }

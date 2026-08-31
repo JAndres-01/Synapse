@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client'
 import { memoryCache } from '@/lib/cache'
 import { registerModal, unregisterModal } from '@/lib/modalManager'
 import { triggerHaptic } from '@/lib/native'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -257,21 +258,21 @@ export function TaskDetailModal({
           onClick={onClose}
         />
 
-        {/* Contenedor Modal */}
-        <div
-          style={{
-            transform: `translateY(${dragOffsetY}px)`,
-            transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+        {/* Contenedor Modal con Gesto de Deslizar hacia Abajo Nativo de Apple */}
+        <motion.div
+          drag="y"
+          dragConstraints={{ top: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onDragEnd={(e, { offset, velocity }) => {
+            if (offset.y > 65 || velocity.y > 300) {
+              triggerHaptic('light')
+              onClose()
+            }
           }}
-          className="relative z-10 w-full max-w-lg mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-[28px] p-5 pb-8 shadow-2xl flex flex-col max-h-[85vh] transition-transform select-none overscroll-none animate-sheet-up"
+          className="relative z-10 w-full max-w-lg mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-[28px] p-5 pb-8 shadow-2xl flex flex-col max-h-[85vh] select-none overscroll-none animate-sheet-up"
         >
-          {/* Header del Modal con área táctil para cerrar por gesto */}
-          <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="w-full flex flex-col items-center pt-1 pb-3 cursor-grab active:cursor-grabbing touch-none select-none"
-          >
+          {/* Header del Modal con Handle de arrastre */}
+          <div className="w-full flex flex-col items-center pt-1 pb-3 cursor-grab active:cursor-grabbing touch-none select-none">
             <div className="w-12 h-1.5 bg-zinc-700/80 rounded-full mb-3" />
             <h2 className="text-sm font-semibold text-zinc-200 tracking-tight">Detalles de la Tarea</h2>
           </div>
@@ -453,7 +454,7 @@ export function TaskDetailModal({
               </button>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Modal de Confirmación para Eliminar Tarea */}

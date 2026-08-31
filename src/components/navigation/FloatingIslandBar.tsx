@@ -114,7 +114,6 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
               key={tab.name}
               href={tab.href}
               prefetch={true}
-              onClick={() => triggerHaptic('light')}
               className="relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-colors active:scale-95 z-10"
             >
               {tab.isActive && (

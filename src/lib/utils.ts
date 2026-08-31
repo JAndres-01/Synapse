@@ -17,15 +17,15 @@ export const SCHEDULE_BLOCKS = [
 export const DAYS_OF_WEEK = [
   { day: 1, name: "Lunes", short: "Lun" },
   { day: 2, name: "Martes", short: "Mar" },
-  { day: 3, name: "Miércoles", short: "Mié" },
+  { day: 3, name: "MiÃ©rcoles", short: "MiÃ©" },
   { day: 4, name: "Jueves", short: "Jue" },
   { day: 5, name: "Viernes", short: "Vie" },
 ] as const;
 
-// Paleta de colores básicos y de alto contraste (incluyendo blanco)
+// Paleta de colores bÃ¡sicos y de alto contraste (incluyendo blanco)
 export const SUBJECT_COLORS = [
   "#FFFFFF", // Blanco
-  "#3B82F6", // Azul clásico
+  "#3B82F6", // Azul clÃ¡sico
   "#EF4444", // Rojo intenso
   "#10B981", // Verde esmeralda
   "#F59E0B", // Amarillo / Dorado
@@ -36,8 +36,8 @@ export const SUBJECT_COLORS = [
 ] as const;
 
 /**
- * Comprime imágenes en el cliente (GPU Canvas) en <60ms de forma imperceptible.
- * Reduce fotos de iPhone (8MB-15MB) a ~350KB-600KB manteniendo textos de apuntes y pizarrones 100% nítidos.
+ * Comprime imÃ¡genes en el cliente (GPU Canvas) en <60ms de forma imperceptible.
+ * Reduce fotos de iPhone (8MB-15MB) a ~350KB-600KB manteniendo textos de apuntes y pizarrones 100% nÃ­tidos.
  */
 export async function compressImageFile(
   file: File,
@@ -66,7 +66,7 @@ export async function compressImageFile(
         let width = img.width
         let height = img.height
 
-        // Redimensionar respetando relación de aspecto
+        // Redimensionar respetando relaciÃ³n de aspecto
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
             height = Math.round((height * maxDimension) / width)

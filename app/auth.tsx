@@ -1,67 +1,64 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import {
   View,
   Text,
   TextInput,
   Pressable,
   StyleSheet,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
+  Alert,
 } from 'react-native'
-import { supabase } from '@/lib/nativeSupabase'
-import { useRouter } from 'expo-router'
-import { Sparkles, Mail, Lock, User, ArrowRight } from 'lucide-react-native'
-import { triggerHaptic } from '@/lib/nativeHaptics'
+import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
+import { triggerHaptic } from '@/lib/personalHaptics'
+import { Sparkles, ArrowRight, Mail, Lock, User } from 'lucide-react-native'
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const { signInWithEmail, signUpWithEmail } = usePersonalAuth()
 
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
 
-  const handleAuth = async () => {
-    if (!email || !password) {
-      setErrorMsg('Por favor completa todos los campos requeridos.')
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Campos requeridos', 'Por favor ingresa tu correo y contraseña.')
+      triggerHaptic('warning')
+      return
+    }
+
+    if (mode === 'register' && !fullName.trim()) {
+      Alert.alert('Nombre requerido', 'Por favor ingresa tu nombre.')
       triggerHaptic('warning')
       return
     }
 
     setLoading(true)
-    setErrorMsg('')
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        })
+        const { error } = await signInWithEmail(email, password)
         if (error) throw error
         triggerHaptic('success')
-        router.replace('/')
+        router.replace('/(tabs)/today')
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              full_name: fullName.trim() || 'Estudiante',
-            },
-          },
-        })
+        const { error } = await signUpWithEmail(email, password, fullName)
         if (error) throw error
         triggerHaptic('success')
-        router.replace('/')
+        Alert.alert('¡Cuenta creada!', 'Bienvenido a Synapse Personal.', [
+          { text: 'Comenzar', onPress: () => router.replace('/(tabs)/today') },
+        ])
       }
     } catch (err: any) {
+      Alert.alert('Error', err.message || 'No se pudo iniciar sesión.')
       triggerHaptic('error')
-      setErrorMsg(err.message || 'Error durante la autenticación')
     } finally {
       setLoading(false)
     }
@@ -70,93 +67,96 @@ export default function AuthScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}
+      style={[styles.container, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}
     >
       <View style={styles.header}>
         <View style={styles.logoBadge}>
-          <Sparkles size={20} color="#818CF8" />
+          <Sparkles size={18} color="#FFFFFF" />
         </View>
-        <Text style={styles.appName}>Synapse</Text>
-        <Text style={styles.appSubtitle}>
-          {mode === 'login'
-            ? 'Bienvenido de nuevo a tu espacio académico'
-            : 'Crea tu cuenta para acceder a tu salón'}
-        </Text>
+        <Text style={styles.title}>Synapse</Text>
+        <Text style={styles.subtitle}>Tu Asistente Académico Personal</Text>
       </View>
 
-      {/* Selector Modo: Iniciar Sesión / Registrarse */}
-      <View style={styles.modeSelector}>
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light')
-            setMode('login')
-            setErrorMsg('')
-          }}
-          style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
-        >
-          <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>
-            Iniciar Sesión
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light')
-            setMode('register')
-            setErrorMsg('')
-          }}
-          style={[styles.modeBtn, mode === 'register' && styles.modeBtnActive]}
-        >
-          <Text style={[styles.modeBtnText, mode === 'register' && styles.modeBtnTextActive]}>
-            Crear Cuenta
-          </Text>
-        </Pressable>
-      </View>
+      <View style={styles.formContainer}>
+        {/* Toggle Modo */}
+        <View style={styles.modeToggle}>
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light')
+              setMode('login')
+            }}
+            style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
+          >
+            <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>
+              Iniciar Sesión
+            </Text>
+          </Pressable>
 
-      {/* Formulario */}
-      <View style={styles.form}>
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light')
+              setMode('register')
+            }}
+            style={[styles.modeBtn, mode === 'register' && styles.modeBtnActive]}
+          >
+            <Text style={[styles.modeBtnText, mode === 'register' && styles.modeBtnTextActive]}>
+              Crear Cuenta
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Inputs */}
         {mode === 'register' && (
-          <View style={styles.inputContainer}>
-            <User size={16} color="#71717A" style={styles.inputIcon} />
-            <TextInput
-              placeholder="Nombre y Apellido"
-              placeholderTextColor="#52525B"
-              value={fullName}
-              onChangeText={setFullName}
-              style={styles.input}
-              autoCapitalize="words"
-            />
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>NOMBRE COMPLETO</Text>
+            <View style={styles.inputBox}>
+              <User size={15} color="#71717A" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Ej. José Morales"
+                placeholderTextColor="#52525B"
+                value={fullName}
+                onChangeText={setFullName}
+                style={styles.textInput}
+                autoCapitalize="words"
+              />
+            </View>
           </View>
         )}
 
-        <View style={styles.inputContainer}>
-          <Mail size={16} color="#71717A" style={styles.inputIcon} />
-          <TextInput
-            placeholder="correo@universidad.edu"
-            placeholderTextColor="#52525B"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>CORREO ELECTRÓNICO</Text>
+          <View style={styles.inputBox}>
+            <Mail size={15} color="#71717A" style={styles.inputIcon} />
+            <TextInput
+              placeholder="estudiante@universidad.edu"
+              placeholderTextColor="#52525B"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.textInput}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Lock size={16} color="#71717A" style={styles.inputIcon} />
-          <TextInput
-            placeholder="Contraseña"
-            placeholderTextColor="#52525B"
-            value={password}
-            onChangeText={setPassword}
-            style={styles.input}
-            secureTextEntry
-          />
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>CONTRASEÑA</Text>
+          <View style={styles.inputBox}>
+            <Lock size={15} color="#71717A" style={styles.inputIcon} />
+            <TextInput
+              placeholder="••••••••"
+              placeholderTextColor="#52525B"
+              value={password}
+              onChangeText={setPassword}
+              style={styles.textInput}
+              secureTextEntry
+            />
+          </View>
         </View>
 
-        {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
-
+        {/* Botón Principal */}
         <Pressable
-          onPress={handleAuth}
+          onPress={handleSubmit}
           disabled={loading}
           style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
         >
@@ -165,9 +165,9 @@ export default function AuthScreen() {
           ) : (
             <View style={styles.submitBtnContent}>
               <Text style={styles.submitBtnText}>
-                {mode === 'login' ? 'Entrar a Synapse' : 'Registrar Cuenta'}
+                {mode === 'login' ? 'Entrar a Synapse' : 'Registrar mi Cuenta'}
               </Text>
-              <ArrowRight size={16} color="#09090B" strokeWidth={2.5} />
+              <ArrowRight size={15} color="#09090B" strokeWidth={2.5} />
             </View>
           )}
         </Pressable>
@@ -185,49 +185,50 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
   },
   logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#18181B',
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: '#27272A',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  appName: {
+  title: {
     color: '#FFFFFF',
     fontSize: 26,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
-  appSubtitle: {
+  subtitle: {
     color: '#71717A',
     fontSize: 13,
-    textAlign: 'center',
-    marginTop: 6,
-    paddingHorizontal: 16,
+    marginTop: 4,
   },
-  modeSelector: {
+  formContainer: {
+    gap: 14,
+  },
+  modeToggle: {
     flexDirection: 'row',
     backgroundColor: '#18181B',
     padding: 3,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#27272A',
-    marginBottom: 20,
+    marginBottom: 6,
   },
   modeBtn: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    borderRadius: 11,
+    borderRadius: 10,
   },
   modeBtnActive: {
-    backgroundColor: '#27272A',
+    backgroundColor: '#FFFFFF',
   },
   modeBtnText: {
     color: '#71717A',
@@ -235,41 +236,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modeBtnTextActive: {
-    color: '#FFFFFF',
+    color: '#09090B',
+    fontWeight: '700',
   },
-  form: {
-    gap: 12,
+  inputGroup: {
+    gap: 6,
   },
-  inputContainer: {
+  inputLabel: {
+    color: '#71717A',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#18181B',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#27272A',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
+    paddingHorizontal: 12,
+    height: 44,
   },
   inputIcon: {
     marginRight: 10,
   },
-  input: {
+  textInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#F87171',
-    fontSize: 12,
-    textAlign: 'center',
+    fontSize: 13.5,
   },
   submitBtn: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    height: 48,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
   submitBtnDisabled: {
     opacity: 0.6,
@@ -281,7 +284,7 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     color: '#09090B',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13.5,
+    fontWeight: '800',
   },
 })

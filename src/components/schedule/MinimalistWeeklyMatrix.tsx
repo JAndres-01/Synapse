@@ -1,14 +1,12 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
-import type { Schedule, Subject } from '@/types/database'
-import { SCHEDULE_BLOCKS } from '@/lib/utils'
-import { Plus } from 'lucide-react-native'
-import { triggerHaptic } from '@/lib/nativeHaptics'
+import type { Schedule, Subject } from '@/types/personal'
+import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
+import { triggerHaptic } from '@/lib/personalHaptics'
 
-interface NativeWeeklyMatrixProps {
+interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
   subjects: Subject[]
-  isAdmin?: boolean
   onSlotPress: (day: number, block: number, existing?: Schedule) => void
 }
 
@@ -20,12 +18,11 @@ const DAYS = [
   { num: 5, name: 'Vie' },
 ]
 
-export function NativeWeeklyMatrix({
-  schedules,
-  subjects,
-  isAdmin,
+export function MinimalistWeeklyMatrix({
+  schedules = [],
+  subjects = [],
   onSlotPress,
-}: NativeWeeklyMatrixProps) {
+}: MinimalistWeeklyMatrixProps) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
       <View style={styles.gridContainer}>
@@ -42,7 +39,7 @@ export function NativeWeeklyMatrix({
         </View>
 
         {/* 4 Filas de Bloques */}
-        {SCHEDULE_BLOCKS.map((blockDef) => (
+        {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => (
           <View key={blockDef.block} style={styles.row}>
             {/* Columna de Hora */}
             <View style={[styles.cell, styles.timeCol]}>
@@ -66,14 +63,22 @@ export function NativeWeeklyMatrix({
                   style={[
                     styles.cell,
                     styles.slotCell,
-                    item && { backgroundColor: `${item.subject?.color || '#6366F1'}15`, borderColor: `${item.subject?.color || '#6366F1'}35` },
+                    item?.subject && {
+                      backgroundColor: `${item.subject.color || '#6366F1'}15`,
+                      borderColor: `${item.subject.color || '#6366F1'}35`,
+                    },
                   ]}
                 >
-                  {item ? (
+                  {item?.subject ? (
                     <View style={styles.cellContent}>
-                      <View style={[styles.dot, { backgroundColor: item.subject?.color || '#6366F1' }]} />
+                      <View
+                        style={[
+                          styles.dot,
+                          { backgroundColor: item.subject.color || '#6366F1' },
+                        ]}
+                      />
                       <Text style={styles.subjectText} numberOfLines={2}>
-                        {item.subject?.name || 'Clase'}
+                        {item.subject.name}
                       </Text>
                       {item.classroom_room ? (
                         <Text style={styles.roomText} numberOfLines={1}>
@@ -81,8 +86,6 @@ export function NativeWeeklyMatrix({
                         </Text>
                       ) : null}
                     </View>
-                  ) : isAdmin ? (
-                    <Plus size={12} color="#3F3F46" />
                   ) : (
                     <Text style={styles.emptyDash}>-</Text>
                   )}
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#27272A',
   },
   timeCol: {
-    width: 60,
+    width: 58,
     backgroundColor: '#09090B',
     borderRightWidth: 1,
     borderRightColor: '#27272A',
@@ -138,7 +141,7 @@ const styles = StyleSheet.create({
   cell: {
     flex: 1,
     minWidth: 64,
-    minHeight: 70,
+    minHeight: 68,
     padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
   },
   cellContent: {
     alignItems: 'center',
-    gap: 3,
+    gap: 2,
     width: '100%',
   },
   dot: {
@@ -166,20 +169,20 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
   roomText: {
-    color: '#71717A',
+    color: '#818CF8',
     fontSize: 8.5,
     textAlign: 'center',
   },
   blockNumText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   timeText: {
     color: '#71717A',
     fontSize: 9,
     fontFamily: 'monospace',
-    marginTop: 2,
+    marginTop: 1,
   },
   emptyDash: {
     color: '#3F3F46',

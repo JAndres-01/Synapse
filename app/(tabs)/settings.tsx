@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -6,63 +6,30 @@ import {
   Pressable,
   StyleSheet,
   Alert,
-  Share,
 } from 'react-native'
-import { useNativeAuth } from '@/context/NativeAuthContext'
-import { supabase } from '@/lib/nativeSupabase'
-import type { ClassroomMember, Profile } from '@/types/database'
+import { usePersonalAuth } from '@/context/PersonalAuthContext'
+import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Settings, Copy, Check, LogOut, Users, Shield, Share2, Sparkles, UserCheck } from 'lucide-react-native'
-import * as Clipboard from 'expo-clipboard'
-import { triggerHaptic } from '@/lib/nativeHaptics'
+import { Settings, LogOut, ShieldCheck, BookOpen, CheckSquare, Cloud } from 'lucide-react-native'
+import { triggerHaptic } from '@/lib/personalHaptics'
 import { useRouter } from 'expo-router'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { user, profile, classroom, signOut } = useNativeAuth()
-  const [copied, setCopied] = useState(false)
-  const [members, setMembers] = useState<Array<{ user_id: string; role: string; profile?: Profile }>>([])
+  const { profile, signOut } = usePersonalAuth()
 
-  const fetchMembers = useCallback(async () => {
-    if (!classroom) return
-
-    try {
-      const { data, error } = await supabase
-        .from('classroom_members')
-        .select('user_id, role, profile:profiles(*)')
-        .eq('classroom_id', classroom.id)
-
-      if (data && !error) {
-        setMembers(data as any)
-      }
-    } catch (err) {
-      console.error('Error cargando miembros:', err)
-    }
-  }, [classroom])
+  const [subjectsCount, setSubjectsCount] = useState(0)
+  const [tasksCount, setTasksCount] = useState(0)
+  const [completedTasksCount, setCompletedTasksCount] = useState(0)
 
   useEffect(() => {
-    fetchMembers()
-  }, [fetchMembers])
-
-  const handleCopyPin = async () => {
-    if (!classroom?.invite_code) return
-    triggerHaptic('light')
-    await Clipboard.setStringAsync(classroom.invite_code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleSharePin = async () => {
-    if (!classroom?.invite_code) return
-    triggerHaptic('light')
-    try {
-      await Share.share({
-        message: `¡Únete a nuestro salón "${classroom.name}" en Synapse! Usa el código PIN: ${classroom.invite_code}`,
-      })
-    } catch {}
-  }
+    personalStorage.getSubjects().then((s) => setSubjectsCount(s.length))
+    personalStorage.getTasks().then((t) => {
+      setTasksCount(t.length)
+      setCompletedTasksCount(t.filter((task) => task.status === 'completed').length)
+    })
+  }, [])
 
   const handleSignOut = () => {
     Alert.alert(
@@ -95,12 +62,10 @@ export default function SettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <Settings size={20} color="#818CF8" />
-          <Text style={styles.title}>Salón & Ajustes</Text>
+          <Settings size={18} color="#818CF8" />
+          <Text style={styles.title}>Ajustes y Perfil</Text>
         </View>
-        <Text style={styles.subtitle}>
-          Configuración personal y miembros de tu salón
-        </Text>
+        <Text style={styles.subtitle}>Tu cuenta personal y estado de respaldo</Text>
       </View>
 
       {/* Perfil del Estudiante */}
@@ -110,101 +75,60 @@ export default function SettingsScreen() {
             {(profile?.full_name || 'E').slice(0, 1).toUpperCase()}
           </Text>
         </View>
+
         <View style={styles.profileInfo}>
           <Text style={styles.userName}>
             {profile?.full_name || 'Estudiante'}
           </Text>
-          <View style={styles.roleBadge}>
-            <Shield size={10} color="#818CF8" />
-            <Text style={styles.roleText}>
-              {profile?.role === 'admin' ? 'Delegado' : 'Estudiante'}
+          <Text style={styles.userEmail}>{profile?.email || 'Sin correo'}</Text>
+        </View>
+      </View>
+
+      {/* Estadísticas Personales */}
+      <View style={styles.card}>
+        <Text style={styles.cardSectionTitle}>RESUMEN ACADÉMICO</Text>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <BookOpen size={16} color="#818CF8" />
+            <Text style={styles.statNumber}>{subjectsCount}</Text>
+            <Text style={styles.statLabel}>Materias</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <CheckSquare size={16} color="#10B981" />
+            <Text style={styles.statNumber}>
+              {completedTasksCount}/{tasksCount}
             </Text>
+            <Text style={styles.statLabel}>Entregadas</Text>
+          </View>
+
+          <View style={styles.statItem}>
+            <ShieldCheck size={16} color="#FBBF24" />
+            <Text style={styles.statNumber}>100%</Text>
+            <Text style={styles.statLabel}>Privado</Text>
           </View>
         </View>
       </View>
 
-      {/* Tarjeta de Código PIN del Salón */}
+      {/* Estado de Sincronización en la Nube */}
       <View style={styles.card}>
-        <View style={styles.pinHeader}>
-          <Users size={16} color="#818CF8" />
-          <Text style={styles.pinTitle}>Salón Activo</Text>
-        </View>
-
-        <Text style={styles.classroomTitle}>
-          {classroom?.name || 'Salón Principal'}
-        </Text>
-
-        <View style={styles.pinBox}>
-          <View>
-            <Text style={styles.pinLabel}>PIN DE INVITACIÓN</Text>
-            <Text style={styles.pinValue}>
-              {classroom?.invite_code || 'SYN-481'}
+        <View style={styles.syncRow}>
+          <View style={styles.syncIconBox}>
+            <Cloud size={18} color="#10B981" />
+          </View>
+          <View style={styles.syncInfo}>
+            <Text style={styles.syncTitle}>Sincronización Offline-First</Text>
+            <Text style={styles.syncSub}>
+              Tus datos se guardan en tu iPhone y se respaldan en Supabase
             </Text>
           </View>
-
-          <View style={styles.pinActions}>
-            <Pressable onPress={handleCopyPin} style={styles.copyBtn}>
-              {copied ? (
-                <Check size={13} color="#10B981" />
-              ) : (
-                <Copy size={13} color="#A1A1AA" />
-              )}
-              <Text style={[styles.copyBtnText, copied && styles.copyBtnTextSuccess]}>
-                {copied ? 'Copiado' : 'Copiar'}
-              </Text>
-            </Pressable>
-
-            <Pressable onPress={handleSharePin} style={styles.shareBtn}>
-              <Share2 size={13} color="#818CF8" />
-            </Pressable>
-          </View>
-        </View>
-      </View>
-
-      {/* Lista de Compañeros de Salón */}
-      <View style={styles.card}>
-        <View style={styles.membersHeader}>
-          <UserCheck size={16} color="#818CF8" />
-          <Text style={styles.membersTitle}>
-            Compañeros de Salón ({members.length})
-          </Text>
-        </View>
-
-        <View style={styles.membersList}>
-          {members.map((m, idx) => {
-            const memberProfile = m.profile as Profile | undefined
-            const memberName = memberProfile?.full_name || 'Estudiante'
-            const isDelegado = m.role === 'admin' || memberProfile?.role === 'admin'
-            const isCurrentUser = m.user_id === user?.id
-
-            return (
-              <View key={m.user_id || idx} style={styles.memberRow}>
-                <View style={styles.memberAvatar}>
-                  <Text style={styles.memberAvatarText}>
-                    {memberName.slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={styles.memberInfo}>
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {memberName} {isCurrentUser ? '(Tú)' : ''}
-                  </Text>
-                </View>
-
-                {isDelegado && (
-                  <View style={styles.delegadoPill}>
-                    <Text style={styles.delegadoPillText}>Delegado</Text>
-                  </View>
-                )}
-              </View>
-            )
-          })}
         </View>
       </View>
 
       {/* Botón de Cerrar Sesión */}
       <Pressable onPress={handleSignOut} style={styles.logoutBtn}>
-        <LogOut size={16} color="#EF4444" />
+        <LogOut size={15} color="#EF4444" />
         <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
       </Pressable>
     </ScrollView>
@@ -218,10 +142,10 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 14,
   },
   header: {
-    gap: 4,
+    gap: 2,
     paddingHorizontal: 2,
   },
   headerTitleRow: {
@@ -240,178 +164,101 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   card: {
-    backgroundColor: 'rgba(24, 24, 27, 0.8)',
-    borderRadius: 20,
+    backgroundColor: '#18181B',
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#27272A',
     padding: 16,
     gap: 12,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#27272A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
   },
   profileInfo: {
-    gap: 4,
+    gap: 2,
   },
   userName: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  roleText: {
-    color: '#A5B4FC',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  pinHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pinTitle: {
-    color: '#A1A1AA',
+  userEmail: {
+    color: '#71717A',
     fontSize: 12,
-    fontWeight: '600',
   },
-  classroomTitle: {
+  cardSectionTitle: {
+    color: '#71717A',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  statNumber: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-  },
-  pinBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#18181B',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#27272A',
-  },
-  pinLabel: {
-    color: '#71717A',
-    fontSize: 9.5,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  pinValue: {
-    color: '#FFFFFF',
-    fontSize: 18,
     fontWeight: '800',
-    fontFamily: 'monospace',
-    letterSpacing: 1.5,
-    marginTop: 2,
   },
-  pinActions: {
+  statLabel: {
+    color: '#71717A',
+    fontSize: 10.5,
+  },
+  syncRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
   },
-  copyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#27272A',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 9,
-  },
-  copyBtnText: {
-    color: '#E4E4E7',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  copyBtnTextSuccess: {
-    color: '#10B981',
-  },
-  shareBtn: {
-    backgroundColor: '#27272A',
-    padding: 7,
-    borderRadius: 9,
-  },
-  membersHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  membersTitle: {
-    color: '#A1A1AA',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  membersList: {
-    gap: 10,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#27272A',
+  syncIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  memberAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  memberInfo: {
+  syncInfo: {
     flex: 1,
+    gap: 2,
   },
-  memberName: {
+  syncTitle: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  delegadoPill: {
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
-  },
-  delegadoPillText: {
-    color: '#818CF8',
-    fontSize: 9.5,
+    fontSize: 13.5,
     fontWeight: '600',
+  },
+  syncSub: {
+    color: '#71717A',
+    fontSize: 11,
+    lineHeight: 15,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.25)',
-    borderRadius: 16,
-    paddingVertical: 14,
-    marginTop: 6,
+    borderRadius: 14,
+    paddingVertical: 13,
+    marginTop: 4,
   },
   logoutBtnText: {
     color: '#EF4444',

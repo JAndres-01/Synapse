@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
@@ -7,21 +7,21 @@ import {
   Pressable,
   StyleSheet,
 } from 'react-native'
-import { useNativeAuth } from '@/context/NativeAuthContext'
-import { supabase } from '@/lib/nativeSupabase'
-import type { Schedule, Subject } from '@/types/database'
-import { NativeDayView } from '@/components/schedule/NativeDayView'
-import { NativeWeeklyMatrix } from '@/components/schedule/NativeWeeklyMatrix'
-import { NativeManageSubjectsModal } from '@/components/modals/NativeManageSubjectsModal'
-import { NativeAssignScheduleModal } from '@/components/modals/NativeAssignScheduleModal'
+import { usePersonalAuth } from '@/context/PersonalAuthContext'
+import { supabase } from '@/lib/personalSupabase'
+import { personalStorage } from '@/lib/personalStorage'
+import type { Schedule, Subject } from '@/types/personal'
+import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
+import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMatrix'
+import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectModal'
+import { MinimalistAssignSlotModal } from '@/components/schedule/MinimalistAssignSlotModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Calendar, LayoutGrid, CalendarDays, BookOpen, Plus } from 'lucide-react-native'
-import { triggerHaptic } from '@/lib/nativeHaptics'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
+import { triggerHaptic } from '@/lib/personalHaptics'
 
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
-  const { user, profile, classroom } = useNativeAuth()
+  const { user } = usePersonalAuth()
 
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -33,7 +33,7 @@ export default function ScheduleScreen() {
   const [selectedDay, setSelectedDay] = useState<number>(initialDay)
 
   // Modales
-  const [showManageSubjectsModal, setShowManageSubjectsModal] = useState(false)
+  const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [assignModalData, setAssignModalData] = useState<{
     visible: boolean
     day: number
@@ -45,82 +45,74 @@ export default function ScheduleScreen() {
     block: 1,
   })
 
-  const isAdmin =
-    classroom?.created_by === user?.id ||
-    profile?.role === 'admin' ||
-    (profile?.role as string) === 'delegate'
-
-  const loadCached = async () => {
-    try {
-      const cachedSched = await AsyncStorage.getItem('synapse_cached_all_schedules')
-      const cachedSubj = await AsyncStorage.getItem('synapse_cached_all_subjects')
-      if (cachedSched) setSchedules(JSON.parse(cachedSched))
-      if (cachedSubj) setSubjects(JSON.parse(cachedSubj))
-    } catch {}
+  const loadLocalCache = async () => {
+    const [cachedScheds, cachedSubjs] = await Promise.all([
+      personalStorage.getSchedules(),
+      personalStorage.getSubjects(),
+    ])
+    setSchedules(cachedScheds)
+    setSubjects(cachedSubjs)
   }
 
-  const fetchScheduleData = useCallback(async () => {
-    if (!classroom) return
+  const fetchCloudData = useCallback(async () => {
+    if (!user) return
 
     try {
       const [schedRes, subjRes] = await Promise.all([
         supabase
           .from('schedules')
           .select('*, subject:subjects(*)')
-          .eq('classroom_id', classroom.id)
+          .eq('user_id', user.id)
           .order('block_number', { ascending: true }),
         supabase
           .from('subjects')
           .select('*')
-          .eq('classroom_id', classroom.id)
+          .eq('user_id', user.id)
           .order('name', { ascending: true }),
       ])
 
       if (schedRes.data) {
-        setSchedules(schedRes.data as Schedule[])
-        await AsyncStorage.setItem('synapse_cached_all_schedules', JSON.stringify(schedRes.data)).catch(() => {})
+        const allScheds = schedRes.data as Schedule[]
+        await personalStorage.setSchedules(allScheds)
+        setSchedules(allScheds)
       }
 
       if (subjRes.data) {
-        setSubjects(subjRes.data as Subject[])
-        await AsyncStorage.setItem('synapse_cached_all_subjects', JSON.stringify(subjRes.data)).catch(() => {})
+        const allSubjs = subjRes.data as Subject[]
+        await personalStorage.setSubjects(allSubjs)
+        setSubjects(allSubjs)
       }
     } catch (err) {
-      console.error('Error cargando horario:', err)
+      console.error('Error sincronizando horario:', err)
     } finally {
       setRefreshing(false)
     }
-  }, [classroom])
+  }, [user])
 
   useEffect(() => {
-    loadCached()
-    fetchScheduleData()
+    loadLocalCache()
+    fetchCloudData()
 
-    if (!classroom) return
+    if (!user) return
 
     const channel = supabase
-      .channel(`public:native_schedule:${classroom.id}`)
+      .channel(`personal_schedule_${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'schedules', filter: `classroom_id=eq.${classroom.id}` },
-        () => fetchScheduleData()
+        { event: '*', schema: 'public', table: 'schedules', filter: `user_id=eq.${user.id}` },
+        () => fetchCloudData()
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'subjects', filter: `classroom_id=eq.${classroom.id}` },
-        () => fetchScheduleData()
+        { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` },
+        () => fetchCloudData()
       )
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [classroom, fetchScheduleData])
-
-  const onRefresh = () => {
-    setRefreshing(true)
-    fetchScheduleData()
-  }
+  }, [user, fetchCloudData])
 
   const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule) => {
     triggerHaptic('light')
@@ -130,6 +122,11 @@ export default function ScheduleScreen() {
       block,
       existingSchedule: existingSchedule || null,
     })
+  }
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    fetchCloudData()
   }
 
   return (
@@ -142,11 +139,7 @@ export default function ScheduleScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#FFFFFF"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
       >
         {/* Header */}
@@ -154,26 +147,22 @@ export default function ScheduleScreen() {
           <View style={styles.headerTop}>
             <View>
               <View style={styles.headerTitleRow}>
-                <Calendar size={20} color="#818CF8" />
+                <Calendar size={18} color="#818CF8" />
                 <Text style={styles.title}>Horario de Clases</Text>
               </View>
-              <Text style={styles.subtitle}>
-                4 bloques diarios • 7:00 AM - 1:00 PM
-              </Text>
+              <Text style={styles.subtitle}>4 bloques diarios • 7:00 AM - 1:00 PM</Text>
             </View>
 
-            {isAdmin && (
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('light')
-                  setShowManageSubjectsModal(true)
-                }}
-                style={styles.manageSubjBtn}
-              >
-                <BookOpen size={13} color="#FFFFFF" />
-                <Text style={styles.manageSubjBtnText}>Materias</Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => {
+                triggerHaptic('light')
+                setShowSubjectModal(true)
+              }}
+              style={styles.manageSubjBtn}
+            >
+              <BookOpen size={13} color="#FFFFFF" />
+              <Text style={styles.manageSubjBtnText}>Materias</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -206,48 +195,46 @@ export default function ScheduleScreen() {
           </Pressable>
         </View>
 
-        {/* Vista Activa */}
+        {/* Vista Seleccionada */}
         {viewMode === 'day' ? (
-          <NativeDayView
+          <MinimalistDayView
             schedules={schedules}
             subjects={subjects}
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
-            isAdmin={isAdmin}
             onAssignSlot={handleOpenAssign}
           />
         ) : (
-          <NativeWeeklyMatrix
+          <MinimalistWeeklyMatrix
             schedules={schedules}
             subjects={subjects}
-            isAdmin={isAdmin}
             onSlotPress={handleOpenAssign}
           />
         )}
       </ScrollView>
 
       {/* Modal de Asignar Bloque */}
-      {classroom && (
-        <NativeAssignScheduleModal
+      {user && (
+        <MinimalistAssignSlotModal
           visible={assignModalData.visible}
           onClose={() => setAssignModalData((prev) => ({ ...prev, visible: false }))}
-          classroomId={classroom.id}
+          userId={user.id}
           subjects={subjects}
           initialDay={assignModalData.day}
           initialBlock={assignModalData.block}
           existingSchedule={assignModalData.existingSchedule}
-          onScheduleSaved={fetchScheduleData}
+          onScheduleSaved={fetchCloudData}
         />
       )}
 
       {/* Modal de Administrar Materias */}
-      {classroom && (
-        <NativeManageSubjectsModal
-          visible={showManageSubjectsModal}
-          onClose={() => setShowManageSubjectsModal(false)}
-          classroomId={classroom.id}
+      {user && (
+        <MinimalistSubjectModal
+          visible={showSubjectModal}
+          onClose={() => setShowSubjectModal(false)}
+          userId={user.id}
           subjects={subjects}
-          onSubjectsUpdated={fetchScheduleData}
+          onSubjectsUpdated={fetchCloudData}
         />
       )}
     </View>

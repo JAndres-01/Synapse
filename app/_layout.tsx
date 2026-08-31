@@ -1,30 +1,35 @@
-﻿import React from 'react'
+import React from 'react'
+import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { NativeAuthProvider } from '@/context/NativeAuthContext'
-import { Slot } from 'expo-router'
+import { PersonalAuthProvider } from '@/context/PersonalAuthContext'
 import { StyleSheet, View } from 'react-native'
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <NativeAuthProvider>
-          <View style={styles.container}>
-            <StatusBar style="light" />
-            <Slot />
-          </View>
-        </NativeAuthProvider>
+        <PersonalAuthProvider>
+          <StatusBar style="light" backgroundColor="#09090B" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'fade',
+              contentStyle: { backgroundColor: '#09090B' },
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="auth" options={{ animation: 'fade' }} />
+            <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+          </Stack>
+        </PersonalAuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
   container: {
     flex: 1,
     backgroundColor: '#09090B',

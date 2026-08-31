@@ -231,7 +231,7 @@ export function TaskDetailModal({
         const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf')
         const fileType: AttachmentType = isImage ? 'image' : isPdf ? 'pdf' : 'link'
 
-        const { fileUrl, fileName } = await compressImageFile(file, 2048, 0.85)
+        const { fileUrl, fileName } = await compressImageFile(file, 1080, 0.65)
         setPreviewAttachments((prev) => [
           ...prev,
           {

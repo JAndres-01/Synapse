@@ -41,8 +41,8 @@ export const SUBJECT_COLORS = [
  */
 export async function compressImageFile(
   file: File,
-  maxDimension = 2048,
-  quality = 0.85
+  maxDimension = 1200,
+  quality = 0.70
 ): Promise<{ fileUrl: string; fileName: string; fileSize: number }> {
   return new Promise((resolve, reject) => {
     // Si no es imagen (ej. PDF o Word), retornar DataURL sin alterar

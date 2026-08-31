@@ -270,17 +270,20 @@ function TasksPageContent() {
       )
       .subscribe()
 
-    channelRef.current = channel
-
-    // Polling de respaldo cada 5 segundos cuando la pestaña esté activa para garantizar tiempo real
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible' && !showCreateModal) {
+    // Sincronización inteligente al volver a enfocar la app (con throttle de 60s)
+    let lastFocusSync = Date.now()
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFocusSync > 60000) {
+        lastFocusSync = Date.now()
         loadTasksData()
       }
-    }, 5000)
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
 
     return () => {
-      clearInterval(interval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
       supabase.removeChannel(channel)
       channelRef.current = null
     }

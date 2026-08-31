@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native'
 import type { Task, TaskAttachment } from '@/types/personal'
 import {
@@ -25,6 +27,8 @@ import {
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import * as Linking from 'expo-linking'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface MinimalistTaskDetailModalProps {
   task: Task | null
@@ -43,12 +47,71 @@ export function MinimalistTaskDetailModal({
   onDeleteTask,
   onEditTask,
 }: MinimalistTaskDetailModalProps) {
-  if (!task) return null
-
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
-  const isCompleted = task.status === 'completed'
+  // Animaciones independientes: Backdrop estático con fade + Sheet con deslizamiento elástico
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const [modalVisible, setModalVisible] = useState(visible)
+
+  useEffect(() => {
+    if (visible) {
+      setModalVisible(true)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          stiffness: 480,
+          damping: 32,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false)
+      })
+    }
+  }, [visible, fadeAnim, slideAnim])
+
+  const handleSmoothClose = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose()
+    })
+  }
+
+  if (!task && !modalVisible) return null
+
+  const isCompleted = task?.status === 'completed'
+  const isWhite = task?.subject?.color === '#FFFFFF'
 
   const formatDueDate = (dateStr?: string | null) => {
     if (!dateStr) return { text: 'Sin fecha límite', isOverdue: false, isToday: false }
@@ -72,7 +135,7 @@ export function MinimalistTaskDetailModal({
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isCompleted) {
-        return { text: `Completada â€¢ ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
+        return { text: `Completada • ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
       }
       if (isPast) {
         return { text: `Venció el ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: true, isToday }
@@ -86,15 +149,17 @@ export function MinimalistTaskDetailModal({
     }
   }
 
-  const dueInfo = formatDueDate(task.due_date)
-  const attachments = Array.isArray(task.attachments) ? task.attachments : []
+  const dueInfo = formatDueDate(task?.due_date)
+  const attachments = Array.isArray(task?.attachments) ? task.attachments : []
 
   const handleToggle = () => {
-    triggerHaptic(isCompleted ? 'light' : 'success')
+    if (!task) return
+    triggerHaptic(isCompleted ? 'selection' : 'success')
     onToggleStatus(task.id, task.status)
   }
 
   const handleDelete = () => {
+    if (!task) return
     Alert.alert(
       '¿Eliminar esta tarea?',
       'Esta acción no se puede deshacer.',
@@ -108,7 +173,7 @@ export function MinimalistTaskDetailModal({
               triggerHaptic('error')
               setDeleteLoading(true)
               await onDeleteTask?.(task.id)
-              onClose()
+              handleSmoothClose()
             } catch (err) {
               console.error('Error eliminando:', err)
             } finally {
@@ -121,15 +186,19 @@ export function MinimalistTaskDetailModal({
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={styles.backdropTouch} onPress={onClose} />
+    <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
+      <View style={styles.modalRoot}>
+        {/* Fondo Translúcido Estático con Fade (NO se desliza con la pantalla) */}
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
+        </Animated.View>
 
-        <View style={styles.sheetContainer}>
+        {/* Hoja Inferior Estilo Apple con Deslizamiento Elástico */}
+        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
           {/* Header */}
           <View style={styles.sheetHeader}>
             <View style={styles.dragHandle} />
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
+            <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.closeBtn}>
               <X size={18} color="#A1A1AA" />
             </Pressable>
           </View>
@@ -137,25 +206,28 @@ export function MinimalistTaskDetailModal({
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
             {/* Badges de Materia y Tipo */}
             <View style={styles.badgesRow}>
-              {task.subject ? (
+              {task?.subject ? (
                 <View
                   style={[
                     styles.subjectPill,
-                    { backgroundColor: `${task.subject.color || '#6366F1'}20` },
+                    {
+                      backgroundColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.15)'
+                        : `${task.subject.color || '#FFFFFF'}22`,
+                      borderColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.35)'
+                        : `${task.subject.color || '#FFFFFF'}50`,
+                    },
                   ]}
                 >
                   <View
                     style={[
                       styles.dot,
-                      { backgroundColor: task.subject.color || '#6366F1' },
+                      { backgroundColor: task.subject.color || '#FFFFFF' },
+                      isWhite && styles.whiteDotBorder,
                     ]}
                   />
-                  <Text
-                    style={[
-                      styles.subjectPillText,
-                      { color: task.subject.color || '#818CF8' },
-                    ]}
-                  >
+                  <Text style={styles.subjectPillText}>
                     {task.subject.name}
                   </Text>
                 </View>
@@ -165,23 +237,23 @@ export function MinimalistTaskDetailModal({
                 </View>
               )}
 
-              {task.type === 'proyecto' && (
+              {task?.type === 'proyecto' && (
                 <View style={styles.typePill}>
-                  <Rocket size={10} color="#C084FC" />
+                  <Rocket size={11} color="#C084FC" />
                   <Text style={styles.typePillText}>Proyecto</Text>
                 </View>
               )}
 
-              {task.type === 'examen' && (
+              {task?.type === 'examen' && (
                 <View style={styles.typePill}>
-                  <FileText size={10} color="#FB7185" />
+                  <FileText size={11} color="#FB7185" />
                   <Text style={styles.typePillText}>Examen</Text>
                 </View>
               )}
 
-              {task.type === 'grupal' && (
+              {task?.type === 'grupal' && (
                 <View style={styles.typePill}>
-                  <Users size={10} color="#38BDF8" />
+                  <Users size={11} color="#38BDF8" />
                   <Text style={styles.typePillText}>Grupal</Text>
                 </View>
               )}
@@ -190,7 +262,7 @@ export function MinimalistTaskDetailModal({
             {/* Título y Botón Checkmark */}
             <View style={styles.titleRow}>
               <Text style={[styles.title, isCompleted && styles.titleCompleted]}>
-                {task.title}
+                {task?.title}
               </Text>
 
               <Pressable
@@ -199,16 +271,17 @@ export function MinimalistTaskDetailModal({
                   styles.checkBtn,
                   isCompleted && styles.checkBtnCompleted,
                 ]}
+                hitSlop={8}
               >
                 {isCompleted ? (
-                  <Check size={14} color="#09090B" strokeWidth={3} />
+                  <Check size={15} color="#09090B" strokeWidth={3} />
                 ) : (
-                  <Check size={14} color="#52525B" />
+                  <Check size={15} color="#52525B" />
                 )}
               </Pressable>
             </View>
 
-            {/* Banner de Fecha Límite */}
+            {/* Banner de Fecha Límite con Tono Muted */}
             <View
               style={[
                 styles.dueBanner,
@@ -220,7 +293,7 @@ export function MinimalistTaskDetailModal({
                 size={14}
                 color={
                   isCompleted
-                    ? '#10B981'
+                    ? '#34D399'
                     : dueInfo.isOverdue
                     ? '#F87171'
                     : '#A1A1AA'
@@ -238,7 +311,7 @@ export function MinimalistTaskDetailModal({
             </View>
 
             {/* Notas / Instrucciones */}
-            {task.description ? (
+            {task?.description ? (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>NOTAS / INSTRUCCIONES</Text>
                 <View style={styles.descriptionBox}>
@@ -277,7 +350,7 @@ export function MinimalistTaskDetailModal({
                           />
                         ) : (
                           <View style={styles.attachmentDocIcon}>
-                            <Paperclip size={16} color="#818CF8" />
+                            <Paperclip size={16} color="#FFFFFF" />
                           </View>
                         )}
                         <View style={styles.attachmentInfo}>
@@ -301,8 +374,10 @@ export function MinimalistTaskDetailModal({
               <Pressable
                 onPress={() => {
                   triggerHaptic('light')
-                  onClose()
-                  onEditTask?.(task)
+                  if (task) {
+                    onClose()
+                    onEditTask?.(task)
+                  }
                 }}
                 style={styles.editBtn}
               >
@@ -326,9 +401,9 @@ export function MinimalistTaskDetailModal({
               </Pressable>
             </View>
           </ScrollView>
-        </View>
+        </Animated.View>
 
-        {/* Visor Lightbox para Fotos */}
+        {/* Visor Lightbox para Fotos en Pantalla Completa */}
         {selectedLightboxImage && (
           <Modal visible={true} transparent={true} animationType="fade">
             <Pressable
@@ -350,22 +425,25 @@ export function MinimalistTaskDetailModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
   backdropTouch: {
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#09090B',
+    backgroundColor: '#0E0E11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     maxHeight: '85%',
-    paddingBottom: 34,
+    paddingBottom: 36,
   },
   sheetHeader: {
     alignItems: 'center',
@@ -374,14 +452,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   dragHandle: {
-    width: 40,
-    height: 5,
+    width: 36,
+    height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
   },
   closeBtn: {
     position: 'absolute',
-    right: 16,
+    right: 18,
     top: 10,
     padding: 4,
   },
@@ -398,43 +476,49 @@ const styles = StyleSheet.create({
   subjectPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#71717A',
+  },
   subjectPillText: {
-    fontSize: 11,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
   },
   generalPill: {
-    backgroundColor: '#18181B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   generalPillText: {
     color: '#A1A1AA',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
   },
   typePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#18181B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   typePillText: {
     color: '#D4D4D8',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '600',
   },
   titleRow: {
@@ -446,23 +530,23 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
     flex: 1,
-    lineHeight: 24,
+    lineHeight: 25,
   },
   titleCompleted: {
     textDecorationLine: 'line-through',
     color: '#71717A',
   },
   checkBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 2,
     borderColor: '#3F3F46',
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,25 +558,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 10,
     marginTop: 14,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   dueBannerOverdue: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   dueBannerCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   dueBannerText: {
     color: '#A1A1AA',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
   },
   dueBannerTextOverdue: {
@@ -512,15 +596,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   descriptionBox: {
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   descriptionText: {
     color: '#E4E4E7',
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 20,
   },
   attachmentsList: {
@@ -529,11 +613,11 @@ const styles = StyleSheet.create({
   attachmentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 10,
   },
   attachmentImgThumbnail: {
@@ -546,7 +630,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 8,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -556,12 +640,12 @@ const styles = StyleSheet.create({
   },
   attachmentName: {
     color: '#FFFFFF',
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
   },
   attachmentType: {
     color: '#71717A',
-    fontSize: 10,
+    fontSize: 10.5,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -575,13 +659,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#27272A',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 14,
     paddingVertical: 12,
   },
   editBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   deleteBtn: {
@@ -598,12 +684,12 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: {
     color: '#EF4444',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   lightboxBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: 'rgba(0, 0, 0, 0.96)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,

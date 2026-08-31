@@ -37,7 +37,7 @@ import {
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -62,8 +62,11 @@ export default function TasksScreen() {
   const searchScaleAnim = useRef(new Animated.Value(0.9)).current
   const searchOpacityAnim = useRef(new Animated.Value(0)).current
 
-  // Estado del Menú de Filtro de Materia
+  // Estado del Menú de Filtro de Materia con animación suave iOS
   const [showSubjectMenu, setShowSubjectMenu] = useState(false)
+  const [subjMenuVisible, setSubjMenuVisible] = useState(false)
+  const menuFadeAnim = useRef(new Animated.Value(0)).current
+  const menuSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
   // Disparador de Ráfagas de Confetti (desde abajo hacia arriba)
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
@@ -130,6 +133,42 @@ export default function TasksScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Manejo de apertura / cierre animado del menú de materias
+  useEffect(() => {
+    if (showSubjectMenu) {
+      setSubjMenuVisible(true)
+      Animated.parallel([
+        Animated.timing(menuFadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(menuSlideAnim, {
+          toValue: 0,
+          stiffness: 480,
+          damping: 32,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(menuFadeAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(menuSlideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setSubjMenuVisible(false)
+      })
+    }
+  }, [showSubjectMenu, menuFadeAnim, menuSlideAnim])
 
   // Desactivar automáticamente el buscador cuando se oculta el teclado si no hay texto
   useEffect(() => {
@@ -216,16 +255,13 @@ export default function TasksScreen() {
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
-    // 1. Si se completa, disparar el cañón de confetti desde abajo
     if (nextStatus === 'completed') {
       setConfettiBurstTrigger((prev) => prev + 1)
     }
 
-    // 2. Si estamos en la pestaña "Pendientes", mantener la tarea visible por 380ms para ver el tachado y luego deslizar hacia arriba suavemente
     if (statusFilter === 'pending' && nextStatus === 'completed') {
       setTransitioningTaskIds((prev) => [...prev, taskId])
 
-      // Actualizar inmediatamente estado local para mostrar el check
       const updated = tasks.map((t) => {
         if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
         return t
@@ -233,7 +269,6 @@ export default function TasksScreen() {
       setTasks(updated)
       await personalStorage.setTasks(updated)
 
-      // Después de 380ms, retirar de la lista y deslizar las demás tareas con gravedad suave
       setTimeout(() => {
         LayoutAnimation.configureNext({
           duration: 360,
@@ -244,7 +279,6 @@ export default function TasksScreen() {
         setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
       }, 380)
     } else {
-      // Reorganización normal con spring
       LayoutAnimation.configureNext({
         duration: 300,
         update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
@@ -293,7 +327,7 @@ export default function TasksScreen() {
         if (!matchTitle && !matchSubj) return false
       }
 
-      // Filtro de Estado (permitir tareas en transición temporal para animación suave)
+      // Filtro de Estado
       const isTransitioning = transitioningTaskIds.includes(task.id)
       if (statusFilter === 'pending') {
         if (task.status === 'completed' && !isTransitioning) return false
@@ -572,101 +606,110 @@ export default function TasksScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal Desplegable de Selección de Materia */}
-      <Modal
-        visible={showSubjectMenu}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSubjectMenu(false)}
-      >
-        <View style={styles.menuBackdrop}>
-          <Pressable
-            style={styles.menuBackdropTouch}
-            onPress={() => setShowSubjectMenu(false)}
-          />
-
-          <View style={styles.menuSheet}>
-            <View style={styles.menuHeader}>
-              <View style={styles.dragHandle} />
-              <Text style={styles.menuTitle}>Filtrar por Materia</Text>
+      {/* Modal Desplegable de Selección de Materia con Backdrop Estático y Sheet Deslizante */}
+      {subjMenuVisible && (
+        <Modal
+          visible={subjMenuVisible}
+          transparent={true}
+          animationType="none"
+          onRequestClose={() => setShowSubjectMenu(false)}
+        >
+          <View style={styles.modalRoot}>
+            <Animated.View style={[styles.menuBackdrop, { opacity: menuFadeAnim }]}>
               <Pressable
+                style={styles.menuBackdropTouch}
                 onPress={() => setShowSubjectMenu(false)}
-                hitSlop={10}
-                style={styles.menuCloseBtn}
-              >
-                <X size={18} color="#A1A1AA" />
-              </Pressable>
-            </View>
+              />
+            </Animated.View>
 
-            <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
-              {/* Opción Todas */}
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('selection')
-                  setSelectedSubjectId('all')
-                  setShowSubjectMenu(false)
-                }}
-                style={[
-                  styles.menuItem,
-                  selectedSubjectId === 'all' && styles.menuItemActive,
-                ]}
-              >
-                <View style={styles.menuItemLeft}>
-                  <View style={[styles.dot, { backgroundColor: '#FFFFFF' }]} />
-                  <Text style={styles.menuItemText}>Todas las materias</Text>
-                  <Text style={styles.menuItemCount}>({tasks.length})</Text>
-                </View>
+            <Animated.View
+              style={[
+                styles.menuSheet,
+                { transform: [{ translateY: menuSlideAnim }] },
+              ]}
+            >
+              <View style={styles.menuHeader}>
+                <View style={styles.dragHandle} />
+                <Text style={styles.menuTitle}>Filtrar por Materia</Text>
+                <Pressable
+                  onPress={() => setShowSubjectMenu(false)}
+                  hitSlop={12}
+                  style={styles.menuCloseBtn}
+                >
+                  <X size={18} color="#A1A1AA" />
+                </Pressable>
+              </View>
 
-                {selectedSubjectId === 'all' && (
-                  <Check size={16} color="#FFFFFF" strokeWidth={2.5} />
-                )}
-              </Pressable>
+              <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
+                {/* Opción Todas */}
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('selection')
+                    setSelectedSubjectId('all')
+                    setShowSubjectMenu(false)
+                  }}
+                  style={[
+                    styles.menuItem,
+                    selectedSubjectId === 'all' && styles.menuItemActive,
+                  ]}
+                >
+                  <View style={styles.menuItemLeft}>
+                    <View style={[styles.dot, { backgroundColor: '#FFFFFF' }]} />
+                    <Text style={styles.menuItemText}>Todas las materias</Text>
+                    <Text style={styles.menuItemCount}>({tasks.length})</Text>
+                  </View>
 
-              {/* Lista de Materias Registradas */}
-              {subjects.map((subj) => {
-                const isSelected = selectedSubjectId === subj.id
-                const isWhite = subj.color === '#FFFFFF'
-                const count = tasks.filter((t) => t.subject_id === subj.id).length
+                  {selectedSubjectId === 'all' && (
+                    <Check size={16} color="#FFFFFF" strokeWidth={2.5} />
+                  )}
+                </Pressable>
 
-                return (
-                  <Pressable
-                    key={subj.id}
-                    onPress={() => {
-                      triggerHaptic('selection')
-                      setSelectedSubjectId(subj.id)
-                      setShowSubjectMenu(false)
-                    }}
-                    style={[
-                      styles.menuItem,
-                      isSelected && styles.menuItemActive,
-                    ]}
-                  >
-                    <View style={styles.menuItemLeft}>
-                      <View
-                        style={[
-                          styles.dot,
-                          { backgroundColor: subj.color || '#FFFFFF' },
-                          isWhite && styles.whiteDotBorder,
-                        ]}
-                      />
-                      <Text style={styles.menuItemText}>{subj.name}</Text>
-                      <Text style={styles.menuItemCount}>({count})</Text>
-                    </View>
+                {/* Lista de Materias Registradas */}
+                {subjects.map((subj) => {
+                  const isSelected = selectedSubjectId === subj.id
+                  const isWhite = subj.color === '#FFFFFF'
+                  const count = tasks.filter((t) => t.subject_id === subj.id).length
 
-                    {isSelected && (
-                      <Check
-                        size={16}
-                        color={subj.color || '#FFFFFF'}
-                        strokeWidth={2.5}
-                      />
-                    )}
-                  </Pressable>
-                )
-              })}
-            </ScrollView>
+                  return (
+                    <Pressable
+                      key={subj.id}
+                      onPress={() => {
+                        triggerHaptic('selection')
+                        setSelectedSubjectId(subj.id)
+                        setShowSubjectMenu(false)
+                      }}
+                      style={[
+                        styles.menuItem,
+                        isSelected && styles.menuItemActive,
+                      ]}
+                    >
+                      <View style={styles.menuItemLeft}>
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: subj.color || '#FFFFFF' },
+                            isWhite && styles.whiteDotBorder,
+                          ]}
+                        />
+                        <Text style={styles.menuItemText}>{subj.name}</Text>
+                        <Text style={styles.menuItemCount}>({count})</Text>
+                      </View>
+
+                      {isSelected && (
+                        <Check
+                          size={16}
+                          color={subj.color || '#FFFFFF'}
+                          strokeWidth={2.5}
+                        />
+                      )}
+                    </Pressable>
+                  )
+                })}
+              </ScrollView>
+            </Animated.View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Botón Flotante (+) con Física de Resorte */}
       <Animated.View
@@ -950,22 +993,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
     lineHeight: 17,
   },
-  menuBackdrop: {
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
+  },
+  menuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
   menuBackdropTouch: {
     flex: 1,
   },
   menuSheet: {
-    backgroundColor: '#09090B',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    backgroundColor: '#0E0E11',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     maxHeight: '65%',
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
   menuHeader: {
     alignItems: 'center',
@@ -973,29 +1019,29 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     position: 'relative',
     borderBottomWidth: 1,
-    borderBottomColor: '#18181B',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   dragHandle: {
-    width: 40,
-    height: 5,
+    width: 36,
+    height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   menuTitle: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   menuCloseBtn: {
     position: 'absolute',
-    right: 16,
+    right: 18,
     top: 14,
     padding: 4,
   },
   menuList: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 18,
+    paddingTop: 10,
   },
   menuItem: {
     flexDirection: 'row',
@@ -1003,8 +1049,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 13,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 4,
+    borderRadius: 14,
+    marginBottom: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   menuItemActive: {

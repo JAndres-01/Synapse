@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -9,12 +9,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
 } from 'react-native'
 import type { Subject } from '@/types/personal'
 import { X, Plus, Trash2, BookOpen, Check, User } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface MinimalistSubjectModalProps {
   visible: boolean
@@ -24,14 +28,14 @@ interface MinimalistSubjectModalProps {
   onSubjectsUpdated: () => void
 }
 
-// 8 Colores con alto contraste y sin parecidos + Blanco Puro (#FFFFFF)
+// 8 Colores de alto contraste + Blanco Puro (#FFFFFF)
 const DISTINCT_PALETTE = [
   '#FFFFFF', // Blanco Puro
-  '#3B82F6', // Azul Eléctrico
+  '#3B82F6', // Azul ElÃ©ctrico
   '#10B981', // Verde Esmeralda
   '#EF4444', // Rojo Brillante
-  '#F59E0B', // Amarillo Ámbar
-  '#8B5CF6', // Morado Eléctrico
+  '#F59E0B', // Amarillo Ãmbar
+  '#8B5CF6', // Morado ElÃ©ctrico
   '#EC4899', // Rosa Fucsia
   '#06B6D4', // Cian / Turquesa
 ]
@@ -47,6 +51,64 @@ export function MinimalistSubjectModal({
   const [teacher, setTeacher] = useState('')
   const [selectedColor, setSelectedColor] = useState(DISTINCT_PALETTE[0])
   const [loading, setLoading] = useState(false)
+
+  // Animaciones independientes para evitar arrastre de fondo negro
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const [modalVisible, setModalVisible] = useState(visible)
+
+  useEffect(() => {
+    if (visible) {
+      setModalVisible(true)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          stiffness: 480,
+          damping: 32,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false)
+      })
+    }
+  }, [visible, fadeAnim, slideAnim])
+
+  const handleSmoothClose = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose()
+    })
+  }
 
   const handleCreateSubject = async () => {
     if (!name.trim()) {
@@ -67,14 +129,12 @@ export function MinimalistSubjectModal({
     }
 
     try {
-      // 1. Guardar de inmediato en almacenamiento local (0 ms de espera)
       await personalStorage.saveSubject(newSubject)
       triggerHaptic('success')
       setName('')
       setTeacher('')
       onSubjectsUpdated()
 
-      // 2. Intentar sincronizar en Supabase en segundo plano
       supabase
         .from('subjects')
         .insert({
@@ -97,8 +157,8 @@ export function MinimalistSubjectModal({
 
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
     Alert.alert(
-      '¿Eliminar materia?',
-      `Se eliminará "${subjectName}" de tus materias y horarios.`,
+      'Â¿Eliminar materia?',
+      `Se eliminarÃ¡ "${subjectName}" de tus materias y horarios.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -119,160 +179,183 @@ export function MinimalistSubjectModal({
     )
   }
 
-  return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={styles.backdropTouch} onPress={onClose} />
+  if (!modalVisible) return null
 
-        <View style={styles.sheetContainer}>
+  return (
+    <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
+      <View style={styles.modalRoot}>
+        {/* Backdrop EstÃ¡tico */}
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
+        </Animated.View>
+
+        {/* Hoja Inferior Deslizante */}
+        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
+          {/* Header */}
           <View style={styles.sheetHeader}>
             <View style={styles.dragHandle} />
-            <Text style={styles.sheetTitle}>Configurar Materias</Text>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
+            <Text style={styles.sheetTitle}>Gestionar Materias</Text>
+            <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.closeBtn}>
               <X size={18} color="#A1A1AA" />
             </Pressable>
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Formulario con Solo 3 Campos: Nombre, Profesor y Color */}
-            <View style={styles.formCard}>
-              <Text style={styles.formCardTitle}>AGREGAR MATERIA</Text>
+            {/* Formulario de CreaciÃ³n Simplificado (3 Campos: Nombre, Profesor, Color) */}
+            <View style={styles.createBox}>
+              <Text style={styles.sectionHeader}>NUEVA MATERIA</Text>
 
-              {/* 1. Nombre de la Materia */}
-              <View style={styles.inputBox}>
-                <BookOpen size={14} color="#71717A" style={styles.inputIcon} />
-                <TextInput
-                  placeholder="Nombre de la materia (ej. Cálculo)"
-                  placeholderTextColor="#52525B"
-                  value={name}
-                  onChangeText={setName}
-                  style={styles.textInput}
-                />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>NOMBRE DE LA MATERIA *</Text>
+                <View style={styles.inputWrapper}>
+                  <BookOpen size={15} color="#71717A" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder="Ej. CÃ¡lculo Multivariable, FÃ­sica..."
+                    placeholderTextColor="#71717A"
+                    value={name}
+                    onChangeText={setName}
+                    style={styles.textInput}
+                  />
+                </View>
               </View>
 
-              {/* 2. Nombre del Profesor */}
-              <View style={styles.inputBox}>
-                <User size={14} color="#71717A" style={styles.inputIcon} />
-                <TextInput
-                  placeholder="Nombre del profesor (opcional)"
-                  placeholderTextColor="#52525B"
-                  value={teacher}
-                  onChangeText={setTeacher}
-                  style={styles.textInput}
-                />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>PROFESOR / DOCENTE</Text>
+                <View style={styles.inputWrapper}>
+                  <User size={15} color="#71717A" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder="Ej. Ing. Carlos Mendoza"
+                    placeholderTextColor="#71717A"
+                    value={teacher}
+                    onChangeText={setTeacher}
+                    style={styles.textInput}
+                  />
+                </View>
               </View>
 
-              {/* 3. Selector de Color (Paleta Distintiva con Blanco) */}
-              <Text style={styles.paletteLabel}>SELECCIONA UN COLOR</Text>
-              <View style={styles.paletteRow}>
-                {DISTINCT_PALETTE.map((col) => {
-                  const isWhite = col === '#FFFFFF'
-                  const isSelected = selectedColor === col
-
-                  return (
-                    <Pressable
-                      key={col}
-                      onPress={() => {
-                        triggerHaptic('light')
-                        setSelectedColor(col)
-                      }}
-                      style={[
-                        styles.colorDot,
-                        { backgroundColor: col },
-                        isWhite && styles.whiteDotBorder,
-                        isSelected && styles.colorDotSelected,
-                      ]}
-                    >
-                      {isSelected && (
-                        <Check
-                          size={13}
-                          color={isWhite ? '#09090B' : '#FFFFFF'}
-                          strokeWidth={3}
-                        />
-                      )}
-                    </Pressable>
-                  )
-                })}
+              {/* Selector de Color (8 Tonos de Alto Contraste + Blanco Puro) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>COLOR IDENTIFICADOR</Text>
+                <View style={styles.colorPaletteRow}>
+                  {DISTINCT_PALETTE.map((color) => {
+                    const isSelected = selectedColor === color
+                    const isWhite = color === '#FFFFFF'
+                    return (
+                      <Pressable
+                        key={color}
+                        onPress={() => {
+                          triggerHaptic('selection')
+                          setSelectedColor(color)
+                        }}
+                        style={[
+                          styles.colorCircle,
+                          { backgroundColor: color },
+                          isWhite && styles.whiteColorBorder,
+                          isSelected && styles.colorCircleSelected,
+                        ]}
+                      >
+                        {isSelected && (
+                          <Check
+                            size={14}
+                            color={isWhite ? '#09090B' : '#FFFFFF'}
+                            strokeWidth={3}
+                          />
+                        )}
+                      </Pressable>
+                    )
+                  })}
+                </View>
               </View>
 
-              {/* Botón Guardar */}
+              {/* BotÃ³n de Agregar */}
               <Pressable
                 onPress={handleCreateSubject}
                 disabled={loading}
-                style={[styles.addBtn, loading && styles.addBtnDisabled]}
+                style={styles.addBtn}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
-                  <View style={styles.addBtnContent}>
-                    <Plus size={14} color="#09090B" strokeWidth={2.5} />
-                    <Text style={styles.addBtnText}>Guardar Materia</Text>
-                  </View>
+                  <>
+                    <Plus size={16} color="#09090B" strokeWidth={2.8} />
+                    <Text style={styles.addBtnText}>AÃ±adir Materia</Text>
+                  </>
                 )}
               </Pressable>
             </View>
 
-            {/* Lista de Materias Existentes */}
+            {/* Lista de Materias Registradas */}
             <View style={styles.listSection}>
-              <Text style={styles.listSectionTitle}>
-                MIS MATERIAS ({subjects.length})
+              <Text style={styles.sectionHeader}>
+                MATERIAS REGISTRADAS ({subjects.length})
               </Text>
 
-              {subjects.map((subj) => (
-                <View key={subj.id} style={styles.subjectItem}>
-                  <View
-                    style={[
-                      styles.subjectColorBar,
-                      { backgroundColor: subj.color || '#FFFFFF' },
-                    ]}
-                  />
-                  <View style={styles.subjectItemInfo}>
-                    <Text style={styles.subjectItemName} numberOfLines={1}>
-                      {subj.name}
-                    </Text>
-                    {subj.teacher_name ? (
-                      <Text style={styles.subjectItemDetails}>
-                        {subj.teacher_name}
-                      </Text>
-                    ) : (
-                      <Text style={styles.subjectItemNoTeacher}>Sin profesor asignado</Text>
-                    )}
-                  </View>
+              {subjects.length > 0 ? (
+                <View style={styles.subjectsList}>
+                  {subjects.map((s) => {
+                    const isWhite = s.color === '#FFFFFF'
+                    return (
+                      <View key={s.id} style={styles.subjectItem}>
+                        <View style={styles.subjectItemLeft}>
+                          <View
+                            style={[
+                              styles.dot,
+                              { backgroundColor: s.color || '#FFFFFF' },
+                              isWhite && styles.whiteDotBorder,
+                            ]}
+                          />
+                          <View style={styles.subjectItemTextCol}>
+                            <Text style={styles.subjectName}>{s.name}</Text>
+                            {s.teacher_name && (
+                              <Text style={styles.teacherName}>{s.teacher_name}</Text>
+                            )}
+                          </View>
+                        </View>
 
-                  <Pressable
-                    onPress={() => handleDeleteSubject(subj.id, subj.name)}
-                    hitSlop={10}
-                    style={styles.deleteSubjBtn}
-                  >
-                    <Trash2 size={15} color="#EF4444" />
-                  </Pressable>
+                        <Pressable
+                          onPress={() => handleDeleteSubject(s.id, s.name)}
+                          hitSlop={10}
+                          style={styles.deleteSubjBtn}
+                        >
+                          <Trash2 size={15} color="#EF4444" />
+                        </Pressable>
+                      </View>
+                    )
+                  })}
                 </View>
-              ))}
+              ) : (
+                <Text style={styles.emptySubjsText}>
+                  AÃºn no tienes materias registradas. Crea una arriba para asignar a tus horarios y tareas.
+                </Text>
+              )}
             </View>
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   )
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
   backdropTouch: {
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#09090B',
+    backgroundColor: '#0E0E11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     maxHeight: '85%',
-    paddingBottom: 34,
+    paddingBottom: 36,
   },
   sheetHeader: {
     alignItems: 'center',
@@ -280,23 +363,23 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     position: 'relative',
     borderBottomWidth: 1,
-    borderBottomColor: '#18181B',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   dragHandle: {
-    width: 40,
-    height: 5,
+    width: 36,
+    height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
   },
   closeBtn: {
     position: 'absolute',
-    right: 16,
+    right: 18,
     top: 14,
     padding: 4,
   },
@@ -304,29 +387,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
   },
-  formCard: {
-    backgroundColor: '#18181B',
+  createBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#27272A',
-    gap: 10,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 12,
   },
-  formCardTitle: {
+  sectionHeader: {
     color: '#71717A',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
-  inputBox: {
+  inputGroup: {
+    gap: 5,
+  },
+  label: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#09090B',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#27272A',
-    paddingHorizontal: 10,
-    height: 42,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
   },
   inputIcon: {
     marginRight: 8,
@@ -334,102 +424,98 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 13.5,
+    paddingVertical: 10,
   },
-  paletteLabel: {
-    color: '#71717A',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  paletteRow: {
+  colorPaletteRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
-  colorDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  whiteDotBorder: {
-    borderWidth: 1,
-    borderColor: '#52525B',
+  whiteColorBorder: {
+    borderWidth: 1.5,
+    borderColor: '#71717A',
   },
-  colorDotSelected: {
-    borderWidth: 2.5,
+  colorCircleSelected: {
+    transform: [{ scale: 1.15 }],
+    borderWidth: 2,
     borderColor: '#FFFFFF',
-    transform: [{ scale: 1.1 }],
   },
   addBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  addBtnDisabled: {
-    opacity: 0.6,
-  },
-  addBtnContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 4,
   },
   addBtnText: {
     color: '#09090B',
-    fontSize: 12.5,
-    fontWeight: '700',
+    fontSize: 13.5,
+    fontWeight: '800',
   },
   listSection: {
     marginTop: 20,
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
   },
-  listSectionTitle: {
-    color: '#71717A',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+  subjectsList: {
+    gap: 6,
   },
   subjectItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181B',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  subjectItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-  },
-  subjectColorBar: {
-    width: 4,
-    height: 28,
-    borderRadius: 2,
-  },
-  subjectItemInfo: {
     flex: 1,
-    gap: 2,
   },
-  subjectItemName: {
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#71717A',
+  },
+  subjectItemTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  subjectName: {
     color: '#FFFFFF',
     fontSize: 13.5,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  subjectItemDetails: {
-    color: '#A1A1AA',
-    fontSize: 11,
-  },
-  subjectItemNoTeacher: {
-    color: '#52525B',
-    fontSize: 11,
-    fontStyle: 'italic',
+  teacherName: {
+    color: '#71717A',
+    fontSize: 11.5,
   },
   deleteSubjBtn: {
     padding: 6,
+  },
+  emptySubjsText: {
+    color: '#71717A',
+    fontSize: 12,
+    lineHeight: 18,
+    paddingVertical: 6,
   },
 })

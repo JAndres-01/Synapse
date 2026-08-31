@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, StyleSheet, Animated, Dimensions } from 'react-native'
+import { View, StyleSheet, Animated, Dimensions, Easing } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -7,33 +7,36 @@ interface MinimalistConfettiProps {
   burstTrigger: number
 }
 
-const CONFETTI_COLORS = [
-  '#F59E0B', // Oro cálido
-  '#10B981', // Verde Esmeralda
-  '#38BDF8', // Celeste Cielo
-  '#EC4899', // Rosa Vibrante
-  '#A855F7', // Púrpura
-  '#FCD34D', // Amarillo Dorado
-  '#FFFFFF', // Blanco
+// Colores brillantes y metalizados de celebración estilo Apple
+const FOIL_COLORS = [
+  '#FFD700', // Oro brillante
+  '#10B981', // Esmeralda vibrante
+  '#38BDF8', // Cian eléctrico
+  '#F43F5E', // Rosa frambuesa
+  '#A855F7', // Violeta
+  '#FB923C', // Naranja fuego
+  '#FFFFFF', // Destello blanco
 ]
 
 interface SingleBurst {
   id: number
   particles: {
     id: number
-    startX: number
-    startY: number
+    originX: number
+    originY: number
     color: string
-    width: number
-    height: number
-    isCircle: boolean
-    animX: Animated.Value
-    animY: Animated.Value
-    animRotate: Animated.Value
-    animOpacity: Animated.Value
+    sizeW: number
+    sizeH: number
+    isStar: boolean
+    animProgress: Animated.Value
     targetX: number
-    targetY: number
-    targetRotate: number
+    peakY: number
+    fallY: number
+    rotXSpeed: number
+    rotYSpeed: number
+    rotZSpeed: number
+    wobbleAmp: number
+    wobbleFreq: number
   }[]
 }
 
@@ -46,67 +49,45 @@ export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
     const burstId = Date.now() + Math.random()
     const particles = []
 
-    // 36 micro-partículas que nacen desde abajo de la pantalla y suben como fuegos artificiales
-    for (let i = 0; i < 36; i++) {
-      // Ángulo hacia arriba: entre -135deg y -45deg (hacia el cielo)
-      const angle = -Math.PI / 2 + (Math.random() * 1.4 - 0.7) // Abanico hacia arriba
-      const launchPower = Math.random() * (SCREEN_HEIGHT * 0.55) + SCREEN_HEIGHT * 0.35 // Altura de elevación
-
-      const targetX = Math.cos(angle) * (launchPower * 0.65) + (Math.random() * 80 - 40)
-      const targetY = -launchPower + (Math.random() * 80) // Sube hasta el 60%-80% de la pantalla
+    // 40 partículas con física tridimensional (3D Tumbling + Deriva ondulatoria)
+    for (let i = 0; i < 40; i++) {
+      const angle = -Math.PI / 2 + (Math.random() * 1.6 - 0.8) // Abanico hacia arriba
+      const power = Math.random() * 260 + 380 // Impulso vertical inicial
+      const targetX = Math.cos(angle) * (Math.random() * (SCREEN_WIDTH * 0.75) - SCREEN_WIDTH * 0.375)
+      const peakY = -power // Punto más alto
+      const fallY = peakY + Math.random() * 320 + 200 // Caída con gravedad posterior
 
       particles.push({
         id: i,
-        startX: SCREEN_WIDTH / 2 + (Math.random() * 120 - 60), // Centro inferior
-        startY: SCREEN_HEIGHT + 10, // Nace abajo de la pantalla
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        width: Math.random() > 0.4 ? 3.5 : 4.5,
-        height: Math.random() > 0.4 ? 7 : 4.5,
-        isCircle: Math.random() > 0.6,
-        animX: new Animated.Value(0),
-        animY: new Animated.Value(0),
-        animRotate: new Animated.Value(0),
-        animOpacity: new Animated.Value(1),
+        originX: SCREEN_WIDTH / 2 + (Math.random() * 100 - 50),
+        originY: SCREEN_HEIGHT + 10,
+        color: FOIL_COLORS[i % FOIL_COLORS.length],
+        sizeW: Math.random() > 0.4 ? 4 : 5.5,
+        sizeH: Math.random() > 0.4 ? 8 : 5.5,
+        isStar: Math.random() > 0.75,
+        animProgress: new Animated.Value(0),
         targetX,
-        targetY,
-        targetRotate: (Math.random() - 0.5) * 12,
+        peakY,
+        fallY,
+        rotXSpeed: (Math.random() - 0.5) * 8, // Vueltas 3D verticales
+        rotYSpeed: (Math.random() - 0.5) * 12, // Vueltas 3D horizontales
+        rotZSpeed: (Math.random() - 0.5) * 6,
+        wobbleAmp: Math.random() * 35 + 15, // Amplitud del vaivén en el aire
+        wobbleFreq: Math.random() * 3 + 2, // Frecuencia de aleteo
       })
     }
 
     const newBurst: SingleBurst = { id: burstId, particles }
     setBursts((prev) => [...prev, newBurst])
 
-    // Animación de disparo de abajo hacia arriba (0 ms de latencia)
+    // Animación física realista con Bezier curvo y desaceleración en el ápice
     const anims = particles.map((p) =>
-      Animated.parallel([
-        // Eje X: se abre en abanico
-        Animated.timing(p.animX, {
-          toValue: p.targetX,
-          duration: 1050,
-          useNativeDriver: true,
-        }),
-        // Eje Y: sube rápido y desacelera en el punto alto
-        Animated.timing(p.animY, {
-          toValue: p.targetY,
-          duration: 1050,
-          useNativeDriver: true,
-        }),
-        // Rotación continua
-        Animated.timing(p.animRotate, {
-          toValue: p.targetRotate,
-          duration: 1050,
-          useNativeDriver: true,
-        }),
-        // Desvanecimiento suave después del pico de altura
-        Animated.sequence([
-          Animated.delay(550),
-          Animated.timing(p.animOpacity, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
+      Animated.timing(p.animProgress, {
+        toValue: 1,
+        duration: 1350,
+        easing: Easing.bezier(0.12, 0.8, 0.32, 1),
+        useNativeDriver: true,
+      })
     )
 
     Animated.parallel(anims).start(() => {
@@ -120,9 +101,50 @@ export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
     <View style={styles.overlay} pointerEvents="none">
       {bursts.map((burst) =>
         burst.particles.map((p) => {
-          const rotate = p.animRotate.interpolate({
-            inputRange: [-6, 6],
-            outputRange: ['-540deg', '540deg'],
+          // Curva parabólica de subida rápida y caída con aleteo
+          const translateY = p.animProgress.interpolate({
+            inputRange: [0, 0.4, 0.7, 1],
+            outputRange: [0, p.peakY, p.peakY + 80, p.fallY],
+          })
+
+          // Deriva horizontal con vaivén ondulatorio (flotación en el aire)
+          const translateX = p.animProgress.interpolate({
+            inputRange: [0, 0.3, 0.6, 0.85, 1],
+            outputRange: [
+              0,
+              p.targetX * 0.5 - p.wobbleAmp,
+              p.targetX * 0.8 + p.wobbleAmp,
+              p.targetX * 0.95 - p.wobbleAmp * 0.5,
+              p.targetX,
+            ],
+          })
+
+          // Giros en 3D (Efecto de papel que da vueltas en el espacio)
+          const rotateX = p.animProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', `${p.rotXSpeed * 360}deg`],
+          })
+
+          const rotateY = p.animProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', `${p.rotYSpeed * 360}deg`],
+          })
+
+          const rotateZ = p.animProgress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', `${p.rotZSpeed * 180}deg`],
+          })
+
+          // Desvanecimiento suave al final de la caída
+          const opacity = p.animProgress.interpolate({
+            inputRange: [0, 0.1, 0.7, 1],
+            outputRange: [0, 1, 0.95, 0],
+          })
+
+          // Escala con micro-destello al nacer
+          const scale = p.animProgress.interpolate({
+            inputRange: [0, 0.15, 0.8, 1],
+            outputRange: [0.3, 1.2, 1, 0.5],
           })
 
           return (
@@ -131,17 +153,20 @@ export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
               style={[
                 styles.confettiPiece,
                 {
-                  left: p.startX,
-                  top: p.startY,
-                  width: p.width,
-                  height: p.height,
+                  left: p.originX,
+                  top: p.originY,
+                  width: p.sizeW,
+                  height: p.sizeH,
                   backgroundColor: p.color,
-                  borderRadius: p.isCircle ? p.width / 2 : 1.5,
-                  opacity: p.animOpacity,
+                  borderRadius: p.isStar ? p.sizeW / 2 : 1,
+                  opacity,
                   transform: [
-                    { translateX: p.animX },
-                    { translateY: p.animY },
-                    { rotate },
+                    { translateX },
+                    { translateY },
+                    { rotateX },
+                    { rotateY },
+                    { rotateZ },
+                    { scale },
                   ],
                 },
               ]}
@@ -160,9 +185,9 @@ const styles = StyleSheet.create({
   },
   confettiPiece: {
     position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 1.5,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
   },
 })

@@ -1,0 +1,62 @@
+﻿name: Build iOS App
+
+on:
+  push:
+    branches:
+      - feature/capacitor
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS IPA & App
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js & Sync Capacitor
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://zlhpduydzavbpkwcrltv.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsaHBkdXlkemF2YnBrd2NybHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NjUzODIsImV4cCI6MjEwMzQ0MTM4Mn0.fqOoJhFiz8vB1OKWZ4Z4Ze-00tSbSiEV5i6M6XZaf9Y' }}
+        run: npm run cap:build
+
+      - name: Build iOS Workspace with Xcode
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+      - name: Package App into IPA Payload
+        run: |
+          mkdir -p build/Payload
+          cp -r ios/App/build/DerivedData/Build/Products/Release-iphoneos/App.app build/Payload/
+          cd build
+          zip -r Synapse-iOS.ipa Payload
+          cd ..
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synapse-iOS-Build
+          path: build/Synapse-iOS.ipa
+          if-no-files-found: error

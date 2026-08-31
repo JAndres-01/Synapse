@@ -53,7 +53,7 @@ function TasksPageContent() {
   const [tasks, setTasks] = useState<Task[]>(() => memoryCache.tasks)
   const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
   const [schedules, setSchedules] = useState<Schedule[]>(() => memoryCache.schedules)
-  const [loading, setLoading] = useState(() => memoryCache.tasks.length === 0 && memoryCache.subjects.length === 0)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   // 1. Selector de Panel Principal: "classroom" (Del Salón) vs "private" (Mis Pendientes)

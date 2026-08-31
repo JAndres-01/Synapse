@@ -20,7 +20,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initNativeApp()
-  }, [])
+    router.prefetch('/app/today')
+    router.prefetch('/app/schedule')
+    router.prefetch('/app/tasks')
+    router.prefetch('/app/settings')
+  }, [router])
 
   useEffect(() => {
     if (!loading) {

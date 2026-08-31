@@ -24,7 +24,7 @@ export default function SchedulePage() {
   const { user, classroom, profile } = useAuth()
   const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
   const [schedules, setSchedules] = useState<Schedule[]>(() => memoryCache.schedules)
-  const [loading, setLoading] = useState(() => memoryCache.subjects.length === 0 && memoryCache.schedules.length === 0)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [activeView, setActiveView] = useState<'day' | 'week'>('day')
 

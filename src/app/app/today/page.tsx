@@ -19,7 +19,7 @@ export default function TodayPage() {
   const [schedulesToday, setSchedulesToday] = useState<Schedule[]>(() => memoryCache.schedules)
   const [urgentTasks, setUrgentTasks] = useState<Task[]>(() => memoryCache.tasks)
   const [subjects, setSubjects] = useState<Subject[]>(() => memoryCache.subjects)
-  const [loading, setLoading] = useState(() => memoryCache.tasks.length === 0 && memoryCache.schedules.length === 0)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   // Modales interactivos directos (Apertura instantánea en 0ms sin saltar de página)

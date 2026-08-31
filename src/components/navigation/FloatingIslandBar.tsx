@@ -58,31 +58,33 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
     }
   }, [])
 
+  const cleanPath = pathname?.replace(/\/$/, '') || '/app/today'
+
   const tabs = [
     {
       name: 'Hoy',
       href: '/app/today',
       icon: Home,
-      isActive: pathname === '/app/today',
+      isActive: cleanPath === '/app/today',
     },
     {
       name: 'Horario',
       href: '/app/schedule',
       icon: Calendar,
-      isActive: pathname.startsWith('/app/schedule'),
+      isActive: cleanPath.startsWith('/app/schedule'),
     },
     {
       name: 'Tareas',
       href: '/app/tasks',
       icon: CheckSquare,
-      isActive: pathname.startsWith('/app/tasks'),
+      isActive: cleanPath.startsWith('/app/tasks'),
       badge: pendingTasksCount > 0 ? pendingTasksCount : null,
     },
     {
       name: 'Salón',
       href: '/app/settings',
       icon: Settings,
-      isActive: pathname.startsWith('/app/settings'),
+      isActive: cleanPath.startsWith('/app/settings'),
     },
   ]
 
@@ -111,6 +113,7 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
             <Link
               key={tab.name}
               href={tab.href}
+              prefetch={true}
               onClick={() => triggerHaptic('light')}
               className="relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-colors active:scale-95 z-10"
             >

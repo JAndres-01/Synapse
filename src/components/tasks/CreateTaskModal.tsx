@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import type { Subject, Schedule, TaskType, Task, AttachmentType } from '@/types/database'
 import { compressImageFile } from '@/lib/utils'
 import { registerModal, unregisterModal } from '@/lib/modalManager'
+import { triggerHaptic } from '@/lib/native'
 import {
   X,
   Plus,
@@ -411,6 +412,7 @@ export function CreateTaskModal({
         await onSaveTask(taskPayload)
       }
 
+      triggerHaptic('success')
       setTitle('')
       setDescription('')
       setAttachments([])
@@ -472,8 +474,13 @@ export function CreateTaskModal({
           <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-zinc-900/60 border border-zinc-800/80 shrink-0">
             <button
               type="button"
-              onClick={() => setMode('classroom')}
-              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
+              onClick={() => {
+                if (mode !== 'classroom') {
+                  triggerHaptic('light')
+                  setMode('classroom')
+                }
+              }}
+              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all active:scale-[0.98] ${
                 mode === 'classroom'
                   ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
@@ -485,8 +492,13 @@ export function CreateTaskModal({
 
             <button
               type="button"
-              onClick={() => setMode('private')}
-              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all ${
+              onClick={() => {
+                if (mode !== 'private') {
+                  triggerHaptic('light')
+                  setMode('private')
+                }
+              }}
+              className={`py-2 px-2.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border transition-all active:scale-[0.98] ${
                 mode === 'private'
                   ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'

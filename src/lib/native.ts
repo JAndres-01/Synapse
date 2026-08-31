@@ -1,5 +1,6 @@
 ﻿import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
+import { Keyboard } from '@capacitor/keyboard'
 
 export const isNativePlatform = (): boolean => {
   return Capacitor.isNativePlatform()
@@ -44,6 +45,17 @@ export const triggerHaptic = async (
     }
   } catch (err) {
     // Silencioso si no está disponible
+  }
+}
+
+export const dismissKeyboard = async () => {
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur()
+  }
+  if (Capacitor.isPluginAvailable('Keyboard')) {
+    try {
+      await Keyboard.hide()
+    } catch {}
   }
 }
 

@@ -201,6 +201,7 @@ export function TaskDetailModal({
 
   const handleConfirmDelete = async () => {
     try {
+      triggerHaptic('error')
       setDeleteLoading(true)
       setShowDeleteConfirm(false)
       await onDeleteTask(task.id)
@@ -429,9 +430,10 @@ export function TaskDetailModal({
                 <button
                   type="button"
                   onClick={() => {
+                    triggerHaptic('light')
                     onEditTask(task)
                   }}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white hover:bg-zinc-800 font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white hover:bg-zinc-800 font-medium text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
                 >
                   <Pencil className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Editar</span>
@@ -440,8 +442,11 @@ export function TaskDetailModal({
 
               <button
                 type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-red-400 hover:bg-red-950/40 hover:border-red-800/60 font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
+                onClick={() => {
+                  triggerHaptic('warning')
+                  setShowDeleteConfirm(true)
+                }}
+                className="py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-red-400 hover:bg-red-950/40 hover:border-red-800/60 font-medium text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Eliminar</span>

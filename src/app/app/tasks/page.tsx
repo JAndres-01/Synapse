@@ -11,6 +11,8 @@ import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { TasksSkeleton } from '@/components/tasks/TasksSkeleton'
 import { offlineDB } from '@/lib/db'
 import { memoryCache, sortTasksChronologically } from '@/lib/cache'
+import { triggerHaptic, dismissKeyboard } from '@/lib/native'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckSquare,
   Plus,
@@ -687,10 +689,13 @@ function TasksPageContent() {
 
         <button
           type="button"
-          onClick={handleManualRefresh}
+          onClick={() => {
+            triggerHaptic('medium')
+            handleManualRefresh()
+          }}
           disabled={refreshing}
           aria-label="Actualizar tareas"
-          className="w-8 h-8 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-95 disabled:opacity-50"
+          className="w-8 h-8 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors active:scale-90 disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-zinc-200' : ''}`} />
         </button>
@@ -700,8 +705,13 @@ function TasksPageContent() {
       <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-zinc-950 border border-zinc-800">
         <button
           type="button"
-          onClick={() => setActiveTab('classroom')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
+          onClick={() => {
+            if (activeTab !== 'classroom') {
+              triggerHaptic('light')
+              setActiveTab('classroom')
+            }
+          }}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all active:scale-[0.98] ${
             activeTab === 'classroom'
               ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
               : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
@@ -724,8 +734,13 @@ function TasksPageContent() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('private')}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all ${
+          onClick={() => {
+            if (activeTab !== 'private') {
+              triggerHaptic('light')
+              setActiveTab('private')
+            }
+          }}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all active:scale-[0.98] ${
             activeTab === 'private'
               ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
               : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
@@ -755,8 +770,13 @@ function TasksPageContent() {
             <button
               key={st}
               type="button"
-              onClick={() => setStatusFilter(st)}
-              className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${
+              onClick={() => {
+                if (statusFilter !== st) {
+                  triggerHaptic('light')
+                  setStatusFilter(st)
+                }
+              }}
+              className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all active:scale-95 ${
                 statusFilter === st
                   ? 'bg-zinc-800 text-white shadow-xs font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -776,7 +796,10 @@ function TasksPageContent() {
           <div className="relative w-full">
             <select
               value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              onChange={(e) => {
+                triggerHaptic('light')
+                setSelectedSubjectId(e.target.value)
+              }}
               className="w-full appearance-none text-xs py-2 pl-3 pr-8 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 focus:outline-none focus:border-zinc-600 font-medium transition-colors"
             >
               <option value="all">Todas las materias</option>
@@ -791,7 +814,7 @@ function TasksPageContent() {
         )}
       </div>
 
-      {/* 3. Lista de Tareas Minimalista */}
+      {/* 3. Lista de Tareas Minimalista con Transiciones Fluidas */}
       <div className="pt-1">
         {filteredTasks.length === 0 ? (
           <div className="py-12 text-center space-y-2 text-zinc-500">
@@ -806,10 +829,11 @@ function TasksPageContent() {
               <button
                 type="button"
                 onClick={() => {
+                  triggerHaptic('light')
                   setTaskToEdit(null)
                   setShowCreateModal(true)
                 }}
-                className="text-xs text-zinc-300 hover:text-white font-medium underline underline-offset-4"
+                className="text-xs text-zinc-300 hover:text-white font-medium underline underline-offset-4 active:scale-95 transition-all"
               >
                 {activeTab === 'classroom' ? 'Crear tarea' : 'Crear pendiente'}
               </button>
@@ -817,15 +841,28 @@ function TasksPageContent() {
           </div>
         ) : (
           <div className="divide-y divide-zinc-900/80">
-            {filteredTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                currentUserId={user?.id}
-                onToggleStatus={handleToggleTaskStatus}
-                onOpenDetail={(t) => setSelectedTaskForDetail(t)}
-              />
-            ))}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {filteredTasks.map((task) => (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+                >
+                  <TaskCard
+                    task={task}
+                    currentUserId={user?.id}
+                    onToggleStatus={handleToggleTaskStatus}
+                    onOpenDetail={(t) => {
+                      triggerHaptic('light')
+                      setSelectedTaskForDetail(t)
+                    }}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -835,10 +872,11 @@ function TasksPageContent() {
         <button
           type="button"
           onClick={() => {
+            triggerHaptic('medium')
             setTaskToEdit(null)
             setShowCreateModal(true)
           }}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+74px)] right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-1.5 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+74px)] right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-1.5 shadow-xl shadow-black/50 border border-zinc-200 active:scale-90 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>

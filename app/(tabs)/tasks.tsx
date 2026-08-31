@@ -37,16 +37,14 @@ export default function TasksScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
-  const loadLocalCache = async () => {
+  const loadData = useCallback(async () => {
     const [cachedTasks, cachedSubjs] = await Promise.all([
       personalStorage.getTasks(),
       personalStorage.getSubjects(),
     ])
     setTasks(cachedTasks)
     setSubjects(cachedSubjs)
-  }
 
-  const fetchCloudData = useCallback(async () => {
     if (!user) return
 
     try {
@@ -63,43 +61,27 @@ export default function TasksScreen() {
           .order('name', { ascending: true }),
       ])
 
-      if (tasksRes.data) {
+      if (tasksRes.data && tasksRes.data.length > 0) {
         const allTasks = tasksRes.data as Task[]
         await personalStorage.setTasks(allTasks)
         setTasks(allTasks)
       }
 
-      if (subjRes.data) {
+      if (subjRes.data && subjRes.data.length > 0) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
     } catch (err) {
-      console.error('Error sincronizando tareas:', err)
+      console.log('Sync tasks info:', err)
     } finally {
       setRefreshing(false)
     }
   }, [user])
 
   useEffect(() => {
-    loadLocalCache()
-    fetchCloudData()
-
-    if (!user) return
-
-    const channel = supabase
-      .channel(`personal_tasks_${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
-        () => fetchCloudData()
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user, fetchCloudData])
+    loadData()
+  }, [loadData])
 
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
@@ -116,21 +98,15 @@ export default function TasksScreen() {
         .from('tasks')
         .update({ status: nextStatus, updated_at: new Date().toISOString() })
         .eq('id', taskId)
-    } catch (err) {
-      fetchCloudData()
+    } catch {
+      // Offline fallback
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    const updated = tasks.filter((t) => t.id !== taskId)
+    const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
-    await personalStorage.setTasks(updated)
-
-    try {
-      await supabase.from('tasks').delete().eq('id', taskId)
-    } catch (err) {
-      fetchCloudData()
-    }
+    supabase.from('tasks').delete().eq('id', taskId).then(() => {})
   }
 
   const filteredTasks = useMemo(() => {
@@ -158,7 +134,7 @@ export default function TasksScreen() {
 
   const onRefresh = () => {
     setRefreshing(true)
-    fetchCloudData()
+    loadData()
   }
 
   return (
@@ -177,7 +153,7 @@ export default function TasksScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>
-            <CheckSquare size={18} color="#818CF8" />
+            <CheckSquare size={18} color="#FFFFFF" />
             <Text style={styles.title}>Mis Tareas</Text>
           </View>
           <Text style={styles.subtitle}>
@@ -218,6 +194,8 @@ export default function TasksScreen() {
 
             {subjects.map((s) => {
               const isSelected = selectedSubjectId === s.id
+              const isWhite = s.color === '#FFFFFF'
+
               return (
                 <Pressable
                   key={s.id}
@@ -227,7 +205,13 @@ export default function TasksScreen() {
                   }}
                   style={[styles.subjPill, isSelected && styles.subjPillActive]}
                 >
-                  <View style={[styles.dot, { backgroundColor: s.color || '#6366F1' }]} />
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: s.color || '#FFFFFF' },
+                      isWhite && styles.whiteDotBorder,
+                    ]}
+                  />
                   <Text style={[styles.subjPillText, isSelected && styles.subjPillTextActive]}>
                     {s.name}
                   </Text>
@@ -343,7 +327,7 @@ export default function TasksScreen() {
           userId={user.id}
           subjects={subjects}
           initialTask={taskToEdit}
-          onTaskSaved={fetchCloudData}
+          onTaskSaved={loadData}
         />
       )}
     </View>
@@ -429,6 +413,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#52525B',
   },
   statusFiltersRow: {
     flexDirection: 'row',

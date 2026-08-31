@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
 
 interface MinimalistCreateTaskModalProps {
@@ -179,34 +180,47 @@ export function MinimalistCreateTaskModal({
 
     setLoading(true)
 
+    const subjectObj = subjects.find((s) => s.id === selectedSubjectId)
+    const taskData: Task = {
+      id: initialTask?.id || 'task_' + Math.random().toString(36).substring(2, 11),
+      user_id: userId,
+      title: title.trim(),
+      description: description.trim() || null,
+      subject_id: selectedSubjectId || null,
+      subject: subjectObj,
+      type: taskType,
+      status: initialTask?.status || 'pending',
+      due_date: dueDate || null,
+      attachments: attachments,
+      created_at: initialTask?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
     try {
-      const payload = {
-        user_id: userId,
-        title: title.trim(),
-        description: description.trim() || null,
-        subject_id: selectedSubjectId || null,
-        type: taskType,
-        due_date: dueDate || null,
-        attachments: attachments,
-        updated_at: new Date().toISOString(),
-      }
-
-      if (initialTask) {
-        const { error } = await supabase
-          .from('tasks')
-          .update(payload)
-          .eq('id', initialTask.id)
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('tasks')
-          .insert(payload)
-        if (error) throw error
-      }
-
+      // 1. Guardar de inmediato en almacenamiento local (0 ms)
+      await personalStorage.saveTask(taskData)
       triggerHaptic('success')
       onTaskSaved()
       onClose()
+
+      // 2. Intentar guardar en Supabase en background
+      supabase
+        .from('tasks')
+        .upsert({
+          id: taskData.id,
+          user_id: userId,
+          title: taskData.title,
+          description: taskData.description,
+          subject_id: taskData.subject_id,
+          type: taskData.type,
+          status: taskData.status,
+          due_date: taskData.due_date,
+          attachments: taskData.attachments,
+          updated_at: taskData.updated_at,
+        })
+        .then(({ error }) => {
+          if (error) console.log('Supabase task sync info:', error.message)
+        })
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudo guardar la tarea.')
       triggerHaptic('error')
@@ -265,7 +279,8 @@ export function MinimalistCreateTaskModal({
                     <View
                       style={[
                         styles.dot,
-                        { backgroundColor: selectedSubject.color || '#6366F1' },
+                        { backgroundColor: selectedSubject.color || '#FFFFFF' },
+                        selectedSubject.color === '#FFFFFF' && styles.whiteDotBorder,
                       ]}
                     />
                     <Text style={styles.selectedSubjectText}>{selectedSubject.name}</Text>
@@ -300,7 +315,11 @@ export function MinimalistCreateTaskModal({
                       style={styles.subjectOption}
                     >
                       <View
-                        style={[styles.dot, { backgroundColor: subj.color || '#6366F1' }]}
+                        style={[
+                          styles.dot,
+                          { backgroundColor: subj.color || '#FFFFFF' },
+                          subj.color === '#FFFFFF' && styles.whiteDotBorder,
+                        ]}
                       />
                       <Text style={styles.subjectOptionText}>{subj.name}</Text>
                     </Pressable>
@@ -370,7 +389,7 @@ export function MinimalistCreateTaskModal({
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>INSTRUCCIONES / NOTAS</Text>
               <TextInput
-                placeholder="Puntos clave, páginas del libro o enlaces..."
+                placeholder="Puntos clave, páginas del libro o notas..."
                 placeholderTextColor="#52525B"
                 value={description}
                 onChangeText={setDescription}
@@ -385,17 +404,17 @@ export function MinimalistCreateTaskModal({
               <Text style={styles.inputLabel}>FOTOS Y ADJUNTOS ({attachments.length})</Text>
               <View style={styles.attachmentButtonsRow}>
                 <Pressable onPress={handleTakePhoto} style={styles.addAttachBtn}>
-                  <Camera size={14} color="#818CF8" />
+                  <Camera size={14} color="#FFFFFF" />
                   <Text style={styles.addAttachBtnText}>Cámara (Pizarrón)</Text>
                 </Pressable>
 
                 <Pressable onPress={handlePickImage} style={styles.addAttachBtn}>
-                  <ImageIcon size={14} color="#818CF8" />
+                  <ImageIcon size={14} color="#FFFFFF" />
                   <Text style={styles.addAttachBtnText}>Galería</Text>
                 </Pressable>
 
                 <Pressable onPress={() => setShowAddLink(!showAddLink)} style={styles.addAttachBtn}>
-                  <Link2 size={14} color="#818CF8" />
+                  <Link2 size={14} color="#FFFFFF" />
                   <Text style={styles.addAttachBtnText}>Enlace</Text>
                 </Pressable>
               </View>
@@ -420,7 +439,7 @@ export function MinimalistCreateTaskModal({
               {/* Lista de Adjuntos */}
               {attachments.map((att, idx) => (
                 <View key={idx} style={styles.attachmentItem}>
-                  <Paperclip size={13} color="#818CF8" />
+                  <Paperclip size={13} color="#FFFFFF" />
                   <Text style={styles.attachmentItemName} numberOfLines={1}>
                     {att.file_name}
                   </Text>
@@ -554,6 +573,10 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
   },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#52525B',
+  },
   selectedSubjectText: {
     color: '#FFFFFF',
     fontSize: 13.5,
@@ -626,8 +649,8 @@ const styles = StyleSheet.create({
     borderColor: '#27272A',
   },
   presetBtnActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    borderColor: '#818CF8',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#FFFFFF',
   },
   presetBtnText: {
     color: '#71717A',
@@ -636,7 +659,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   presetBtnTextActive: {
-    color: '#A5B4FC',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   attachmentButtonsRow: {
@@ -671,7 +694,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveLinkBtnText: {
-    color: '#818CF8',
+    color: '#FFFFFF',
     fontSize: 11.5,
     fontWeight: '700',
   },

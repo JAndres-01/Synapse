@@ -4,17 +4,16 @@ import {
   Text,
   Modal,
   ScrollView,
-  TextInput,
   Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Switch,
 } from 'react-native'
 import type { Subject, Schedule } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { X, MapPin, Check, Trash2 } from 'lucide-react-native'
+import { X, Check, Trash2, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
 
 interface MinimalistAssignSlotModalProps {
@@ -49,8 +48,6 @@ export function MinimalistAssignSlotModal({
   const [dayOfWeek, setDayOfWeek] = useState(initialDay)
   const [blockNumber, setBlockNumber] = useState(initialBlock)
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
-  const [room, setRoom] = useState('')
-  const [isVirtual, setIsVirtual] = useState(false)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -59,12 +56,8 @@ export function MinimalistAssignSlotModal({
 
     if (existingSchedule) {
       setSelectedSubjectId(existingSchedule.subject_id || null)
-      setRoom(existingSchedule.classroom_room || '')
-      setIsVirtual(Boolean(existingSchedule.is_virtual))
     } else {
       setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
-      setRoom('')
-      setIsVirtual(false)
     }
   }, [existingSchedule, initialDay, initialBlock, visible, subjects])
 
@@ -81,30 +74,44 @@ export function MinimalistAssignSlotModal({
 
     setLoading(true)
 
+    const subjectObj = subjects.find((s) => s.id === selectedSubjectId)
+    const slotData: Schedule = {
+      id: existingSchedule?.id || 'sched_' + Math.random().toString(36).substring(2, 11),
+      user_id: userId,
+      day_of_week: dayOfWeek,
+      block_number: blockNumber,
+      subject_id: selectedSubjectId,
+      start_time: blockDef.startTime,
+      end_time: blockDef.endTime,
+      subject: subjectObj,
+      updated_at: new Date().toISOString(),
+    }
+
     try {
-      const payload = {
-        user_id: userId,
-        day_of_week: dayOfWeek,
-        block_number: blockNumber,
-        subject_id: selectedSubjectId,
-        start_time: blockDef.startTime,
-        end_time: blockDef.endTime,
-        classroom_room: room.trim() || null,
-        is_virtual: isVirtual,
-        updated_at: new Date().toISOString(),
-      }
-
-      const { error } = await supabase
-        .from('schedules')
-        .upsert(payload, { onConflict: 'user_id,day_of_week,block_number' })
-
-      if (error) throw error
-
+      // 1. Guardar de inmediato en almacenamiento local (0 ms)
+      await personalStorage.saveScheduleSlot(slotData)
       triggerHaptic('success')
       onScheduleSaved()
       onClose()
+
+      // 2. Intentar respaldar en Supabase en background
+      supabase
+        .from('schedules')
+        .upsert(
+          {
+            id: slotData.id,
+            user_id: userId,
+            day_of_week: dayOfWeek,
+            block_number: blockNumber,
+            subject_id: selectedSubjectId,
+            start_time: blockDef.startTime,
+            end_time: blockDef.endTime,
+          },
+          { onConflict: 'user_id,day_of_week,block_number' }
+        )
+        .then(() => {})
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo asignar el bloque.')
+      Alert.alert('Error', err.message || 'No se pudo guardar la clase.')
       triggerHaptic('error')
     } finally {
       setLoading(false)
@@ -112,22 +119,23 @@ export function MinimalistAssignSlotModal({
   }
 
   const handleClearSlot = async () => {
-    if (!existingSchedule) return
-
     Alert.alert(
-      '¿Vaciar este bloque?',
-      'Se removerá la clase asignada en este horario.',
+      '¿Marcar como Hora Libre?',
+      'Se removerá la clase en este horario.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Vaciar',
+          text: 'Marcar Libre',
           style: 'destructive',
           onPress: async () => {
             try {
               triggerHaptic('error')
-              await supabase.from('schedules').delete().eq('id', existingSchedule.id)
+              await personalStorage.clearScheduleSlot(dayOfWeek, blockNumber)
               onScheduleSaved()
               onClose()
+              if (existingSchedule) {
+                supabase.from('schedules').delete().eq('id', existingSchedule.id).then(() => {})
+              }
             } catch (err) {
               console.error('Error vaciando bloque:', err)
             }
@@ -180,9 +188,9 @@ export function MinimalistAssignSlotModal({
               </View>
             </View>
 
-            {/* Selector de Bloque */}
+            {/* Selector de Bloque (4 Bloques) */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>BLOQUE DE CLASE</Text>
+              <Text style={styles.inputLabel}>BLOQUE DE CLASE (1H 30M)</Text>
               <View style={styles.blocksRow}>
                 {PERSONAL_SCHEDULE_BLOCKS.map((b) => (
                   <Pressable
@@ -210,94 +218,89 @@ export function MinimalistAssignSlotModal({
             {/* Selector de Materia */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>SELECCIONA LA MATERIA</Text>
-              <View style={styles.subjectsGrid}>
-                {subjects.map((subj) => {
-                  const isSelected = selectedSubjectId === subj.id
-                  return (
-                    <Pressable
-                      key={subj.id}
-                      onPress={() => {
-                        triggerHaptic('light')
-                        setSelectedSubjectId(subj.id)
-                      }}
-                      style={[
-                        styles.subjCard,
-                        isSelected && {
-                          borderColor: subj.color || '#6366F1',
-                          backgroundColor: 'rgba(24, 24, 27, 0.95)',
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[styles.dot, { backgroundColor: subj.color || '#6366F1' }]}
-                      />
-                      <Text style={styles.subjCardName} numberOfLines={1}>
-                        {subj.name}
-                      </Text>
-                      {isSelected && (
-                        <Check size={13} color={subj.color || '#6366F1'} strokeWidth={3} />
-                      )}
-                    </Pressable>
-                  )
-                })}
-              </View>
-            </View>
+              {subjects.length === 0 ? (
+                <View style={styles.noSubjectsBox}>
+                  <BookOpen size={20} color="#71717A" />
+                  <Text style={styles.noSubjectsText}>
+                    Aún no has registrado materias. Abre el gestor de "Materias" para crear una.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.subjectsGrid}>
+                  {subjects.map((subj) => {
+                    const isSelected = selectedSubjectId === subj.id
+                    const isWhite = subj.color === '#FFFFFF'
 
-            {/* Aula o Salón */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>AULA / SALÓN (OPCIONAL)</Text>
-              <View style={styles.inputBox}>
-                <MapPin size={14} color="#71717A" style={styles.inputIcon} />
-                <TextInput
-                  placeholder="Ej. Aula 302, Lab 1"
-                  placeholderTextColor="#52525B"
-                  value={room}
-                  onChangeText={setRoom}
-                  style={styles.textInput}
-                />
-              </View>
-            </View>
-
-            {/* Switch Virtual / Libre */}
-            <View style={styles.switchRow}>
-              <View style={styles.switchInfo}>
-                <Text style={styles.switchTitle}>Clase Virtual / Remota</Text>
-                <Text style={styles.switchSub}>Marca si es en línea o autoestudio</Text>
-              </View>
-              <Switch
-                value={isVirtual}
-                onValueChange={(val) => {
-                  triggerHaptic('light')
-                  setIsVirtual(val)
-                }}
-                trackColor={{ false: '#27272A', true: '#6366F1' }}
-                thumbColor="#FFFFFF"
-              />
+                    return (
+                      <Pressable
+                        key={subj.id}
+                        onPress={() => {
+                          triggerHaptic('light')
+                          setSelectedSubjectId(subj.id)
+                        }}
+                        style={[
+                          styles.subjCard,
+                          isSelected && {
+                            borderColor: subj.color || '#FFFFFF',
+                            backgroundColor: 'rgba(24, 24, 27, 0.95)',
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: subj.color || '#FFFFFF' },
+                            isWhite && styles.whiteDotBorder,
+                          ]}
+                        />
+                        <View style={styles.subjCardTextCol}>
+                          <Text style={styles.subjCardName} numberOfLines={1}>
+                            {subj.name}
+                          </Text>
+                          {subj.teacher_name && (
+                            <Text style={styles.subjCardTeacher} numberOfLines={1}>
+                              {subj.teacher_name}
+                            </Text>
+                          )}
+                        </View>
+                        {isSelected && (
+                          <Check
+                            size={14}
+                            color={subj.color || '#FFFFFF'}
+                            strokeWidth={3}
+                          />
+                        )}
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              )}
             </View>
 
             {/* Botones de Acción */}
             <View style={styles.actionsContainer}>
               <Pressable
                 onPress={handleSave}
-                disabled={loading}
-                style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
+                disabled={loading || subjects.length === 0}
+                style={[
+                  styles.saveBtn,
+                  (loading || subjects.length === 0) && styles.saveBtnDisabled,
+                ]}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
                   <View style={styles.saveBtnContent}>
                     <Check size={16} color="#09090B" strokeWidth={2.5} />
-                    <Text style={styles.saveBtnText}>Guardar Horario</Text>
+                    <Text style={styles.saveBtnText}>Asignar al Horario</Text>
                   </View>
                 )}
               </Pressable>
 
-              {existingSchedule && (
-                <Pressable onPress={handleClearSlot} style={styles.deleteSlotBtn}>
-                  <Trash2 size={14} color="#EF4444" />
-                  <Text style={styles.deleteSlotBtnText}>Vaciar este bloque</Text>
-                </Pressable>
-              )}
+              <Pressable onPress={handleClearSlot} style={styles.deleteSlotBtn}>
+                <Trash2 size={14} color="#EF4444" />
+                <Text style={styles.deleteSlotBtnText}>Dejar como Hora Libre</Text>
+              </Pressable>
             </View>
           </ScrollView>
         </View>
@@ -402,8 +405,8 @@ const styles = StyleSheet.create({
     borderColor: '#27272A',
   },
   blockBtnActive: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    borderColor: '#818CF8',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#FFFFFF',
   },
   blockBtnTitle: {
     color: '#71717A',
@@ -411,7 +414,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   blockBtnTitleActive: {
-    color: '#A5B4FC',
+    color: '#FFFFFF',
   },
   blockBtnTime: {
     color: '#52525B',
@@ -428,65 +431,52 @@ const styles = StyleSheet.create({
     backgroundColor: '#18181B',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#27272A',
-    gap: 8,
+    gap: 10,
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  whiteDotBorder: {
+    borderWidth: 1,
+    borderColor: '#52525B',
+  },
+  subjCardTextCol: {
+    flex: 1,
+    gap: 2,
   },
   subjCardName: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
-    flex: 1,
   },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#18181B',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#27272A',
-    paddingHorizontal: 12,
-    height: 42,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  textInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 13,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#18181B',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#27272A',
-    marginBottom: 16,
-  },
-  switchInfo: {
-    gap: 2,
-  },
-  switchTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  switchSub: {
+  subjCardTeacher: {
     color: '#71717A',
     fontSize: 11,
   },
+  noSubjectsBox: {
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  noSubjectsText: {
+    color: '#71717A',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
   actionsContainer: {
     gap: 8,
+    marginTop: 8,
     marginBottom: 20,
   },
   saveBtn: {
@@ -497,7 +487,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   saveBtnContent: {
     flexDirection: 'row',

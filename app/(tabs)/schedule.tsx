@@ -45,16 +45,14 @@ export default function ScheduleScreen() {
     block: 1,
   })
 
-  const loadLocalCache = async () => {
+  const loadData = useCallback(async () => {
     const [cachedScheds, cachedSubjs] = await Promise.all([
       personalStorage.getSchedules(),
       personalStorage.getSubjects(),
     ])
     setSchedules(cachedScheds)
     setSubjects(cachedSubjs)
-  }
 
-  const fetchCloudData = useCallback(async () => {
     if (!user) return
 
     try {
@@ -71,48 +69,27 @@ export default function ScheduleScreen() {
           .order('name', { ascending: true }),
       ])
 
-      if (schedRes.data) {
+      if (schedRes.data && schedRes.data.length > 0) {
         const allScheds = schedRes.data as Schedule[]
         await personalStorage.setSchedules(allScheds)
         setSchedules(allScheds)
       }
 
-      if (subjRes.data) {
+      if (subjRes.data && subjRes.data.length > 0) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
     } catch (err) {
-      console.error('Error sincronizando horario:', err)
+      console.log('Sync info:', err)
     } finally {
       setRefreshing(false)
     }
   }, [user])
 
   useEffect(() => {
-    loadLocalCache()
-    fetchCloudData()
-
-    if (!user) return
-
-    const channel = supabase
-      .channel(`personal_schedule_${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'schedules', filter: `user_id=eq.${user.id}` },
-        () => fetchCloudData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'subjects', filter: `user_id=eq.${user.id}` },
-        () => fetchCloudData()
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user, fetchCloudData])
+    loadData()
+  }, [loadData])
 
   const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule) => {
     triggerHaptic('light')
@@ -126,7 +103,7 @@ export default function ScheduleScreen() {
 
   const onRefresh = () => {
     setRefreshing(true)
-    fetchCloudData()
+    loadData()
   }
 
   return (
@@ -147,10 +124,10 @@ export default function ScheduleScreen() {
           <View style={styles.headerTop}>
             <View>
               <View style={styles.headerTitleRow}>
-                <Calendar size={18} color="#818CF8" />
+                <Calendar size={18} color="#FFFFFF" />
                 <Text style={styles.title}>Horario de Clases</Text>
               </View>
-              <Text style={styles.subtitle}>4 bloques diarios â€¢ 7:00 AM - 1:00 PM</Text>
+              <Text style={styles.subtitle}>4 bloques diarios • 7:00 AM - 1:00 PM</Text>
             </View>
 
             <Pressable
@@ -160,7 +137,7 @@ export default function ScheduleScreen() {
               }}
               style={styles.manageSubjBtn}
             >
-              <BookOpen size={13} color="#FFFFFF" />
+              <BookOpen size={13} color="#09090B" />
               <Text style={styles.manageSubjBtnText}>Materias</Text>
             </Pressable>
           </View>
@@ -223,7 +200,7 @@ export default function ScheduleScreen() {
           initialDay={assignModalData.day}
           initialBlock={assignModalData.block}
           existingSchedule={assignModalData.existingSchedule}
-          onScheduleSaved={fetchCloudData}
+          onScheduleSaved={loadData}
         />
       )}
 
@@ -234,7 +211,7 @@ export default function ScheduleScreen() {
           onClose={() => setShowSubjectModal(false)}
           userId={user.id}
           subjects={subjects}
-          onSubjectsUpdated={fetchCloudData}
+          onSubjectsUpdated={loadData}
         />
       )}
     </View>
@@ -281,15 +258,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#27272A',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
   },
   manageSubjBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '600',
+    color: '#09090B',
+    fontSize: 12,
+    fontWeight: '700',
   },
   viewModeSelector: {
     flexDirection: 'row',

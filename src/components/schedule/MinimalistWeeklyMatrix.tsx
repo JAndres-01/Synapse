@@ -38,7 +38,7 @@ export function MinimalistWeeklyMatrix({
           ))}
         </View>
 
-        {/* 4 Filas de Bloques */}
+        {/* 4 Filas de Bloques Continuos */}
         {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => (
           <View key={blockDef.block} style={styles.row}>
             {/* Columna de Hora */}
@@ -52,6 +52,9 @@ export function MinimalistWeeklyMatrix({
               const item = schedules.find(
                 (s) => s.day_of_week === d.num && s.block_number === blockDef.block
               )
+              const hasSubj = Boolean(item?.subject)
+              const subjColor = item?.subject?.color || '#FFFFFF'
+              const isWhite = subjColor === '#FFFFFF'
 
               return (
                 <Pressable
@@ -63,28 +66,28 @@ export function MinimalistWeeklyMatrix({
                   style={[
                     styles.cell,
                     styles.slotCell,
-                    item?.subject && {
-                      backgroundColor: `${item.subject.color || '#6366F1'}15`,
-                      borderColor: `${item.subject.color || '#6366F1'}35`,
+                    hasSubj && {
+                      backgroundColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : `${subjColor}18`,
+                      borderColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : `${subjColor}40`,
                     },
                   ]}
                 >
-                  {item?.subject ? (
+                  {hasSubj ? (
                     <View style={styles.cellContent}>
                       <View
                         style={[
                           styles.dot,
-                          { backgroundColor: item.subject.color || '#6366F1' },
+                          { backgroundColor: subjColor },
+                          isWhite && styles.whiteDotBorder,
                         ]}
                       />
                       <Text style={styles.subjectText} numberOfLines={2}>
-                        {item.subject.name}
+                        {item!.subject!.name}
                       </Text>
-                      {item.classroom_room ? (
-                        <Text style={styles.roomText} numberOfLines={1}>
-                          {item.classroom_room}
-                        </Text>
-                      ) : null}
                     </View>
                   ) : (
                     <Text style={styles.emptyDash}>-</Text>
@@ -141,7 +144,7 @@ const styles = StyleSheet.create({
   cell: {
     flex: 1,
     minWidth: 64,
-    minHeight: 68,
+    minHeight: 64,
     padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -153,25 +156,24 @@ const styles = StyleSheet.create({
   },
   cellContent: {
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
     width: '100%',
   },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#52525B',
   },
   subjectText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 13,
-  },
-  roomText: {
-    color: '#818CF8',
-    fontSize: 8.5,
-    textAlign: 'center',
   },
   blockNumText: {
     color: '#FFFFFF',

@@ -11,8 +11,9 @@ import {
   Alert,
 } from 'react-native'
 import type { Subject } from '@/types/personal'
-import { X, Plus, Trash2, BookOpen, Check, User, Hash, MapPin } from 'lucide-react-native'
+import { X, Plus, Trash2, BookOpen, Check, User } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
 
 interface MinimalistSubjectModalProps {
@@ -23,15 +24,16 @@ interface MinimalistSubjectModalProps {
   onSubjectsUpdated: () => void
 }
 
-const PALETTE = [
-  '#6366F1', // Indigo
-  '#10B981', // Emerald
-  '#8B5CF6', // Purple
-  '#F43F5E', // Rose
-  '#F59E0B', // Amber
-  '#0EA5E9', // Sky
-  '#EC4899', // Pink
-  '#14B8A6', // Teal
+// 8 Colores con alto contraste y sin parecidos + Blanco Puro (#FFFFFF)
+const DISTINCT_PALETTE = [
+  '#FFFFFF', // Blanco Puro
+  '#3B82F6', // Azul Eléctrico
+  '#10B981', // Verde Esmeralda
+  '#EF4444', // Rojo Brillante
+  '#F59E0B', // Amarillo Ámbar
+  '#8B5CF6', // Morado Eléctrico
+  '#EC4899', // Rosa Fucsia
+  '#06B6D4', // Cian / Turquesa
 ]
 
 export function MinimalistSubjectModal({
@@ -42,10 +44,8 @@ export function MinimalistSubjectModal({
   onSubjectsUpdated,
 }: MinimalistSubjectModalProps) {
   const [name, setName] = useState('')
-  const [code, setCode] = useState('')
   const [teacher, setTeacher] = useState('')
-  const [room, setRoom] = useState('')
-  const [selectedColor, setSelectedColor] = useState(PALETTE[0])
+  const [selectedColor, setSelectedColor] = useState(DISTINCT_PALETTE[0])
   const [loading, setLoading] = useState(false)
 
   const handleCreateSubject = async () => {
@@ -57,26 +57,38 @@ export function MinimalistSubjectModal({
 
     setLoading(true)
 
+    const newSubject: Subject = {
+      id: 'subj_' + Math.random().toString(36).substring(2, 11),
+      user_id: userId,
+      name: name.trim(),
+      teacher_name: teacher.trim() || null,
+      color: selectedColor,
+      created_at: new Date().toISOString(),
+    }
+
     try {
-      const { error } = await supabase.from('subjects').insert({
-        user_id: userId,
-        name: name.trim(),
-        code: code.trim() || null,
-        teacher_name: teacher.trim() || null,
-        classroom_room: room.trim() || null,
-        color: selectedColor,
-      })
-
-      if (error) throw error
-
+      // 1. Guardar de inmediato en almacenamiento local (0 ms de espera)
+      await personalStorage.saveSubject(newSubject)
       triggerHaptic('success')
       setName('')
-      setCode('')
       setTeacher('')
-      setRoom('')
       onSubjectsUpdated()
+
+      // 2. Intentar sincronizar en Supabase en segundo plano
+      supabase
+        .from('subjects')
+        .insert({
+          id: newSubject.id,
+          user_id: userId,
+          name: newSubject.name,
+          teacher_name: newSubject.teacher_name,
+          color: newSubject.color,
+        })
+        .then(({ error }) => {
+          if (error) console.log('Supabase sync info:', error.message)
+        })
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo crear la materia.')
+      Alert.alert('Error', err.message || 'No se pudo guardar la materia.')
       triggerHaptic('error')
     } finally {
       setLoading(false)
@@ -86,7 +98,7 @@ export function MinimalistSubjectModal({
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
     Alert.alert(
       '¿Eliminar materia?',
-      `Se eliminará "${subjectName}" y sus bloques del horario.`,
+      `Se eliminará "${subjectName}" de tus materias y horarios.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -95,8 +107,9 @@ export function MinimalistSubjectModal({
           onPress: async () => {
             try {
               triggerHaptic('error')
-              await supabase.from('subjects').delete().eq('id', subjectId)
+              await personalStorage.removeSubject(subjectId)
               onSubjectsUpdated()
+              supabase.from('subjects').delete().eq('id', subjectId).then(() => {})
             } catch (err) {
               console.error('Error eliminando materia:', err)
             }
@@ -114,21 +127,22 @@ export function MinimalistSubjectModal({
         <View style={styles.sheetContainer}>
           <View style={styles.sheetHeader}>
             <View style={styles.dragHandle} />
-            <Text style={styles.sheetTitle}>Mis Materias</Text>
+            <Text style={styles.sheetTitle}>Configurar Materias</Text>
             <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
               <X size={18} color="#A1A1AA" />
             </Pressable>
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Formulario Nueva Materia */}
+            {/* Formulario con Solo 3 Campos: Nombre, Profesor y Color */}
             <View style={styles.formCard}>
-              <Text style={styles.formCardTitle}>CREAR NUEVA MATERIA</Text>
+              <Text style={styles.formCardTitle}>AGREGAR MATERIA</Text>
 
+              {/* 1. Nombre de la Materia */}
               <View style={styles.inputBox}>
                 <BookOpen size={14} color="#71717A" style={styles.inputIcon} />
                 <TextInput
-                  placeholder="Nombre (ej. Cálculo Diferencial)"
+                  placeholder="Nombre de la materia (ej. Cálculo)"
                   placeholderTextColor="#52525B"
                   value={name}
                   onChangeText={setName}
@@ -136,35 +150,11 @@ export function MinimalistSubjectModal({
                 />
               </View>
 
-              <View style={styles.rowInputs}>
-                <View style={[styles.inputBox, { flex: 1 }]}>
-                  <Hash size={14} color="#71717A" style={styles.inputIcon} />
-                  <TextInput
-                    placeholder="Código"
-                    placeholderTextColor="#52525B"
-                    value={code}
-                    onChangeText={setCode}
-                    style={styles.textInput}
-                    autoCapitalize="characters"
-                  />
-                </View>
-
-                <View style={[styles.inputBox, { flex: 1 }]}>
-                  <MapPin size={14} color="#71717A" style={styles.inputIcon} />
-                  <TextInput
-                    placeholder="Aula (ej. 302)"
-                    placeholderTextColor="#52525B"
-                    value={room}
-                    onChangeText={setRoom}
-                    style={styles.textInput}
-                  />
-                </View>
-              </View>
-
+              {/* 2. Nombre del Profesor */}
               <View style={styles.inputBox}>
                 <User size={14} color="#71717A" style={styles.inputIcon} />
                 <TextInput
-                  placeholder="Profesor / Docente"
+                  placeholder="Nombre del profesor (opcional)"
                   placeholderTextColor="#52525B"
                   value={teacher}
                   onChangeText={setTeacher}
@@ -172,26 +162,40 @@ export function MinimalistSubjectModal({
                 />
               </View>
 
-              {/* Selector de Color */}
+              {/* 3. Selector de Color (Paleta Distintiva con Blanco) */}
+              <Text style={styles.paletteLabel}>SELECCIONA UN COLOR</Text>
               <View style={styles.paletteRow}>
-                {PALETTE.map((col) => (
-                  <Pressable
-                    key={col}
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setSelectedColor(col)
-                    }}
-                    style={[
-                      styles.colorDot,
-                      { backgroundColor: col },
-                      selectedColor === col && styles.colorDotSelected,
-                    ]}
-                  >
-                    {selectedColor === col && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
-                  </Pressable>
-                ))}
+                {DISTINCT_PALETTE.map((col) => {
+                  const isWhite = col === '#FFFFFF'
+                  const isSelected = selectedColor === col
+
+                  return (
+                    <Pressable
+                      key={col}
+                      onPress={() => {
+                        triggerHaptic('light')
+                        setSelectedColor(col)
+                      }}
+                      style={[
+                        styles.colorDot,
+                        { backgroundColor: col },
+                        isWhite && styles.whiteDotBorder,
+                        isSelected && styles.colorDotSelected,
+                      ]}
+                    >
+                      {isSelected && (
+                        <Check
+                          size={13}
+                          color={isWhite ? '#09090B' : '#FFFFFF'}
+                          strokeWidth={3}
+                        />
+                      )}
+                    </Pressable>
+                  )
+                })}
               </View>
 
+              {/* Botón Guardar */}
               <Pressable
                 onPress={handleCreateSubject}
                 disabled={loading}
@@ -208,24 +212,31 @@ export function MinimalistSubjectModal({
               </Pressable>
             </View>
 
-            {/* Lista de Materias Creadas */}
+            {/* Lista de Materias Existentes */}
             <View style={styles.listSection}>
               <Text style={styles.listSectionTitle}>
-                MATERIAS REGISTRADAS ({subjects.length})
+                MIS MATERIAS ({subjects.length})
               </Text>
 
               {subjects.map((subj) => (
                 <View key={subj.id} style={styles.subjectItem}>
-                  <View style={[styles.subjectColorBar, { backgroundColor: subj.color || '#6366F1' }]} />
+                  <View
+                    style={[
+                      styles.subjectColorBar,
+                      { backgroundColor: subj.color || '#FFFFFF' },
+                    ]}
+                  />
                   <View style={styles.subjectItemInfo}>
                     <Text style={styles.subjectItemName} numberOfLines={1}>
                       {subj.name}
                     </Text>
-                    <Text style={styles.subjectItemDetails}>
-                      {subj.code ? `${subj.code} â€¢ ` : ''}
-                      {subj.classroom_room ? `Aula ${subj.classroom_room} â€¢ ` : ''}
-                      {subj.teacher_name || 'Sin docente'}
-                    </Text>
+                    {subj.teacher_name ? (
+                      <Text style={styles.subjectItemDetails}>
+                        {subj.teacher_name}
+                      </Text>
+                    ) : (
+                      <Text style={styles.subjectItemNoTeacher}>Sin profesor asignado</Text>
+                    )}
                   </View>
 
                   <Pressable
@@ -325,9 +336,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
   },
-  rowInputs: {
-    flexDirection: 'row',
-    gap: 8,
+  paletteLabel: {
+    color: '#71717A',
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
   paletteRow: {
     flexDirection: 'row',
@@ -335,15 +349,20 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   colorDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  whiteDotBorder: {
+    borderWidth: 1,
+    borderColor: '#52525B',
+  },
   colorDotSelected: {
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
+    transform: [{ scale: 1.1 }],
   },
   addBtn: {
     backgroundColor: '#FFFFFF',
@@ -402,8 +421,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   subjectItemDetails: {
-    color: '#71717A',
+    color: '#A1A1AA',
     fontSize: 11,
+  },
+  subjectItemNoTeacher: {
+    color: '#52525B',
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   deleteSubjBtn: {
     padding: 6,

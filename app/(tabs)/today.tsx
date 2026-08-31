@@ -41,7 +41,7 @@ export default function TodayScreen() {
     return day === 0 ? 7 : day // 1: Lun ... 5: Vie
   }
 
-  const loadLocalCache = async () => {
+  const loadData = useCallback(async () => {
     const [cachedScheds, cachedTasks, cachedSubjs] = await Promise.all([
       personalStorage.getSchedules(),
       personalStorage.getTasks(),
@@ -52,14 +52,11 @@ export default function TodayScreen() {
     setSchedulesToday(cachedScheds.filter((s) => s.day_of_week === todayNum))
     setTasks(cachedTasks)
     setSubjects(cachedSubjs)
-  }
 
-  const fetchCloudData = useCallback(async () => {
     if (!user) return
 
+    // Intentar sincronizar con Supabase sin pisar el almacenamiento local
     try {
-      const todayNum = getTodayDayOfWeek()
-
       const [schedRes, tasksRes, subjRes] = await Promise.all([
         supabase
           .from('schedules')
@@ -78,54 +75,33 @@ export default function TodayScreen() {
           .order('name', { ascending: true }),
       ])
 
-      if (schedRes.data) {
+      if (schedRes.data && schedRes.data.length > 0) {
         const allScheds = schedRes.data as Schedule[]
         await personalStorage.setSchedules(allScheds)
         setSchedulesToday(allScheds.filter((s) => s.day_of_week === todayNum))
       }
 
-      if (tasksRes.data) {
+      if (tasksRes.data && tasksRes.data.length > 0) {
         const allTasks = tasksRes.data as Task[]
         await personalStorage.setTasks(allTasks)
         setTasks(allTasks)
       }
 
-      if (subjRes.data) {
+      if (subjRes.data && subjRes.data.length > 0) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
     } catch (err) {
-      console.error('Error sincronizando hoy:', err)
+      console.log('Sync info:', err)
     } finally {
       setRefreshing(false)
     }
   }, [user])
 
   useEffect(() => {
-    loadLocalCache()
-    fetchCloudData()
-
-    if (!user) return
-
-    const channel = supabase
-      .channel(`personal_today_${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
-        () => fetchCloudData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'schedules', filter: `user_id=eq.${user.id}` },
-        () => fetchCloudData()
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user, fetchCloudData])
+    loadData()
+  }, [loadData])
 
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
@@ -142,26 +118,20 @@ export default function TodayScreen() {
         .from('tasks')
         .update({ status: nextStatus, updated_at: new Date().toISOString() })
         .eq('id', taskId)
-    } catch (err) {
-      fetchCloudData()
+    } catch {
+      // Offline fallback
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    const updated = tasks.filter((t) => t.id !== taskId)
+    const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
-    await personalStorage.setTasks(updated)
-
-    try {
-      await supabase.from('tasks').delete().eq('id', taskId)
-    } catch (err) {
-      fetchCloudData()
-    }
+    supabase.from('tasks').delete().eq('id', taskId).then(() => {})
   }
 
   const onRefresh = () => {
     setRefreshing(true)
-    fetchCloudData()
+    loadData()
   }
 
   return (
@@ -241,7 +211,7 @@ export default function TodayScreen() {
           userId={user.id}
           subjects={subjects}
           initialTask={taskToEdit}
-          onTaskSaved={fetchCloudData}
+          onTaskSaved={loadData}
         />
       )}
     </View>

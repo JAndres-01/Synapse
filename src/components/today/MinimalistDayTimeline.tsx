@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { MapPin } from 'lucide-react-native'
+import { User } from 'lucide-react-native'
 
 interface MinimalistDayTimelineProps {
   schedulesToday: Schedule[]
@@ -51,7 +51,7 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
                     styles.lineDot,
                     isCurrent && styles.lineDotCurrent,
                     isPast && styles.lineDotPast,
-                    sched?.subject && { backgroundColor: sched.subject.color || '#6366F1' },
+                    sched?.subject && { backgroundColor: sched.subject.color || '#FFFFFF' },
                   ]}
                 />
                 {index < PERSONAL_SCHEDULE_BLOCKS.length - 1 && (
@@ -82,22 +82,17 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
                     >
                       {sched.subject.name}
                     </Text>
-                    <View style={styles.subInfoRow}>
-                      {sched.classroom_room && (
-                        <View style={styles.roomTag}>
-                          <MapPin size={11} color="#818CF8" />
-                          <Text style={styles.roomText}>{sched.classroom_room}</Text>
-                        </View>
-                      )}
-                      {sched.subject.teacher_name && (
+                    {sched.subject.teacher_name && (
+                      <View style={styles.subInfoRow}>
+                        <User size={11} color="#71717A" />
                         <Text style={styles.teacherText} numberOfLines={1}>
                           {sched.subject.teacher_name}
                         </Text>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </>
                 ) : (
-                  <Text style={styles.freeText}>Sin clase asignada</Text>
+                  <Text style={styles.freeText}>Hora Libre</Text>
                 )}
               </View>
             </View>
@@ -143,7 +138,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   timeTextCurrent: {
-    color: '#34D399',
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   timeTextPast: {
@@ -169,7 +164,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   lineDotCurrent: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#FFFFFF',
     width: 9,
     height: 9,
     borderRadius: 4.5,
@@ -193,7 +188,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   contentColCurrent: {
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 8,
     padding: 6,
     marginLeft: 4,
@@ -209,17 +204,7 @@ const styles = StyleSheet.create({
   subInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  roomTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  roomText: {
-    color: '#818CF8',
-    fontSize: 11,
-    fontWeight: '500',
+    gap: 4,
   },
   teacherText: {
     color: '#71717A',

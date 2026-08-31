@@ -1,8 +1,8 @@
 import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import type { Schedule, Subject } from '@/types/personal'
-import { PERSONAL_SCHEDULE_BLOCKS, BREAK_BLOCK } from '@/lib/scheduleEngine'
-import { MapPin, Plus, User } from 'lucide-react-native'
+import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
+import { User, Sparkles } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistDayViewProps {
@@ -23,6 +23,7 @@ const DAYS = [
 
 export function MinimalistDayView({
   schedules = [],
+  subjects = [],
   selectedDay,
   onSelectDay,
   onAssignSlot,
@@ -52,73 +53,73 @@ export function MinimalistDayView({
         })}
       </View>
 
-      {/* Lista de 4 Bloques Diarios */}
+      {/* Lista de 4 Bloques Diarios Continuos (Sin Receso) */}
       <View style={styles.blocksList}>
-        {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, index) => {
+        {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => {
           const item = daySchedules.find((s) => s.block_number === blockDef.block)
+          const isAssigned = Boolean(item?.subject)
+          const isWhite = item?.subject?.color === '#FFFFFF'
 
           return (
-            <React.Fragment key={blockDef.block}>
-              {/* Bloque de Clase */}
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('light')
-                  onAssignSlot(selectedDay, blockDef.block, item)
-                }}
-                style={styles.blockCard}
-              >
-                {/* Indicador de Color Lateral */}
-                <View
-                  style={[
-                    styles.colorBar,
-                    { backgroundColor: item?.subject?.color || '#27272A' },
-                  ]}
-                />
+            <Pressable
+              key={blockDef.block}
+              onPress={() => {
+                triggerHaptic('light')
+                onAssignSlot(selectedDay, blockDef.block, item)
+              }}
+              style={[
+                styles.blockCard,
+                !isAssigned && styles.blockCardFree,
+              ]}
+            >
+              {/* Indicador de Color Lateral */}
+              <View
+                style={[
+                  styles.colorBar,
+                  {
+                    backgroundColor: isAssigned
+                      ? item?.subject?.color || '#FFFFFF'
+                      : 'transparent',
+                  },
+                ]}
+              />
 
-                <View style={styles.blockContent}>
-                  <View style={styles.blockHeader}>
-                    <Text style={styles.blockName}>
-                      {item?.subject?.name || 'Bloque Libre'}
+              <View style={styles.blockContent}>
+                <View style={styles.blockHeader}>
+                  <Text
+                    style={[
+                      styles.blockName,
+                      !isAssigned && styles.blockNameFree,
+                    ]}
+                  >
+                    {isAssigned ? item?.subject?.name : 'Hora Libre'}
+                  </Text>
+                  <View style={styles.timeTag}>
+                    <Text style={styles.timeText}>
+                      {blockDef.startTime} - {blockDef.endTime}
                     </Text>
-                    <View style={styles.timeTag}>
-                      <Text style={styles.timeText}>
-                        {blockDef.startTime} - {blockDef.endTime}
+                  </View>
+                </View>
+
+                <View style={styles.blockMeta}>
+                  {isAssigned && item?.subject?.teacher_name ? (
+                    <View style={styles.metaItem}>
+                      <User size={11} color="#71717A" />
+                      <Text style={styles.teacherText}>{item.subject.teacher_name}</Text>
+                    </View>
+                  ) : null}
+
+                  {!isAssigned && (
+                    <View style={styles.metaItem}>
+                      <Sparkles size={11} color="#52525B" />
+                      <Text style={styles.tapToAssignText}>
+                        Libre / Toca para asignar materia
                       </Text>
                     </View>
-                  </View>
-
-                  <View style={styles.blockMeta}>
-                    {item?.classroom_room && (
-                      <View style={styles.metaItem}>
-                        <MapPin size={11} color="#818CF8" />
-                        <Text style={styles.roomText}>{item.classroom_room}</Text>
-                      </View>
-                    )}
-
-                    {item?.subject?.teacher_name && (
-                      <View style={styles.metaItem}>
-                        <User size={11} color="#71717A" />
-                        <Text style={styles.teacherText}>{item.subject.teacher_name}</Text>
-                      </View>
-                    )}
-
-                    {!item?.subject && (
-                      <Text style={styles.tapToAssignText}>Toca para asignar materia</Text>
-                    )}
-                  </View>
+                  )}
                 </View>
-              </Pressable>
-
-              {/* Receso entre bloque 2 y 3 */}
-              {blockDef.block === 2 && (
-                <View style={styles.breakBanner}>
-                  <View style={styles.breakDot} />
-                  <Text style={styles.breakText}>
-                    RECESO â€¢ {BREAK_BLOCK.startTime} - {BREAK_BLOCK.endTime} (30 MIN)
-                  </Text>
-                </View>
-              )}
-            </React.Fragment>
+              </View>
+            </Pressable>
           )
         })}
       </View>
@@ -166,6 +167,11 @@ const styles = StyleSheet.create({
     borderColor: '#27272A',
     overflow: 'hidden',
   },
+  blockCardFree: {
+    borderStyle: 'dashed',
+    borderColor: '#3F3F46',
+    backgroundColor: 'rgba(24, 24, 27, 0.4)',
+  },
   colorBar: {
     width: 4,
   },
@@ -183,6 +189,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  blockNameFree: {
+    color: '#A1A1AA',
+    fontStyle: 'normal',
   },
   timeTag: {
     backgroundColor: '#09090B',
@@ -203,12 +213,7 @@ const styles = StyleSheet.create({
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-  },
-  roomText: {
-    color: '#818CF8',
-    fontSize: 11.5,
-    fontWeight: '500',
+    gap: 4,
   },
   teacherText: {
     color: '#71717A',
@@ -217,25 +222,5 @@ const styles = StyleSheet.create({
   tapToAssignText: {
     color: '#52525B',
     fontSize: 11,
-    fontStyle: 'italic',
-  },
-  breakBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 4,
-  },
-  breakDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#F59E0B',
-  },
-  breakText: {
-    color: '#A1A1AA',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
   },
 })

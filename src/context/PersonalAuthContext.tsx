@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { PersonalProfile } from '@/types/personal'
-import type { User, Session } from '@supabase/supabase-js'
 
 interface PersonalAuthContextType {
-  user: User | null
+  user: User | { id: string; email?: string } | null
   session: Session | null
   profile: PersonalProfile | null
   loading: boolean
-  signInWithEmail: (email: string, pass: string) => Promise<{ error: Error | null }>
-  signUpWithEmail: (email: string, pass: string, fullName: string) => Promise<{ error: Error | null }>
+  signInWithEmail: (email: string, pass: string) => Promise<void>
+  signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -18,135 +18,133 @@ interface PersonalAuthContextType {
 const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(undefined)
 
 export function PersonalAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<any>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadFromCache = async () => {
-    const cachedProfile = await personalStorage.getProfile()
-    if (cachedProfile) {
-      setProfile(cachedProfile)
-    }
-  }
-
-  const fetchProfile = async (userId: string, email?: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-
-      if (data && !error) {
-        const userProf: PersonalProfile = {
-          id: data.id,
-          email: data.email || email || '',
-          full_name: data.full_name || 'Estudiante',
-          avatar_url: data.avatar_url,
-          created_at: data.created_at,
-        }
-        setProfile(userProf)
-        await personalStorage.setProfile(userProf)
-      } else {
-        const fallbackProf: PersonalProfile = {
-          id: userId,
-          email: email || '',
-          full_name: 'Estudiante',
-        }
-        setProfile(fallbackProf)
-        await personalStorage.setProfile(fallbackProf)
+  const loadLocalProfile = async () => {
+    let saved = await personalStorage.getProfile()
+    if (!saved) {
+      const defaultId = 'user_' + Math.random().toString(36).substring(2, 11)
+      saved = {
+        id: defaultId,
+        full_name: 'Mi Espacio',
+        email: 'estudiante@synapse.local',
+        theme: 'dark',
+        created_at: new Date().toISOString(),
       }
-    } catch {
-      // Fallback a perfil básico
-      const fallbackProf: PersonalProfile = {
-        id: userId,
-        email: email || '',
-        full_name: 'Estudiante',
-      }
-      setProfile(fallbackProf)
+      await personalStorage.setProfile(saved)
     }
+    setProfile(saved)
+    setUser({ id: saved.id, email: saved.email })
   }
 
   useEffect(() => {
-    loadFromCache()
+    let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email)
+    async function initAuth() {
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (data.session && mounted) {
+          setSession(data.session)
+          setUser(data.session.user)
+          const profileData: PersonalProfile = {
+            id: data.session.user.id,
+            full_name: data.session.user.user_metadata?.full_name || 'Estudiante',
+            email: data.session.user.email || '',
+            theme: 'dark',
+            created_at: data.session.user.created_at,
+          }
+          setProfile(profileData)
+          await personalStorage.setProfile(profileData)
+        } else {
+          await loadLocalProfile()
+        }
+      } catch {
+        await loadLocalProfile()
+      } finally {
+        if (mounted) setLoading(false)
       }
-      setLoading(false)
-    })
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email)
+    initAuth()
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (!mounted) return
+      setSession(newSession)
+      if (newSession) {
+        setUser(newSession.user)
+        const profileData: PersonalProfile = {
+          id: newSession.user.id,
+          full_name: newSession.user.user_metadata?.full_name || 'Estudiante',
+          email: newSession.user.email || '',
+          theme: 'dark',
+          created_at: newSession.user.created_at,
+        }
+        setProfile(profileData)
+        await personalStorage.setProfile(profileData)
       } else {
-        setProfile(null)
+        await loadLocalProfile()
       }
-      setLoading(false)
     })
 
     return () => {
-      subscription.unsubscribe()
+      mounted = false
+      authListener?.subscription.unsubscribe()
     }
   }, [])
 
   const signInWithEmail = async (email: string, pass: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: pass,
-      })
-      return { error }
-    } catch (err: any) {
-      return { error: err }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
+    if (error) throw error
+    if (data.user) {
+      setUser(data.user)
+      setSession(data.session)
+      const p: PersonalProfile = {
+        id: data.user.id,
+        full_name: data.user.user_metadata?.full_name || email.split('@')[0],
+        email: data.user.email || '',
+        theme: 'dark',
+        created_at: data.user.created_at,
+      }
+      setProfile(p)
+      await personalStorage.setProfile(p)
     }
   }
 
-  const signUpWithEmail = async (email: string, pass: string, fullName: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: pass,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-          },
-        },
-      })
-
-      if (!error && data.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: fullName.trim(),
-          email: email.trim(),
-          updated_at: new Date().toISOString(),
-        })
+  const signUpWithEmail = async (email: string, pass: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { full_name: name } },
+    })
+    if (error) throw error
+    if (data.user) {
+      setUser(data.user)
+      setSession(data.session)
+      const p: PersonalProfile = {
+        id: data.user.id,
+        full_name: name,
+        email: data.user.email || '',
+        theme: 'dark',
+        created_at: data.user.created_at,
       }
-
-      return { error }
-    } catch (err: any) {
-      return { error: err }
+      setProfile(p)
+      await personalStorage.setProfile(p)
     }
   }
 
   const signOut = async () => {
-    await personalStorage.clearAll()
     await supabase.auth.signOut()
     setUser(null)
     setSession(null)
-    setProfile(null)
+    await loadLocalProfile()
   }
 
   const refreshProfile = async () => {
-    if (user) {
-      await fetchProfile(user.id, user.email)
-    }
+    const saved = await personalStorage.getProfile()
+    if (saved) setProfile(saved)
   }
 
   return (
@@ -170,7 +168,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
 export function usePersonalAuth() {
   const context = useContext(PersonalAuthContext)
   if (!context) {
-    throw new Error('usePersonalAuth debe ser usado dentro de un PersonalAuthProvider')
+    throw new Error('usePersonalAuth must be used within PersonalAuthProvider')
   }
   return context
 }

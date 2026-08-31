@@ -1,12 +1,13 @@
-﻿import React, { useEffect } from 'react'
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native'
+﻿import React, { useEffect, useRef } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Platform,
+  Animated,
+} from 'react-native'
 import { BlurView } from 'expo-blur'
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  interpolate,
-} from 'react-native-reanimated'
 import { Home, Calendar, CheckSquare, Settings } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -26,6 +27,8 @@ const TABS: Array<{ key: TabKey; label: string; icon: any }> = [
   { key: 'settings', label: 'Salón', icon: Settings },
 ]
 
+const TAB_WIDTH = 78.5
+
 export function NativeFloatingIsland({
   activeTab,
   onSelectTab,
@@ -33,58 +36,47 @@ export function NativeFloatingIsland({
   visible = true,
 }: NativeFloatingIslandProps) {
   const insets = useSafeAreaInsets()
-  const activeIndex = TABS.findIndex((t) => t.key === activeTab)
+  const activeIndex = Math.max(0, TABS.findIndex((t) => t.key === activeTab))
 
-  const slidePos = useSharedValue(activeIndex >= 0 ? activeIndex : 0)
-  const visibilityVal = useSharedValue(visible ? 1 : 0)
-
-  useEffect(() => {
-    const idx = TABS.findIndex((t) => t.key === activeTab)
-    if (idx >= 0) {
-      slidePos.value = withSpring(idx, {
-        stiffness: 420,
-        damping: 34,
-        mass: 0.8,
-      })
-    }
-  }, [activeTab, slidePos])
+  const slideAnim = useRef(new Animated.Value(activeIndex * TAB_WIDTH)).current
+  const visibilityAnim = useRef(new Animated.Value(visible ? 1 : 0)).current
 
   useEffect(() => {
-    visibilityVal.value = withSpring(visible ? 1 : 0, {
+    const idx = Math.max(0, TABS.findIndex((t) => t.key === activeTab))
+    Animated.spring(slideAnim, {
+      toValue: idx * TAB_WIDTH,
+      stiffness: 450,
+      damping: 34,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start()
+  }, [activeTab, slideAnim])
+
+  useEffect(() => {
+    Animated.spring(visibilityAnim, {
+      toValue: visible ? 1 : 0,
       stiffness: 400,
       damping: 30,
-    })
-  }, [visible, visibilityVal])
-
-  const pillAnimatedStyle = useAnimatedStyle(() => {
-    // Cada tab ocupa 25% (aprox 78px dentro de una barra de ~312px)
-    return {
-      left: `${slidePos.value * 25}%`,
-    }
-  })
-
-  const containerAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: visibilityVal.value,
-      transform: [
-        {
-          translateY: interpolate(visibilityVal.value, [0, 1], [60, 0]),
-        },
-        {
-          scale: interpolate(visibilityVal.value, [0, 1], [0.95, 1]),
-        },
-      ],
-    }
-  })
+      useNativeDriver: true,
+    }).start()
+  }, [visible, visibilityAnim])
 
   if (!visible) return null
+
+  const translateY = visibilityAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [60, 0],
+  })
 
   return (
     <Animated.View
       style={[
         styles.wrapper,
         { bottom: Math.max(insets.bottom, 12) + 8 },
-        containerAnimatedStyle,
+        {
+          opacity: visibilityAnim,
+          transform: [{ translateY }],
+        },
       ]}
       pointerEvents={visible ? 'auto' : 'none'}
     >
@@ -93,8 +85,15 @@ export function NativeFloatingIsland({
         tint="dark"
         style={styles.blurContainer}
       >
-        {/* Pastilla activa deslizante con resortes de Apple a 120 FPS */}
-        <Animated.View style={[styles.activePill, pillAnimatedStyle]} />
+        {/* Pastilla activa deslizante con GPU Spring a 120 FPS */}
+        <Animated.View
+          style={[
+            styles.activePill,
+            {
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        />
 
         {/* Botones de navegación */}
         {TABS.map((tab) => {
@@ -169,7 +168,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     bottom: 4,
-    width: '25%',
+    left: 3,
+    width: TAB_WIDTH,
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderRadius: 24,
     borderWidth: 1,

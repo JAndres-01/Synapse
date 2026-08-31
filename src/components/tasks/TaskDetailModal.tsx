@@ -26,6 +26,7 @@ import {
 import confetti from 'canvas-confetti'
 import { compressImageFile } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { memoryCache } from '@/lib/cache'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -136,8 +137,18 @@ export function TaskDetailModal({
     ((task.is_private && currentUser && task.created_by === currentUser.id) ||
       (!task.is_private && isAdmin))
 
-  const [loadedAttachments, setLoadedAttachments] = useState<any[]>([])
-  const [loadedComments, setLoadedComments] = useState<TaskComment[]>([])
+  const [loadedAttachments, setLoadedAttachments] = useState<any[]>(() => {
+    if (task?.id && memoryCache.taskDetails[task.id]) {
+      return memoryCache.taskDetails[task.id].attachments
+    }
+    return []
+  })
+  const [loadedComments, setLoadedComments] = useState<TaskComment[]>(() => {
+    if (task?.id && memoryCache.taskDetails[task.id]) {
+      return memoryCache.taskDetails[task.id].comments
+    }
+    return []
+  })
   const supabase = createClient()
 
   const loadTaskDetails = React.useCallback(async () => {
@@ -148,14 +159,24 @@ export function TaskDetailModal({
         supabase.from('task_comments').select('*, author:profiles(*)').eq('task_id', task.id).order('created_at', { ascending: true })
       ])
 
-      if (attRes.data) setLoadedAttachments(attRes.data)
-      if (comRes.data) setLoadedComments(comRes.data as TaskComment[])
+      const freshAttachments = attRes.data || []
+      const freshComments = (comRes.data as TaskComment[]) || []
+
+      // Guardar en caché en memoria para apertura instantánea (0ms) en visitas futuras
+      memoryCache.taskDetails[task.id] = {
+        attachments: freshAttachments,
+        comments: freshComments,
+        lastFetched: Date.now(),
+      }
+
+      setLoadedAttachments(freshAttachments)
+      setLoadedComments(freshComments)
     } catch (err) {
       console.error('Error cargando detalles bajo demanda:', err)
     }
   }, [task?.id, supabase])
 
-  // Carga bajo demanda de adjuntos completos y comentarios solo para la tarea abierta
+  // Carga bajo demanda instantánea con caché (SWR: Stale-While-Revalidate)
   useEffect(() => {
     if (!task?.id) {
       setLoadedAttachments([])
@@ -163,9 +184,17 @@ export function TaskDetailModal({
       return
     }
 
+    // 1. Si ya tenemos los datos en caché de memoria, cargarlos de inmediato (0ms, sin pantalla de carga)
+    const cached = memoryCache.taskDetails[task.id]
+    if (cached) {
+      setLoadedAttachments(cached.attachments)
+      setLoadedComments(cached.comments)
+    }
+
+    // 2. Revalidar silenciosamente en segundo plano
     loadTaskDetails()
 
-    // Suscripción Realtime para reflejar nuevos comentarios de compañeros al instante (0ms)
+    // 3. Suscripción Realtime para reflejar nuevos comentarios de compañeros al instante (0ms)
     const channel = supabase
       .channel(`modal_task_comments_${task.id}`)
       .on(

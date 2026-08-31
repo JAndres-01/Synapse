@@ -1,4 +1,10 @@
-import type { Task, Schedule, Subject } from '@/types/database'
+import type { Task, Schedule, Subject, TaskAttachment, TaskComment } from '@/types/database'
+
+export interface TaskDetailsCache {
+  attachments: TaskAttachment[]
+  comments: TaskComment[]
+  lastFetched: number
+}
 
 export interface AppMemoryCache {
   tasks: Task[]
@@ -6,6 +12,7 @@ export interface AppMemoryCache {
   subjects: Subject[]
   pendingTasksCount: number
   lastUpdated: number
+  taskDetails: Record<string, TaskDetailsCache>
 }
 
 // Función pura para ordenamiento determinista y estable de tareas (0ms layout shifts)
@@ -36,4 +43,5 @@ export const memoryCache: AppMemoryCache = {
   subjects: [],
   pendingTasksCount: 0,
   lastUpdated: 0,
+  taskDetails: {},
 }

@@ -1,136 +1,144 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { View, StyleSheet, Animated, Dimensions } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
-interface ConfettiPiece {
-  id: number
-  x: number
-  y: number
-  color: string
-  size: number
-  isCircle: boolean
-  animX: Animated.Value
-  animY: Animated.Value
-  animRotate: Animated.Value
-  animOpacity: Animated.Value
-}
-
 interface MinimalistConfettiProps {
-  visible: boolean
-  onAnimationEnd?: () => void
+  burstTrigger: number // Se incrementa cada vez que se tacha una tarea
 }
 
 const CONFETTI_COLORS = [
+  '#F59E0B', // Oro cálido
   '#10B981', // Verde Esmeralda
-  '#3B82F6', // Azul Eléctrico
-  '#F59E0B', // Ámbar
+  '#38BDF8', // Celeste Cielo
   '#EC4899', // Rosa
-  '#8B5CF6', // Púrpura
+  '#A855F7', // Púrpura
+  '#FCD34D', // Amarillo
   '#FFFFFF', // Blanco
-  '#06B6D4', // Cian
 ]
 
-export function MinimalistConfetti({ visible, onAnimationEnd }: MinimalistConfettiProps) {
-  const pieces = useRef<ConfettiPiece[]>([]).current
+interface SingleBurst {
+  id: number
+  particles: {
+    id: number
+    x: number
+    y: number
+    color: string
+    width: number
+    height: number
+    isCircle: boolean
+    animX: Animated.Value
+    animY: Animated.Value
+    animRotate: Animated.Value
+    animOpacity: Animated.Value
+  }[]
+}
 
-  if (pieces.length === 0) {
-    for (let i = 0; i < 36; i++) {
-      pieces.push({
+export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
+  const [bursts, setBursts] = useState<SingleBurst[]>([])
+
+  useEffect(() => {
+    if (burstTrigger <= 0) return
+
+    const burstId = Date.now() + Math.random()
+    const particles = []
+
+    // 32 partículas ultra-finas y delicadas estilo Apple (3px x 5px)
+    for (let i = 0; i < 32; i++) {
+      const angle = (Math.PI * 2 * i) / 32 + (Math.random() * 0.4 - 0.2)
+      const speed = Math.random() * 140 + 70
+
+      particles.push({
         id: i,
-        x: SCREEN_WIDTH / 2 + (Math.random() * 80 - 40),
-        y: SCREEN_HEIGHT * 0.45 + (Math.random() * 60 - 30),
+        x: SCREEN_WIDTH / 2 + (Math.random() * 60 - 30),
+        y: SCREEN_HEIGHT * 0.42 + (Math.random() * 40 - 20),
         color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        size: Math.floor(Math.random() * 6) + 6,
-        isCircle: Math.random() > 0.5,
+        width: Math.random() > 0.4 ? 3.5 : 4.5,
+        height: Math.random() > 0.4 ? 6.5 : 4.5,
+        isCircle: Math.random() > 0.6,
         animX: new Animated.Value(0),
         animY: new Animated.Value(0),
         animRotate: new Animated.Value(0),
         animOpacity: new Animated.Value(1),
+        targetX: Math.cos(angle) * speed,
+        targetY: Math.sin(angle) * speed + (Math.random() * 160 + 70), // Gravedad suave
+        targetRotate: (Math.random() - 0.5) * 10,
       })
     }
-  }
 
-  useEffect(() => {
-    if (!visible) return
+    const newBurst: SingleBurst = { id: burstId, particles }
+    setBursts((prev) => [...prev, newBurst])
 
-    const animations = pieces.map((piece) => {
-      piece.animX.setValue(0)
-      piece.animY.setValue(0)
-      piece.animRotate.setValue(0)
-      piece.animOpacity.setValue(1)
-
-      const angle = Math.random() * Math.PI * 2
-      const distance = Math.random() * 160 + 70
-      const targetX = Math.cos(angle) * distance
-      const targetY = Math.sin(angle) * distance + (Math.random() * 190 + 90) // Gravedad
-      const targetRotate = (Math.random() - 0.5) * 8
-
-      return Animated.parallel([
-        Animated.timing(piece.animX, {
-          toValue: targetX,
-          duration: 1150,
+    // Iniciar animación inmediata (0 ms de latencia)
+    const anims = particles.map((p: any) =>
+      Animated.parallel([
+        Animated.timing(p.animX, {
+          toValue: p.targetX,
+          duration: 900,
           useNativeDriver: true,
         }),
-        Animated.timing(piece.animY, {
-          toValue: targetY,
-          duration: 1150,
+        Animated.timing(p.animY, {
+          toValue: p.targetY,
+          duration: 900,
           useNativeDriver: true,
         }),
-        Animated.timing(piece.animRotate, {
-          toValue: targetRotate,
-          duration: 1150,
+        Animated.timing(p.animRotate, {
+          toValue: p.targetRotate,
+          duration: 900,
           useNativeDriver: true,
         }),
         Animated.sequence([
-          Animated.delay(700),
-          Animated.timing(piece.animOpacity, {
+          Animated.delay(450),
+          Animated.timing(p.animOpacity, {
             toValue: 0,
             duration: 450,
             useNativeDriver: true,
           }),
         ]),
       ])
-    })
+    )
 
-    Animated.parallel(animations).start(() => {
-      onAnimationEnd?.()
+    Animated.parallel(anims).start(() => {
+      // Limpiar ráfaga terminada para no acumular memoria
+      setBursts((prev) => prev.filter((b) => b.id !== burstId))
     })
-  }, [visible, pieces, onAnimationEnd])
+  }, [burstTrigger])
 
-  if (!visible) return null
+  if (bursts.length === 0) return null
 
   return (
     <View style={styles.overlay} pointerEvents="none">
-      {pieces.map((p) => {
-        const rotate = p.animRotate.interpolate({
-          inputRange: [-4, 4],
-          outputRange: ['-360deg', '360deg'],
-        })
+      {bursts.map((burst) =>
+        burst.particles.map((p) => {
+          const rotate = p.animRotate.interpolate({
+            inputRange: [-5, 5],
+            outputRange: ['-360deg', '360deg'],
+          })
 
-        return (
-          <Animated.View
-            key={p.id}
-            style={[
-              styles.confettiPiece,
-              {
-                left: p.x,
-                top: p.y,
-                width: p.size,
-                height: p.isCircle ? p.size : p.size * 1.6,
-                backgroundColor: p.color,
-                borderRadius: p.isCircle ? p.size / 2 : 2,
-                opacity: p.animOpacity,
-                transform: [
-                  { translateX: p.animX },
-                  { translateY: p.animY },
-                  { rotate },
-                ],
-              },
-            ]}
-          />
-        )
-      })}
+          return (
+            <Animated.View
+              key={`${burst.id}_${p.id}`}
+              style={[
+                styles.confettiPiece,
+                {
+                  left: p.x,
+                  top: p.y,
+                  width: p.width,
+                  height: p.height,
+                  backgroundColor: p.color,
+                  borderRadius: p.isCircle ? p.width / 2 : 1.5,
+                  opacity: p.animOpacity,
+                  transform: [
+                    { translateX: p.animX },
+                    { translateY: p.animY },
+                    { rotate },
+                  ],
+                },
+              ]}
+            />
+          )
+        })
+      )}
     </View>
   )
 }
@@ -142,5 +150,9 @@ const styles = StyleSheet.create({
   },
   confettiPiece: {
     position: 'absolute',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
   },
 })

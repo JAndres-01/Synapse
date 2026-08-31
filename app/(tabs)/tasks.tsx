@@ -12,6 +12,9 @@ import {
   Dimensions,
   LayoutChangeEvent,
   Keyboard,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
@@ -36,6 +39,10 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
+
 export default function TasksScreen() {
   const insets = useSafeAreaInsets()
   const { user } = usePersonalAuth()
@@ -49,23 +56,22 @@ export default function TasksScreen() {
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
 
-  // Estado del Buscador Dinámico Expandible
+  // Estado del Buscador Dinámico
   const [isSearchActive, setIsSearchActive] = useState(false)
   const searchInputRef = useRef<TextInput>(null)
-  const searchAnim = useRef(new Animated.Value(0)).current
 
   // Estado del Menú de Filtro de Materia
   const [showSubjectMenu, setShowSubjectMenu] = useState(false)
 
-  // Estado del Efecto Confetti al completar tarea
-  const [showConfetti, setShowConfetti] = useState(false)
+  // Disparador de Ráfagas de Confetti (soporta múltiples tareas seguidas sin bug)
+  const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modales de Tarea
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
-  // Animación del Segmented Control Deslizante con colores sutiles
+  // Animación del Segmented Control Deslizante
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
   const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 3)
   const statusIndex = statusFilter === 'pending' ? 0 : statusFilter === 'completed' ? 1 : 2
@@ -124,21 +130,14 @@ export default function TasksScreen() {
   useEffect(() => {
     const hideListener = Keyboard.addListener('keyboardDidHide', () => {
       if (searchQuery.trim() === '') {
-        Animated.spring(searchAnim, {
-          toValue: 0,
-          stiffness: 450,
-          damping: 28,
-          useNativeDriver: true,
-        }).start(() => {
-          setIsSearchActive(false)
-        })
+        setIsSearchActive(false)
       }
     })
 
     return () => {
       hideListener.remove()
     }
-  }, [searchQuery, searchAnim])
+  }, [searchQuery])
 
   // Animación de deslizamiento de la pastilla activa
   useEffect(() => {
@@ -152,45 +151,47 @@ export default function TasksScreen() {
   }, [statusIndex, segmentWidth, slideAnim])
 
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
+    // Animación fluida de reorganización de lista
+    LayoutAnimation.configureNext({
+      duration: 280,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.75 },
+    })
     triggerHaptic('selection')
     setStatusFilter(newStatus)
   }
 
-  // Activar / Desactivar Buscador Dinámico con animación
+  // Activar Buscador Dinámico
   const handleOpenSearch = () => {
     triggerHaptic('light')
     setIsSearchActive(true)
-    Animated.spring(searchAnim, {
-      toValue: 1,
-      stiffness: 450,
-      damping: 28,
-      useNativeDriver: true,
-    }).start(() => {
+    setTimeout(() => {
       searchInputRef.current?.focus()
-    })
+    }, 50)
   }
 
+  // Cancelar Buscador de forma INSTANTÁNEA (0 ms de retardo)
   const handleCloseSearch = () => {
     triggerHaptic('light')
     Keyboard.dismiss()
     setSearchQuery('')
-    Animated.spring(searchAnim, {
-      toValue: 0,
-      stiffness: 450,
-      damping: 28,
-      useNativeDriver: true,
-    }).start(() => {
-      setIsSearchActive(false)
-    })
+    setIsSearchActive(false)
   }
 
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
-    // Si se completó una tarea, disparar el cañón de confetti!
+    // Si se completó una tarea, disparar el cañón de micro-confetti instantáneo
     if (nextStatus === 'completed') {
-      setShowConfetti(true)
+      setConfettiBurstTrigger((prev) => prev + 1)
     }
+
+    // Efecto de gravedad física: Reorganizar y rebotar suavemente las demás tareas
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.68 },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    })
 
     const updated = tasks.map((t) => {
       if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
@@ -210,6 +211,11 @@ export default function TasksScreen() {
   }
 
   const handleDeleteTask = async (taskId: string) => {
+    LayoutAnimation.configureNext({
+      duration: 280,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.7 },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    })
     const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
     supabase.from('tasks').delete().eq('id', taskId).then(() => {})
@@ -266,11 +272,8 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.screenWrapper}>
-      {/* Efecto de Confetti al Completar Tareas */}
-      <MinimalistConfetti
-        visible={showConfetti}
-        onAnimationEnd={() => setShowConfetti(false)}
-      />
+      {/* Cañón de Micro-Confetti Ultra-Fino con Soporte Multi-Ráfaga */}
+      <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
 
       <ScrollView
         style={styles.scrollView}
@@ -308,7 +311,7 @@ export default function TasksScreen() {
             </Text>
           </View>
         ) : (
-          /* Buscador Dinámico Expandido */
+          /* Buscador Dinámico con Cierre Instantáneo */
           <View style={styles.dynamicSearchContainer}>
             <View style={styles.dynamicSearchInputWrapper}>
               <Search size={15} color="#A1A1AA" style={styles.searchIcon} />
@@ -337,7 +340,11 @@ export default function TasksScreen() {
               )}
             </View>
 
-            <Pressable onPress={handleCloseSearch} style={styles.cancelSearchBtn}>
+            <Pressable
+              onPress={handleCloseSearch}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={styles.cancelSearchBtn}
+            >
               <Text style={styles.cancelSearchText}>Cancelar</Text>
             </Pressable>
           </View>
@@ -464,7 +471,7 @@ export default function TasksScreen() {
           </Pressable>
         </View>
 
-        {/* Lista Plana y Abierta Directa en el Canvas (CERO Carditis) */}
+        {/* Lista Plana y Abierta con Física de Gravedad y Rebote Elástico */}
         <View style={styles.tasksListWrapper}>
           {filteredTasks.length > 0 ? (
             <View style={styles.openTaskRows}>
@@ -730,7 +737,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelSearchBtn: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
     paddingVertical: 8,
   },
   cancelSearchText: {

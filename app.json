@@ -1,4 +1,4 @@
-﻿{
+{
   "expo": {
     "name": "Synapse",
     "slug": "synapse",
@@ -22,7 +22,12 @@
       "package": "com.synapse.app"
     },
     "plugins": [
-      "expo-router"
+      [
+        "expo-router",
+        {
+          "root": "./app"
+        }
+      ]
     ]
   }
 }

@@ -33,12 +33,12 @@ export default function SettingsScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Cerrar SesiÃ³n',
-      'Â¿EstÃ¡s seguro de que deseas salir de tu cuenta?',
+      'Cerrar Sesión',
+      '¿Estás seguro de que deseas salir de tu cuenta?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Cerrar SesiÃ³n',
+          text: 'Cerrar Sesión',
           style: 'destructive',
           onPress: async () => {
             triggerHaptic('warning')
@@ -84,9 +84,9 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* EstadÃ­sticas Personales */}
+      {/* Estadísticas Personales */}
       <View style={styles.card}>
-        <Text style={styles.cardSectionTitle}>RESUMEN ACADÃ‰MICO</Text>
+        <Text style={styles.cardSectionTitle}>RESUMEN ACADÉMICO</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -111,14 +111,14 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* Estado de SincronizaciÃ³n en la Nube */}
+      {/* Estado de Sincronización en la Nube */}
       <View style={styles.card}>
         <View style={styles.syncRow}>
           <View style={styles.syncIconBox}>
             <Cloud size={18} color="#10B981" />
           </View>
           <View style={styles.syncInfo}>
-            <Text style={styles.syncTitle}>SincronizaciÃ³n Offline-First</Text>
+            <Text style={styles.syncTitle}>Sincronización Offline-First</Text>
             <Text style={styles.syncSub}>
               Tus datos se guardan en tu iPhone y se respaldan en Supabase
             </Text>
@@ -126,10 +126,10 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      {/* BotÃ³n de Cerrar SesiÃ³n */}
+      {/* Botón de Cerrar Sesión */}
       <Pressable onPress={handleSignOut} style={styles.logoutBtn}>
         <LogOut size={15} color="#EF4444" />
-        <Text style={styles.logoutBtnText}>Cerrar SesiÃ³n</Text>
+        <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
       </Pressable>
     </ScrollView>
   )

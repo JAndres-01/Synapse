@@ -20,7 +20,7 @@ export interface Subject {
 export interface Schedule {
   id: string
   user_id: string
-  day_of_week: number // 1: Lun, 2: Mar, 3: MiÃ©, 4: Jue, 5: Vie
+  day_of_week: number // 1: Lun, 2: Mar, 3: Mié, 4: Jue, 5: Vie
   block_number: number // 1, 2, 3, 4
   subject_id: string | null
   start_time: string

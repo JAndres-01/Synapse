@@ -23,11 +23,11 @@ export function MinimalistTodayTasks({
     return (
       <View style={styles.container}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>PENDIENTES PRÃ“XIMOS</Text>
+          <Text style={styles.sectionTitle}>PENDIENTES PRÓXIMOS</Text>
         </View>
         <View style={styles.emptyBox}>
           <CheckCircle2 size={24} color="#27272A" />
-          <Text style={styles.emptyText}>Â¡Todo al dÃ­a! No tienes entregas urgentes.</Text>
+          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas urgentes.</Text>
         </View>
       </View>
     )
@@ -69,7 +69,7 @@ export function MinimalistTodayTasks({
                 {isDone && <Check size={11} color="#09090B" strokeWidth={3} />}
               </Pressable>
 
-              {/* TÃ­tulo e Info */}
+              {/* Título e Info */}
               <Pressable
                 onPress={() => {
                   triggerHaptic('light')

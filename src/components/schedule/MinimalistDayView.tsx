@@ -16,7 +16,7 @@ interface MinimalistDayViewProps {
 const DAYS = [
   { num: 1, name: 'Lun' },
   { num: 2, name: 'Mar' },
-  { num: 3, name: 'MiÃ©' },
+  { num: 3, name: 'Mié' },
   { num: 4, name: 'Jue' },
   { num: 5, name: 'Vie' },
 ]
@@ -31,7 +31,7 @@ export function MinimalistDayView({
 
   return (
     <View style={styles.container}>
-      {/* Selector de DÃ­as Minimalista */}
+      {/* Selector de Días Minimalista */}
       <View style={styles.daysRow}>
         {DAYS.map((d) => {
           const isSelected = selectedDay === d.num

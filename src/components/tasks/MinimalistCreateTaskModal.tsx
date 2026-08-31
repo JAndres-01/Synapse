@@ -104,7 +104,7 @@ export function MinimalistCreateTaskModal({
     triggerHaptic('light')
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Se requiere acceso a tu galerÃ­a para adjuntar fotos.')
+      Alert.alert('Permiso requerido', 'Se requiere acceso a tu galería para adjuntar fotos.')
       return
     }
 
@@ -132,7 +132,7 @@ export function MinimalistCreateTaskModal({
     triggerHaptic('light')
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Se requiere acceso a la cÃ¡mara para tomar fotos de pizarrones.')
+      Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para tomar fotos de pizarrones.')
       return
     }
 
@@ -145,7 +145,7 @@ export function MinimalistCreateTaskModal({
       const asset = result.assets[0]
       const newAttachment: TaskAttachment = {
         id: Math.random().toString(36).substring(7),
-        file_name: 'Foto de PizarrÃ³n',
+        file_name: 'Foto de Pizarrón',
         file_url: asset.uri,
         file_type: 'image',
         size_bytes: asset.fileSize || 0,
@@ -238,11 +238,11 @@ export function MinimalistCreateTaskModal({
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* TÃ­tulo de la Tarea */}
+            {/* Título de la Tarea */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>TÃTULO *</Text>
+              <Text style={styles.inputLabel}>TÍTULO *</Text>
               <TextInput
-                placeholder="Ej. Taller de CÃ¡lculo o Ensayo"
+                placeholder="Ej. Taller de Cálculo o Ensayo"
                 placeholderTextColor="#52525B"
                 value={title}
                 onChangeText={setTitle}
@@ -333,16 +333,16 @@ export function MinimalistCreateTaskModal({
               </View>
             </View>
 
-            {/* Presets RÃ¡pidos de Fecha LÃ­mite */}
+            {/* Presets Rápidos de Fecha Límite */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>FECHA LÃMITE RÃPIDA</Text>
+              <Text style={styles.inputLabel}>FECHA LÍMITE RÁPIDA</Text>
               <View style={styles.presetsRow}>
                 <Pressable
                   onPress={() => setPresetDate('tomorrow')}
                   style={[styles.presetBtn, activeDatePreset === 'tomorrow' && styles.presetBtnActive]}
                 >
                   <Text style={[styles.presetBtnText, activeDatePreset === 'tomorrow' && styles.presetBtnTextActive]}>
-                    MaÃ±ana 11:59 PM
+                    Mañana 11:59 PM
                   </Text>
                 </Pressable>
 
@@ -351,7 +351,7 @@ export function MinimalistCreateTaskModal({
                   style={[styles.presetBtn, activeDatePreset === 'next_class' && styles.presetBtnActive]}
                 >
                   <Text style={[styles.presetBtnText, activeDatePreset === 'next_class' && styles.presetBtnTextActive]}>
-                    PrÃ³xima Clase
+                    Próxima Clase
                   </Text>
                 </Pressable>
 
@@ -366,11 +366,11 @@ export function MinimalistCreateTaskModal({
               </View>
             </View>
 
-            {/* Notas / DescripciÃ³n */}
+            {/* Notas / Descripción */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>INSTRUCCIONES / NOTAS</Text>
               <TextInput
-                placeholder="Puntos clave, pÃ¡ginas del libro o enlaces..."
+                placeholder="Puntos clave, páginas del libro o enlaces..."
                 placeholderTextColor="#52525B"
                 value={description}
                 onChangeText={setDescription}
@@ -386,12 +386,12 @@ export function MinimalistCreateTaskModal({
               <View style={styles.attachmentButtonsRow}>
                 <Pressable onPress={handleTakePhoto} style={styles.addAttachBtn}>
                   <Camera size={14} color="#818CF8" />
-                  <Text style={styles.addAttachBtnText}>CÃ¡mara (PizarrÃ³n)</Text>
+                  <Text style={styles.addAttachBtnText}>Cámara (Pizarrón)</Text>
                 </Pressable>
 
                 <Pressable onPress={handlePickImage} style={styles.addAttachBtn}>
                   <ImageIcon size={14} color="#818CF8" />
-                  <Text style={styles.addAttachBtnText}>GalerÃ­a</Text>
+                  <Text style={styles.addAttachBtnText}>Galería</Text>
                 </Pressable>
 
                 <Pressable onPress={() => setShowAddLink(!showAddLink)} style={styles.addAttachBtn}>
@@ -412,7 +412,7 @@ export function MinimalistCreateTaskModal({
                     autoCapitalize="none"
                   />
                   <Pressable onPress={handleAddLink} style={styles.saveLinkBtn}>
-                    <Text style={styles.saveLinkBtnText}>AÃ±adir Enlace</Text>
+                    <Text style={styles.saveLinkBtnText}>Añadir Enlace</Text>
                   </Pressable>
                 </View>
               )}
@@ -437,7 +437,7 @@ export function MinimalistCreateTaskModal({
               ))}
             </View>
 
-            {/* BotÃ³n Guardar */}
+            {/* Botón Guardar */}
             <Pressable
               onPress={handleSave}
               disabled={loading}

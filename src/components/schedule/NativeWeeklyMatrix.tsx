@@ -15,7 +15,7 @@ interface NativeWeeklyMatrixProps {
 const DAYS = [
   { num: 1, name: 'Lun' },
   { num: 2, name: 'Mar' },
-  { num: 3, name: 'MiÃ©' },
+  { num: 3, name: 'Mié' },
   { num: 4, name: 'Jue' },
   { num: 5, name: 'Vie' },
 ]
@@ -29,7 +29,7 @@ export function NativeWeeklyMatrix({
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
       <View style={styles.gridContainer}>
-        {/* Cabecera de DÃ­as */}
+        {/* Cabecera de Días */}
         <View style={styles.row}>
           <View style={[styles.cellHeader, styles.timeCol]}>
             <Text style={styles.colHeaderText}>HORA</Text>

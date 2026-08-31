@@ -181,9 +181,9 @@ export default function TodayScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>BUENOS DÃAS</Text>
+              <Text style={styles.greeting}>BUENOS DÍAS</Text>
               <Text style={styles.userName}>
-                {profile?.full_name || 'Mi DÃ­a'}
+                {profile?.full_name || 'Mi Día'}
               </Text>
             </View>
 
@@ -201,10 +201,10 @@ export default function TodayScreen() {
           </View>
         </View>
 
-        {/* Tarjeta En Vivo (Ãšnico Contenedor Delimitado) */}
+        {/* Tarjeta En Vivo (Único Contenedor Delimitado) */}
         <MinimalistLiveHero schedulesToday={schedulesToday} />
 
-        {/* Lista Plana de Tareas PrÃ³ximas */}
+        {/* Lista Plana de Tareas Próximas */}
         <MinimalistTodayTasks
           tasks={tasks}
           onToggleTask={handleToggleTaskStatus}
@@ -230,7 +230,7 @@ export default function TodayScreen() {
         }}
       />
 
-      {/* Modal de CreaciÃ³n / EdiciÃ³n */}
+      {/* Modal de Creación / Edición */}
       {user && (
         <MinimalistCreateTaskModal
           visible={showCreateModal}

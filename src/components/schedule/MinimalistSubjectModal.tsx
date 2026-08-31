@@ -85,8 +85,8 @@ export function MinimalistSubjectModal({
 
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
     Alert.alert(
-      'Â¿Eliminar materia?',
-      `Se eliminarÃ¡ "${subjectName}" y sus bloques del horario.`,
+      '¿Eliminar materia?',
+      `Se eliminará "${subjectName}" y sus bloques del horario.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -128,7 +128,7 @@ export function MinimalistSubjectModal({
               <View style={styles.inputBox}>
                 <BookOpen size={14} color="#71717A" style={styles.inputIcon} />
                 <TextInput
-                  placeholder="Nombre (ej. CÃ¡lculo Diferencial)"
+                  placeholder="Nombre (ej. Cálculo Diferencial)"
                   placeholderTextColor="#52525B"
                   value={name}
                   onChangeText={setName}
@@ -140,7 +140,7 @@ export function MinimalistSubjectModal({
                 <View style={[styles.inputBox, { flex: 1 }]}>
                   <Hash size={14} color="#71717A" style={styles.inputIcon} />
                   <TextInput
-                    placeholder="CÃ³digo"
+                    placeholder="Código"
                     placeholderTextColor="#52525B"
                     value={code}
                     onChangeText={setCode}

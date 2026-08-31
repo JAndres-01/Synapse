@@ -46,7 +46,7 @@ export interface LiveStatusResult {
 
 export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatusResult {
   const now = new Date()
-  const day = now.getDay() // 0: Dom, 1: Lun ... 6: SÃ¡b
+  const day = now.getDay() // 0: Dom, 1: Lun ... 6: Sáb
 
   // Fin de semana
   if (day === 0 || day === 6) {
@@ -57,8 +57,8 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       minutesRemaining: 0,
       progressPercentage: 0,
       badgeText: 'Fin de Semana',
-      headline: 'DÃ­as de Descanso',
-      subheadline: 'PrepÃ¡rate para las clases del lunes',
+      headline: 'Días de Descanso',
+      subheadline: 'Prepárate para las clases del lunes',
     }
   }
 
@@ -77,13 +77,13 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       nextSchedule: firstSched || null,
       minutesRemaining: minsToStart,
       progressPercentage: 0,
-      badgeText: 'PrÃ³xima Jornada',
+      badgeText: 'Próxima Jornada',
       headline: firstSched?.subject ? firstSched.subject.name : 'Inicio de Clases',
       subheadline: `Comienza a las 7:00 AM (${minsToStart} min restantes)`,
     }
   }
 
-  // DespuÃ©s de la 1:00 PM
+  // Después de la 1:00 PM
   if (currentMinutes >= schoolEnd) {
     return {
       status: 'after_school',
@@ -92,8 +92,8 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       minutesRemaining: 0,
       progressPercentage: 100,
       badgeText: 'Jornada Finalizada',
-      headline: 'Clases del DÃ­a Completadas',
-      subheadline: 'Revisa tus tareas y pendientes para maÃ±ana',
+      headline: 'Clases del Día Completadas',
+      subheadline: 'Revisa tus tareas y pendientes para mañana',
     }
   }
 

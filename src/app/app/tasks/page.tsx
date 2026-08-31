@@ -8,6 +8,7 @@ import type { Task, Subject, TaskType, TaskStatus, Schedule, AttachmentType, Tas
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { TasksSkeleton } from '@/components/tasks/TasksSkeleton'
 import { offlineDB } from '@/lib/db'
 import { memoryCache, sortTasksChronologically } from '@/lib/cache'
 import {
@@ -811,11 +812,7 @@ function TasksPageContent() {
   ).length
 
   if (loading && tasks.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-      </div>
-    )
+    return <TasksSkeleton />
   }
 
   return (
@@ -1035,13 +1032,7 @@ function TasksPageContent() {
 
 export default function TasksPage() {
   return (
-    <React.Suspense
-      fallback={
-        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-        </div>
-      }
-    >
+    <React.Suspense fallback={<TasksSkeleton />}>
       <TasksPageContent />
     </React.Suspense>
   )

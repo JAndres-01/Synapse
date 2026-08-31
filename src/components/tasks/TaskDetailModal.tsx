@@ -872,7 +872,19 @@ export function TaskDetailModal({
 
                 {/* Lista de Comentarios en Hilos estilo TikTok */}
                 <div className="space-y-2 pt-1">
-                  {commentTree.length === 0 ? (
+                  {loadedComments.length === 0 && (task.comments?.length || 0) > 0 ? (
+                    <div className="p-3.5 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 space-y-3 animate-pulse">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-zinc-800 shrink-0" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3.5 w-24 bg-zinc-800 rounded-md" />
+                            <div className="h-3 w-4/5 bg-zinc-900 rounded-md" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : commentTree.length === 0 ? (
                     <div className="p-4 rounded-xl bg-zinc-950/40 border border-zinc-800/40 text-center text-xs text-zinc-500 italic">
                       No hay comentarios aún. Puedes hacer una pregunta o compartir fotos y archivos de apuntes.
                     </div>

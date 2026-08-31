@@ -170,21 +170,29 @@ function TasksPageContent() {
         }
       }
 
-      // 3. Cargar Tareas con sus relaciones
+      // 3. Cargar Tareas con sus relaciones (Consulta ligera sin Base64 masivo)
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
         .select(`
-          *,
+          id,
+          classroom_id,
+          created_by,
+          title,
+          description,
+          subject_id,
+          type,
+          due_date,
+          is_private,
+          created_at,
           subject:subjects(*),
-          attachments:task_attachments(*),
-          user_status:user_task_status(*),
-          comments:task_comments(*, author:profiles(*))
+          user_status:user_task_status(user_id, status, completed_at),
+          attachments:task_attachments(id, file_type, file_name)
         `)
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
 
       if (!taskErr && taskData) {
-        const mergedTasks = (taskData as Task[]).map((t) => {
+        const mergedTasks = (taskData as unknown as Task[]).map((t) => {
           const pending = pendingStatusMutationsRef.current[t.id]
           if (pending && Date.now() - pending.timestamp < 4000 && user) {
             const filtered = (t.user_status || []).filter((s) => s.user_id !== user.id)

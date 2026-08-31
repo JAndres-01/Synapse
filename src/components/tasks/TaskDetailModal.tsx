@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { compressImageFile } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -135,7 +136,60 @@ export function TaskDetailModal({
     ((task.is_private && currentUser && task.created_by === currentUser.id) ||
       (!task.is_private && isAdmin))
 
-  const comments = task?.comments || []
+  const [loadedAttachments, setLoadedAttachments] = useState<any[]>([])
+  const [loadedComments, setLoadedComments] = useState<TaskComment[]>([])
+  const supabase = createClient()
+
+  // Carga bajo demanda de adjuntos completos y comentarios solo para la tarea abierta
+  useEffect(() => {
+    if (!task?.id) {
+      setLoadedAttachments([])
+      setLoadedComments([])
+      return
+    }
+
+    let isMounted = true
+
+    const loadTaskDetails = async () => {
+      try {
+        const [attRes, comRes] = await Promise.all([
+          supabase.from('task_attachments').select('*').eq('task_id', task.id),
+          supabase.from('task_comments').select('*, author:profiles(*)').eq('task_id', task.id).order('created_at', { ascending: true })
+        ])
+
+        if (isMounted) {
+          if (attRes.data) setLoadedAttachments(attRes.data)
+          if (comRes.data) setLoadedComments(comRes.data as TaskComment[])
+        }
+      } catch (err) {
+        console.error('Error cargando detalles bajo demanda:', err)
+      }
+    }
+
+    loadTaskDetails()
+
+    // Suscripción Realtime solo para los comentarios de esta tarea
+    const channel = supabase
+      .channel(`modal_task_comments_${task.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_comments', filter: `task_id=eq.${task.id}` },
+        () => loadTaskDetails()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'task_attachments', filter: `task_id=eq.${task.id}` },
+        () => loadTaskDetails()
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [task?.id, supabase])
+
+  const comments = loadedComments.length > 0 ? loadedComments : (task?.comments || [])
 
   // Estructura de Árbol Jerárquico para Comentarios e Hilos (Incondicional en el top para cumplir reglas de hooks)
   const commentTree = React.useMemo(() => {
@@ -338,7 +392,7 @@ export function TaskDetailModal({
     }
   }
 
-  const attachments = task.attachments || []
+  const attachments = loadedAttachments.length > 0 ? loadedAttachments : (task.attachments || [])
 
   // Extraer todos los adjuntos de un comentario (soporta adjunto único o múltiples en JSON)
   const parseCommentAttachments = (c: TaskComment): CommentAttachment[] => {

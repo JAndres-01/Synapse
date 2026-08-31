@@ -123,10 +123,24 @@ export default function TodayPage() {
         }
       }
 
-      // B. Cargar Tareas
+      // B. Cargar Tareas (Consulta ligera sin Base64 masivo)
       const { data: taskData, error: taskErr } = await supabase
         .from('tasks')
-        .select('*, subject:subjects(*), attachments:task_attachments(*), user_status:user_task_status(*), comments:task_comments(*, author:profiles(*))')
+        .select(`
+          id,
+          classroom_id,
+          created_by,
+          title,
+          description,
+          subject_id,
+          type,
+          due_date,
+          is_private,
+          created_at,
+          subject:subjects(*),
+          user_status:user_task_status(user_id, status, completed_at),
+          attachments:task_attachments(id, file_type, file_name)
+        `)
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
 

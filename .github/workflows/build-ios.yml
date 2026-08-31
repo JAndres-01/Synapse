@@ -32,6 +32,11 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpsaHBkdXlkemF2YnBrd2NybHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NjUzODIsImV4cCI6MjEwMzQ0MTM4Mn0.fqOoJhFiz8vB1OKWZ4Z4Ze-00tSbSiEV5i6M6XZaf9Y' }}
         run: npm run cap:build
 
+      - name: Resolve Swift Package Dependencies
+        run: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+
       - name: Build iOS Project with Xcode
         run: |
           cd ios/App
@@ -41,9 +46,12 @@ jobs:
             -destination 'generic/platform=iOS' \
             -configuration Release \
             -derivedDataPath build/DerivedData \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=NO \
             clean build
 
       - name: Package App into IPA Payload

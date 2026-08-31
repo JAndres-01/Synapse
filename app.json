@@ -1,0 +1,28 @@
+﻿{
+  "expo": {
+    "name": "Synapse",
+    "slug": "synapse",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "synapse",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#09090b",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.synapse.app",
+      "userInterfaceStyle": "dark",
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true
+      }
+    },
+    "android": {
+      "package": "com.synapse.app"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

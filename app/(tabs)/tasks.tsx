@@ -4,16 +4,18 @@ import {
   Text,
   ScrollView,
   RefreshControl,
+  TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native'
 import { useNativeAuth } from '@/context/NativeAuthContext'
 import { supabase } from '@/lib/nativeSupabase'
 import type { Task, Subject } from '@/types/database'
 import { NativeTaskCard } from '@/components/tasks/NativeTaskCard'
+import { NativeTaskDetailModal } from '@/components/modals/NativeTaskDetailModal'
+import { NativeCreateTaskModal } from '@/components/modals/NativeCreateTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CheckSquare, Plus, Users, User, Filter, CheckCircle2 } from 'lucide-react-native'
+import { CheckSquare, Plus, Users, User, Search, CheckCircle2 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/nativeHaptics'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -25,11 +27,16 @@ export default function TasksScreen() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [refreshing, setRefreshing] = useState(false)
 
-  // 1. Selector de Ámbito: "classroom" (Del Salón) vs "private" (Mis Pendientes)
+  // Filtros
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeScope, setActiveScope] = useState<'classroom' | 'private'>('classroom')
-
-  // 2. Filtro de Estado: "pending" | "completed" | "all"
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+
+  // Modales
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
   const isAdmin =
     classroom?.created_by === user?.id ||
@@ -39,7 +46,9 @@ export default function TasksScreen() {
   const loadCached = async () => {
     try {
       const cached = await AsyncStorage.getItem('synapse_cached_tasks_list')
+      const cachedSubj = await AsyncStorage.getItem('synapse_cached_all_subjects')
       if (cached) setTasks(JSON.parse(cached))
+      if (cachedSubj) setSubjects(JSON.parse(cachedSubj))
     } catch {}
   }
 
@@ -47,19 +56,27 @@ export default function TasksScreen() {
     if (!classroom || !user) return
 
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          subject:subjects(*),
-          user_status:user_task_status(user_id, status)
-        `)
-        .eq('classroom_id', classroom.id)
-        .order('due_date', { ascending: true })
+      const [tasksRes, subjRes] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('*, subject:subjects(*), user_status:user_task_status(user_id, status)')
+          .eq('classroom_id', classroom.id)
+          .order('due_date', { ascending: true }),
+        supabase
+          .from('subjects')
+          .select('*')
+          .eq('classroom_id', classroom.id)
+          .order('name', { ascending: true }),
+      ])
 
-      if (data && !error) {
-        setTasks(data as Task[])
-        await AsyncStorage.setItem('synapse_cached_tasks_list', JSON.stringify(data)).catch(() => {})
+      if (tasksRes.data) {
+        setTasks(tasksRes.data as Task[])
+        await AsyncStorage.setItem('synapse_cached_tasks_list', JSON.stringify(tasksRes.data)).catch(() => {})
+      }
+
+      if (subjRes.data) {
+        setSubjects(subjRes.data as Subject[])
+        await AsyncStorage.setItem('synapse_cached_all_subjects', JSON.stringify(subjRes.data)).catch(() => {})
       }
     } catch (err) {
       console.error('Error cargando tareas:', err)
@@ -125,6 +142,15 @@ export default function TasksScreen() {
     }
   }
 
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await supabase.from('tasks').delete().eq('id', taskId)
+      fetchTasksData()
+    } catch (err) {
+      console.error('Error eliminando tarea:', err)
+    }
+  }
+
   // Filtrado de tareas
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -135,7 +161,20 @@ export default function TasksScreen() {
         if (!task.is_private || task.created_by !== user?.id) return false
       }
 
-      // 2. Estado
+      // 2. Filtro de Materia
+      if (selectedSubjectId !== 'all') {
+        if (task.subject_id !== selectedSubjectId) return false
+      }
+
+      // 3. Filtro de Búsqueda
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchesTitle = task.title?.toLowerCase().includes(q)
+        const matchesSubj = task.subject?.name?.toLowerCase().includes(q)
+        if (!matchesTitle && !matchesSubj) return false
+      }
+
+      // 4. Filtro de Estado
       const statuses = task.user_status || (task as unknown as { user_task_status?: Array<{ status: string; user_id?: string }> }).user_task_status
       const isCompleted = Array.isArray(statuses)
         ? statuses.some((s) => (!user?.id || s.user_id === user.id) && s.status === 'completed')
@@ -146,7 +185,7 @@ export default function TasksScreen() {
 
       return true
     })
-  }, [tasks, activeScope, statusFilter, user?.id])
+  }, [tasks, activeScope, selectedSubjectId, searchQuery, statusFilter, user?.id])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -154,7 +193,7 @@ export default function TasksScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.screenWrapper}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -181,6 +220,18 @@ export default function TasksScreen() {
           </Text>
         </View>
 
+        {/* Barra de Búsqueda */}
+        <View style={styles.searchBar}>
+          <Search size={15} color="#71717A" style={styles.searchIcon} />
+          <TextInput
+            placeholder="Buscar por tarea o materia..."
+            placeholderTextColor="#52525B"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+        </View>
+
         {/* Selector de Ámbito: "Del Salón" vs "Mis Pendientes" */}
         <View style={styles.scopeSelector}>
           <Pressable
@@ -188,21 +239,10 @@ export default function TasksScreen() {
               triggerHaptic('light')
               setActiveScope('classroom')
             }}
-            style={[
-              styles.scopeBtn,
-              activeScope === 'classroom' && styles.scopeBtnActive,
-            ]}
+            style={[styles.scopeBtn, activeScope === 'classroom' && styles.scopeBtnActive]}
           >
-            <Users
-              size={13}
-              color={activeScope === 'classroom' ? '#09090B' : '#71717A'}
-            />
-            <Text
-              style={[
-                styles.scopeBtnText,
-                activeScope === 'classroom' && styles.scopeBtnTextActive,
-              ]}
-            >
+            <Users size={13} color={activeScope === 'classroom' ? '#09090B' : '#71717A'} />
+            <Text style={[styles.scopeBtnText, activeScope === 'classroom' && styles.scopeBtnTextActive]}>
               Del Salón
             </Text>
           </Pressable>
@@ -212,25 +252,50 @@ export default function TasksScreen() {
               triggerHaptic('light')
               setActiveScope('private')
             }}
-            style={[
-              styles.scopeBtn,
-              activeScope === 'private' && styles.scopeBtnActive,
-            ]}
+            style={[styles.scopeBtn, activeScope === 'private' && styles.scopeBtnActive]}
           >
-            <User
-              size={13}
-              color={activeScope === 'private' ? '#09090B' : '#71717A'}
-            />
-            <Text
-              style={[
-                styles.scopeBtnText,
-                activeScope === 'private' && styles.scopeBtnTextActive,
-              ]}
-            >
+            <User size={13} color={activeScope === 'private' ? '#09090B' : '#71717A'} />
+            <Text style={[styles.scopeBtnText, activeScope === 'private' && styles.scopeBtnTextActive]}>
               Mis Pendientes
             </Text>
           </Pressable>
         </View>
+
+        {/* Filtros de Materias (Pills con Scroll Horizontal) */}
+        {subjects.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjPillsScroll}>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('light')
+                setSelectedSubjectId('all')
+              }}
+              style={[styles.subjPill, selectedSubjectId === 'all' && styles.subjPillActive]}
+            >
+              <Text style={[styles.subjPillText, selectedSubjectId === 'all' && styles.subjPillTextActive]}>
+                Todas
+              </Text>
+            </Pressable>
+
+            {subjects.map((s) => {
+              const isSelected = selectedSubjectId === s.id
+              return (
+                <Pressable
+                  key={s.id}
+                  onPress={() => {
+                    triggerHaptic('light')
+                    setSelectedSubjectId(s.id)
+                  }}
+                  style={[styles.subjPill, isSelected && styles.subjPillActive]}
+                >
+                  <View style={[styles.dot, { backgroundColor: s.color || '#6366F1' }]} />
+                  <Text style={[styles.subjPillText, isSelected && styles.subjPillTextActive]}>
+                    {s.name}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </ScrollView>
+        )}
 
         {/* Filtros de Estado: Pendientes / Completadas / Todas */}
         <View style={styles.statusFiltersRow}>
@@ -239,17 +304,9 @@ export default function TasksScreen() {
               triggerHaptic('light')
               setStatusFilter('pending')
             }}
-            style={[
-              styles.statusPill,
-              statusFilter === 'pending' && styles.statusPillActive,
-            ]}
+            style={[styles.statusPill, statusFilter === 'pending' && styles.statusPillActive]}
           >
-            <Text
-              style={[
-                styles.statusPillText,
-                statusFilter === 'pending' && styles.statusPillTextActive,
-              ]}
-            >
+            <Text style={[styles.statusPillText, statusFilter === 'pending' && styles.statusPillTextActive]}>
               Pendientes
             </Text>
           </Pressable>
@@ -259,17 +316,9 @@ export default function TasksScreen() {
               triggerHaptic('light')
               setStatusFilter('completed')
             }}
-            style={[
-              styles.statusPill,
-              statusFilter === 'completed' && styles.statusPillActive,
-            ]}
+            style={[styles.statusPill, statusFilter === 'completed' && styles.statusPillActive]}
           >
-            <Text
-              style={[
-                styles.statusPillText,
-                statusFilter === 'completed' && styles.statusPillTextActive,
-              ]}
-            >
+            <Text style={[styles.statusPillText, statusFilter === 'completed' && styles.statusPillTextActive]}>
               Completadas
             </Text>
           </Pressable>
@@ -279,17 +328,9 @@ export default function TasksScreen() {
               triggerHaptic('light')
               setStatusFilter('all')
             }}
-            style={[
-              styles.statusPill,
-              statusFilter === 'all' && styles.statusPillActive,
-            ]}
+            style={[styles.statusPill, statusFilter === 'all' && styles.statusPillActive]}
           >
-            <Text
-              style={[
-                styles.statusPillText,
-                statusFilter === 'all' && styles.statusPillTextActive,
-              ]}
-            >
+            <Text style={[styles.statusPillText, statusFilter === 'all' && styles.statusPillTextActive]}>
               Todas
             </Text>
           </Pressable>
@@ -304,7 +345,7 @@ export default function TasksScreen() {
                 task={task}
                 currentUserId={user?.id}
                 onToggleStatus={handleToggleStatus}
-                onOpenDetail={() => {}}
+                onOpenDetail={(t) => setSelectedTaskForDetail(t)}
               />
             ))
           ) : (
@@ -313,23 +354,68 @@ export default function TasksScreen() {
               <Text style={styles.emptyTitle}>
                 {statusFilter === 'completed'
                   ? 'No hay tareas completadas'
-                  : '¡Al día! No tienes pendientes aquí'}
+                  : '¡Al día! No tienes tareas aquí'}
               </Text>
               <Text style={styles.emptySub}>
                 {activeScope === 'classroom'
                   ? 'Las entregas que publique el delegado aparecerán aquí.'
-                  : 'Toca el botón + para añadir tu propio pendiente privado.'}
+                  : 'Toca el botón + para añadir tu propio pendiente personal.'}
               </Text>
             </View>
           )}
         </View>
       </ScrollView>
+
+      {/* Botón Flotante + para Crear Tarea */}
+      <Pressable
+        onPress={() => {
+          triggerHaptic('medium')
+          setTaskToEdit(null)
+          setShowCreateModal(true)
+        }}
+        style={[styles.fab, { bottom: Math.max(insets.bottom, 12) + 70 }]}
+      >
+        <Plus size={22} color="#09090B" strokeWidth={2.8} />
+      </Pressable>
+
+      {/* Modal de Detalle */}
+      <NativeTaskDetailModal
+        task={selectedTaskForDetail}
+        visible={Boolean(selectedTaskForDetail)}
+        onClose={() => setSelectedTaskForDetail(null)}
+        currentUserId={user?.id}
+        isAdmin={isAdmin}
+        onToggleStatus={handleToggleStatus}
+        onDeleteTask={handleDeleteTask}
+        onEditTask={(t) => {
+          setSelectedTaskForDetail(null)
+          setTaskToEdit(t)
+          setShowCreateModal(true)
+        }}
+      />
+
+      {/* Modal de Creación / Edición */}
+      {classroom && user && (
+        <NativeCreateTaskModal
+          visible={showCreateModal}
+          onClose={() => {
+            setShowCreateModal(false)
+            setTaskToEdit(null)
+          }}
+          classroomId={classroom.id}
+          currentUserId={user.id}
+          isAdmin={isAdmin}
+          subjects={subjects}
+          initialTask={taskToEdit}
+          onTaskSaved={fetchTasksData}
+        />
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenWrapper: {
     flex: 1,
     backgroundColor: '#09090B',
   },
@@ -338,7 +424,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 14,
   },
   header: {
     gap: 4,
@@ -358,6 +444,24 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#71717A',
     fontSize: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    paddingHorizontal: 12,
+    height: 42,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 13,
   },
   scopeSelector: {
     flexDirection: 'row',
@@ -388,6 +492,37 @@ const styles = StyleSheet.create({
     color: '#09090B',
     fontWeight: '700',
   },
+  subjPillsScroll: {
+    gap: 6,
+  },
+  subjPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  subjPillActive: {
+    backgroundColor: '#27272A',
+    borderColor: '#52525B',
+  },
+  subjPillText: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  subjPillTextActive: {
+    color: '#FFFFFF',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
   statusFiltersRow: {
     flexDirection: 'row',
     gap: 6,
@@ -414,6 +549,7 @@ const styles = StyleSheet.create({
   },
   tasksList: {
     gap: 2,
+    marginTop: 4,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -432,5 +568,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 32,
     lineHeight: 16,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
 })

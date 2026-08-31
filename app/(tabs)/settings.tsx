@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+﻿import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
   Text,
@@ -6,19 +6,45 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  Share,
 } from 'react-native'
 import { useNativeAuth } from '@/context/NativeAuthContext'
+import { supabase } from '@/lib/nativeSupabase'
+import type { ClassroomMember, Profile } from '@/types/database'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Settings, Copy, Check, LogOut, User, Users, Shield } from 'lucide-react-native'
+import { Settings, Copy, Check, LogOut, Users, Shield, Share2, Sparkles, UserCheck } from 'lucide-react-native'
 import * as Clipboard from 'expo-clipboard'
 import { triggerHaptic } from '@/lib/nativeHaptics'
 import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { profile, classroom, signOut } = useNativeAuth()
+  const { user, profile, classroom, signOut } = useNativeAuth()
   const [copied, setCopied] = useState(false)
+  const [members, setMembers] = useState<Array<{ user_id: string; role: string; profile?: Profile }>>([])
+
+  const fetchMembers = useCallback(async () => {
+    if (!classroom) return
+
+    try {
+      const { data, error } = await supabase
+        .from('classroom_members')
+        .select('user_id, role, profile:profiles(*)')
+        .eq('classroom_id', classroom.id)
+
+      if (data && !error) {
+        setMembers(data as any)
+      }
+    } catch (err) {
+      console.error('Error cargando miembros:', err)
+    }
+  }, [classroom])
+
+  useEffect(() => {
+    fetchMembers()
+  }, [fetchMembers])
 
   const handleCopyPin = async () => {
     if (!classroom?.invite_code) return
@@ -28,10 +54,20 @@ export default function SettingsScreen() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleSharePin = async () => {
+    if (!classroom?.invite_code) return
+    triggerHaptic('light')
+    try {
+      await Share.share({
+        message: `¡Únete a nuestro salón "${classroom.name}" en Synapse! Usa el código PIN: ${classroom.invite_code}`,
+      })
+    } catch {}
+  }
+
   const handleSignOut = () => {
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro de que deseas salir de Synapse?',
+      '¿Estás seguro de que deseas salir de tu cuenta?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -63,7 +99,7 @@ export default function SettingsScreen() {
           <Text style={styles.title}>Salón & Ajustes</Text>
         </View>
         <Text style={styles.subtitle}>
-          Configuración personal y acceso a tu cohorte
+          Configuración personal y miembros de tu salón
         </Text>
       </View>
 
@@ -106,16 +142,63 @@ export default function SettingsScreen() {
             </Text>
           </View>
 
-          <Pressable onPress={handleCopyPin} style={styles.copyBtn}>
-            {copied ? (
-              <Check size={14} color="#10B981" />
-            ) : (
-              <Copy size={14} color="#A1A1AA" />
-            )}
-            <Text style={[styles.copyBtnText, copied && styles.copyBtnTextSuccess]}>
-              {copied ? 'Copiado' : 'Copiar'}
-            </Text>
-          </Pressable>
+          <View style={styles.pinActions}>
+            <Pressable onPress={handleCopyPin} style={styles.copyBtn}>
+              {copied ? (
+                <Check size={13} color="#10B981" />
+              ) : (
+                <Copy size={13} color="#A1A1AA" />
+              )}
+              <Text style={[styles.copyBtnText, copied && styles.copyBtnTextSuccess]}>
+                {copied ? 'Copiado' : 'Copiar'}
+              </Text>
+            </Pressable>
+
+            <Pressable onPress={handleSharePin} style={styles.shareBtn}>
+              <Share2 size={13} color="#818CF8" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {/* Lista de Compañeros de Salón */}
+      <View style={styles.card}>
+        <View style={styles.membersHeader}>
+          <UserCheck size={16} color="#818CF8" />
+          <Text style={styles.membersTitle}>
+            Compañeros de Salón ({members.length})
+          </Text>
+        </View>
+
+        <View style={styles.membersList}>
+          {members.map((m, idx) => {
+            const memberProfile = m.profile as Profile | undefined
+            const memberName = memberProfile?.full_name || 'Estudiante'
+            const isDelegado = m.role === 'admin' || memberProfile?.role === 'admin'
+            const isCurrentUser = m.user_id === user?.id
+
+            return (
+              <View key={m.user_id || idx} style={styles.memberRow}>
+                <View style={styles.memberAvatar}>
+                  <Text style={styles.memberAvatarText}>
+                    {memberName.slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName} numberOfLines={1}>
+                    {memberName} {isCurrentUser ? '(Tú)' : ''}
+                  </Text>
+                </View>
+
+                {isDelegado && (
+                  <View style={styles.delegadoPill}>
+                    <Text style={styles.delegadoPillText}>Delegado</Text>
+                  </View>
+                )}
+              </View>
+            )
+          })}
         </View>
       </View>
 
@@ -239,14 +322,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: 2,
   },
-  copyBtn: {
+  pinActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: '#27272A',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
   },
   copyBtnText: {
     color: '#E4E4E7',
@@ -255,6 +343,63 @@ const styles = StyleSheet.create({
   },
   copyBtnTextSuccess: {
     color: '#10B981',
+  },
+  shareBtn: {
+    backgroundColor: '#27272A',
+    padding: 7,
+    borderRadius: 9,
+  },
+  membersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  membersTitle: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  membersList: {
+    gap: 10,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  delegadoPill: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  delegadoPillText: {
+    color: '#818CF8',
+    fontSize: 9.5,
+    fontWeight: '600',
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -266,7 +411,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.25)',
     borderRadius: 16,
     paddingVertical: 14,
-    marginTop: 8,
+    marginTop: 6,
   },
   logoutBtnText: {
     color: '#EF4444',

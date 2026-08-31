@@ -21,6 +21,7 @@ import confetti from 'canvas-confetti'
 import { createClient } from '@/lib/supabase/client'
 import { memoryCache } from '@/lib/cache'
 import { registerModal, unregisterModal } from '@/lib/modalManager'
+import { triggerHaptic } from '@/lib/native'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -183,6 +184,7 @@ export function TaskDetailModal({
 
   const handleCheck = () => {
     if (!isCompleted) {
+      triggerHaptic('success')
       try {
         confetti({
           particleCount: 35,
@@ -191,6 +193,8 @@ export function TaskDetailModal({
           colors: ['#6366F1', '#10B981', '#ffffff'],
         })
       } catch {}
+    } else {
+      triggerHaptic('light')
     }
     onToggleStatus(task.id, isCompleted ? 'completed' : 'pending')
   }

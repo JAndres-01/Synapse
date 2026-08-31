@@ -7,6 +7,7 @@ import { FloatingIslandBar } from '@/components/navigation/FloatingIslandBar'
 import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { memoryCache } from '@/lib/cache'
+import { initNativeApp } from '@/lib/native'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, classroom, loading } = useAuth()
@@ -14,6 +15,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+
+  useEffect(() => {
+    initNativeApp()
+  }, [])
 
   useEffect(() => {
     if (!loading) {

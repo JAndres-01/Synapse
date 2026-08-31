@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Home, Calendar, CheckSquare, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isAnyModalOpen } from '@/lib/modalManager'
+import { triggerHaptic } from '@/lib/native'
 
 interface FloatingIslandBarProps {
   pendingTasksCount?: number
@@ -108,6 +109,7 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
             <Link
               key={tab.name}
               href={tab.href}
+              onClick={() => triggerHaptic('light')}
               className={cn(
                 'relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-all duration-150 active:scale-90',
                 tab.isActive

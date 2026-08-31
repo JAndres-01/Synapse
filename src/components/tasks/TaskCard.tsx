@@ -12,6 +12,7 @@ import {
   Paperclip,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { triggerHaptic } from '@/lib/native'
 
 interface TaskCardProps {
   task: Task
@@ -133,6 +134,7 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
   const handleCheck = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!isCompleted) {
+      triggerHaptic('success')
       try {
         confetti({
           particleCount: 25,
@@ -141,6 +143,8 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
           colors: ['#ffffff', '#a1a1aa', '#71717a'],
         })
       } catch {}
+    } else {
+      triggerHaptic('light')
     }
     onToggleStatus(task.id, isCompleted ? 'completed' : 'pending')
   }

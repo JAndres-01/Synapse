@@ -94,6 +94,13 @@ export function MinimalistTaskModal({
   const keyboardHeightAnim = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
 
+  const baseBottomPadding = Math.max(insets.bottom, 16) + 16
+
+  const sheetPaddingBottom = keyboardHeightAnim.interpolate({
+    inputRange: [0, 600],
+    outputRange: [baseBottomPadding, 600 + baseBottomPadding],
+  })
+
   // Sincronizador de eventos de teclado de iOS (duración y curva exactas del sistema)
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
@@ -514,7 +521,7 @@ export function MinimalistTaskModal({
             styles.sheetContainer,
             {
               transform: [{ translateY: slideAnim }],
-              paddingBottom: Animated.add(keyboardHeightAnim, insets.bottom + 20),
+              paddingBottom: sheetPaddingBottom,
             },
           ]}
         >

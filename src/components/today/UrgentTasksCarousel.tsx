@@ -15,6 +15,8 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import confetti from 'canvas-confetti'
+import { triggerHaptic } from '@/lib/native'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface UrgentTasksCarouselProps {
   tasks?: Task[]
@@ -146,6 +148,7 @@ export function UrgentTasksCarousel({
           const handleCheck = (e: React.MouseEvent) => {
             e.stopPropagation()
             if (!isCompleted) {
+              triggerHaptic('success')
               try {
                 confetti({
                   particleCount: 25,
@@ -154,11 +157,14 @@ export function UrgentTasksCarousel({
                   colors: ['#6366F1', '#10B981', '#ffffff'],
                 })
               } catch {}
+            } else {
+              triggerHaptic('light')
             }
             onToggleTaskStatus(task.id, isCompleted ? 'completed' : 'pending')
           }
 
           const handleCardClick = () => {
+            triggerHaptic('light')
             if (onOpenDetail) {
               onOpenDetail(task)
             } else {
@@ -167,9 +173,11 @@ export function UrgentTasksCarousel({
           }
 
           return (
-            <div
+            <motion.div
               key={task.id}
               onClick={handleCardClick}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               className={`w-[250px] p-3 rounded-2xl border transition-all shrink-0 flex flex-col cursor-pointer select-none gap-2 relative shadow-sm ${
                 isCompleted
                   ? 'bg-zinc-950/40 border-zinc-900 opacity-60'
@@ -235,7 +243,7 @@ export function UrgentTasksCarousel({
                   </h4>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )
         })}
       </div>

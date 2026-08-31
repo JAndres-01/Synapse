@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { isAnyModalOpen } from '@/lib/modalManager'
 import { triggerHaptic } from '@/lib/native'
 
+import { motion } from 'framer-motion'
+
 interface FloatingIslandBarProps {
   pendingTasksCount?: number
 }
@@ -110,13 +112,16 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
               key={tab.name}
               href={tab.href}
               onClick={() => triggerHaptic('light')}
-              className={cn(
-                'relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-all duration-150 active:scale-90',
-                tab.isActive
-                  ? 'bg-white/[0.14] text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-zinc-200 active:bg-white/[0.06]'
-              )}
+              className="relative flex flex-col items-center justify-center flex-1 py-1.5 px-2 rounded-full transition-colors active:scale-95 z-10"
             >
+              {tab.isActive && (
+                <motion.div
+                  layoutId="islandActivePill"
+                  className="absolute inset-0 bg-white/[0.14] rounded-full shadow-xs -z-10"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
+
               <div className="relative flex items-center justify-center">
                 <Icon
                   className={cn(

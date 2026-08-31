@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import { triggerHaptic } from '@/lib/native'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface TaskCardProps {
   task: Task
@@ -150,25 +151,39 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
   }
 
   return (
-    <div
+    <motion.div
       onClick={() => onOpenDetail(task)}
-      className={`group py-3 px-1.5 transition-all cursor-pointer select-none flex items-start gap-3 border-b border-zinc-900/80 hover:bg-zinc-900/30 active:bg-zinc-900/50 rounded-xl ${
+      whileTap={{ scale: 0.985 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      className={`group py-3 px-1.5 transition-colors cursor-pointer select-none flex items-start gap-3 border-b border-zinc-900/80 hover:bg-zinc-900/30 active:bg-zinc-900/50 rounded-xl ${
         isCompleted ? 'opacity-40' : ''
       }`}
     >
-      {/* Checkbox minimalista */}
-      <button
+      {/* Checkbox minimalista con rebote elástico */}
+      <motion.button
         type="button"
         onClick={handleCheck}
+        whileTap={{ scale: 0.8 }}
         aria-label={isCompleted ? 'Marcar como pendiente' : 'Marcar como completada'}
-        className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-all mt-0.5 ${
+        className={`w-5 h-5 rounded-full border shrink-0 flex items-center justify-center transition-colors mt-0.5 ${
           isCompleted
             ? 'bg-zinc-200 border-zinc-200 text-zinc-950'
-            : 'border-zinc-600 hover:border-zinc-400 bg-transparent active:scale-90'
+            : 'border-zinc-600 hover:border-zinc-400 bg-transparent'
         }`}
       >
-        {isCompleted && <Check className="w-3 h-3 stroke-[3]" />}
-      </button>
+        <AnimatePresence>
+          {isCompleted && (
+            <motion.div
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 20 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            >
+              <Check className="w-3 h-3 stroke-[3]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
 
       {/* Contenido de la tarea */}
       <div className="flex-1 min-w-0 space-y-1">
@@ -246,6 +261,6 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

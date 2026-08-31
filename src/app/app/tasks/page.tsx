@@ -711,12 +711,19 @@ function TasksPageContent() {
               setActiveTab('classroom')
             }
           }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all active:scale-[0.98] ${
+          className={`relative flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-colors active:scale-[0.98] z-10 ${
             activeTab === 'classroom'
-              ? 'bg-indigo-500/15 text-indigo-200 border-indigo-500/30 shadow-xs font-semibold'
+              ? 'text-indigo-200 border-indigo-500/30 font-semibold'
               : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
           }`}
         >
+          {activeTab === 'classroom' && (
+            <motion.div
+              layoutId="activeScopeIndicator"
+              className="absolute inset-0 bg-indigo-500/15 rounded-xl -z-10 shadow-xs"
+              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+            />
+          )}
           <School className={`w-3.5 h-3.5 ${activeTab === 'classroom' ? 'text-indigo-400' : 'text-zinc-500'}`} />
           <span>Del Salón</span>
           {classroomTasksCount > 0 && (
@@ -740,12 +747,19 @@ function TasksPageContent() {
               setActiveTab('private')
             }
           }}
-          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-all active:scale-[0.98] ${
+          className={`relative flex-1 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 border transition-colors active:scale-[0.98] z-10 ${
             activeTab === 'private'
-              ? 'bg-amber-500/15 text-amber-200 border-amber-500/30 shadow-xs font-semibold'
+              ? 'text-amber-200 border-amber-500/30 font-semibold'
               : 'text-zinc-400 hover:text-zinc-200 border-transparent bg-transparent'
           }`}
         >
+          {activeTab === 'private' && (
+            <motion.div
+              layoutId="activeScopeIndicator"
+              className="absolute inset-0 bg-amber-500/15 rounded-xl -z-10 shadow-xs"
+              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+            />
+          )}
           <Lock className={`w-3.5 h-3.5 ${activeTab === 'private' ? 'text-amber-400' : 'text-zinc-500'}`} />
           <span>Mis Pendientes</span>
           {privateTasksCount > 0 && (
@@ -776,12 +790,19 @@ function TasksPageContent() {
                   setStatusFilter(st)
                 }
               }}
-              className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+              className={`relative py-1.5 px-3 rounded-lg text-xs font-medium transition-colors active:scale-95 z-10 ${
                 statusFilter === st
-                  ? 'bg-zinc-800 text-white shadow-xs font-semibold'
+                  ? 'text-white font-semibold'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
+              {statusFilter === st && (
+                <motion.div
+                  layoutId="activeStatusIndicator"
+                  className="absolute inset-0 bg-zinc-800 rounded-lg -z-10 shadow-xs"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
               {st === 'pending'
                 ? 'Pendientes'
                 : st === 'completed'

@@ -831,14 +831,14 @@ function TasksPageContent() {
       </div>
 
       {/* 4. Botón Flotante para Crear Tarea / Pendiente (Ubicado encima del island nav bar) */}
-      {canCreateInActiveTab && (
+      {!showCreateModal && !selectedTaskForDetail && canCreateInActiveTab && (
         <button
           type="button"
           onClick={() => {
             setTaskToEdit(null)
             setShowCreateModal(true)
           }}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-1.5 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+74px)] right-4 z-30 py-2.5 px-4 rounded-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold text-xs flex items-center gap-1.5 shadow-xl shadow-black/50 border border-zinc-200 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{activeTab === 'private' ? 'Nuevo Pendiente' : 'Nueva Tarea'}</span>

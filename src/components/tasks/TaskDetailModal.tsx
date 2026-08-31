@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
 import type { Task, Profile, TaskAttachment } from '@/types/database'
@@ -20,6 +20,7 @@ import {
 import confetti from 'canvas-confetti'
 import { createClient } from '@/lib/supabase/client'
 import { memoryCache } from '@/lib/cache'
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -144,13 +145,15 @@ export function TaskDetailModal({
 
   useEffect(() => {
     if (task) {
-      document.body.classList.add('body-scroll-lock')
+      lockBodyScroll()
     } else {
-      document.body.classList.remove('body-scroll-lock')
+      unlockBodyScroll()
       setDragOffsetY(0)
     }
     return () => {
-      document.body.classList.remove('body-scroll-lock')
+      if (task) {
+        unlockBodyScroll()
+      }
     }
   }, [task])
 
@@ -174,7 +177,6 @@ export function TaskDetailModal({
   const handleTouchEnd = () => {
     setIsDragging(false)
     if (dragOffsetY > 45) {
-      document.body.classList.remove('body-scroll-lock')
       onClose()
     } else {
       setDragOffsetY(0)
@@ -198,7 +200,6 @@ export function TaskDetailModal({
   const handleConfirmDelete = async () => {
     try {
       setDeleteLoading(true)
-      document.body.classList.remove('body-scroll-lock')
       setShowDeleteConfirm(false)
       await onDeleteTask(task.id)
       onClose()
@@ -246,23 +247,20 @@ export function TaskDetailModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/60 backdrop-blur-xs overscroll-none touch-none">
+      <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/80 backdrop-blur-md animate-backdrop-fade overscroll-none touch-none">
         {/* Backdrop táctil para cerrar */}
         <div
           className="absolute inset-0 z-0 cursor-pointer touch-none overscroll-none"
-          onClick={() => {
-            document.body.classList.remove('body-scroll-lock')
-            onClose()
-          }}
+          onClick={onClose}
         />
 
         {/* Contenedor Modal */}
         <div
           style={{
             transform: `translateY(${dragOffsetY}px)`,
-            transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1)',
+            transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
-          className="relative z-10 w-full max-w-lg mx-auto bg-zinc-950 border-t border-zinc-850 rounded-t-[28px] p-5 pb-8 shadow-2xl flex flex-col max-h-[85vh] transition-transform select-none overscroll-none"
+          className="relative z-10 w-full max-w-lg mx-auto bg-zinc-950 border-t border-zinc-800 rounded-t-[28px] p-5 pb-8 shadow-2xl flex flex-col max-h-[85vh] transition-transform select-none overscroll-none animate-sheet-up"
         >
           {/* Header del Modal con área táctil para cerrar por gesto */}
           <div
@@ -429,7 +427,6 @@ export function TaskDetailModal({
                 <button
                   type="button"
                   onClick={() => {
-                    document.body.classList.remove('body-scroll-lock')
                     onEditTask(task)
                   }}
                   className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white hover:bg-zinc-800 font-medium text-xs flex items-center justify-center gap-1.5 transition-all"

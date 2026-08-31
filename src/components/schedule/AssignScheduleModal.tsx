@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import type { Schedule, Subject } from '@/types/database'
 import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
 import { Calendar, X, Trash2, Loader2, Video, MapPin } from 'lucide-react'
+import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
 
 interface AssignScheduleModalProps {
   isOpen: boolean
@@ -44,7 +45,7 @@ export function AssignScheduleModal({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.classList.add('body-scroll-lock')
+      lockBodyScroll()
       if (existingSchedule) {
         setSelectedSubjectId(existingSchedule.subject_id)
         setClassroomRoom(existingSchedule.classroom_room || 'Aula Principal')
@@ -55,11 +56,13 @@ export function AssignScheduleModal({
         setIsVirtual(false)
       }
     } else {
-      document.body.classList.remove('body-scroll-lock')
+      unlockBodyScroll()
       setDragOffsetY(0)
     }
     return () => {
-      document.body.classList.remove('body-scroll-lock')
+      if (isOpen) {
+        unlockBodyScroll()
+      }
     }
   }, [isOpen, existingSchedule, subjects])
 
@@ -124,11 +127,11 @@ export function AssignScheduleModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-fade-in p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-end justify-center animate-backdrop-fade p-0 overflow-hidden touch-none overscroll-none pt-[calc(env(safe-area-inset-top,44px)+20px)]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-none select-none"
+        className="w-full max-w-md bg-zinc-950 border-t border-zinc-800/80 rounded-t-3xl px-5 pt-2 pb-6 space-y-3.5 max-h-[calc(100dvh-env(safe-area-inset-top,44px)-20px)] flex flex-col shadow-2xl transition-transform overflow-hidden overscroll-none select-none animate-sheet-up"
         style={{
           transform: `translateY(${dragOffsetY}px)`,
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',

@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 
 export function TasksSkeleton() {
   return (
@@ -72,7 +72,7 @@ export function TasksSkeleton() {
       </div>
 
       {/* 5. Botón Flotante Skeleton */}
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] right-4 z-30 h-10 w-32 rounded-full bg-zinc-800/80 border border-zinc-700/60 shadow-xl" />
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+74px)] right-4 z-30 h-10 w-32 rounded-full bg-zinc-800/80 border border-zinc-700/60 shadow-xl" />
     </div>
   )
 }

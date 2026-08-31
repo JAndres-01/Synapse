@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import type { Subject } from '@/types/database'
 import { SUBJECT_COLORS } from '@/lib/utils'
 import { BookOpen, Plus, X, Trash2, Loader2, Check } from 'lucide-react'
-import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
+import { registerModal, unregisterModal } from '@/lib/modalManager'
 
 interface ManageSubjectsModalProps {
   isOpen: boolean
@@ -35,9 +35,9 @@ export function ManageSubjectsModal({
 
   useEffect(() => {
     if (isOpen) {
-      lockBodyScroll()
+      registerModal('manage_subjects_modal')
     } else {
-      unlockBodyScroll()
+      unregisterModal('manage_subjects_modal')
       setDragOffsetY(0)
       setShowAddForm(false)
       setName('')
@@ -45,9 +45,7 @@ export function ManageSubjectsModal({
       setTeacherName('')
     }
     return () => {
-      if (isOpen) {
-        unlockBodyScroll()
-      }
+      unregisterModal('manage_subjects_modal')
     }
   }, [isOpen])
 

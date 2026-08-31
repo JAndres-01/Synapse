@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { Subject, Schedule, TaskType, Task, AttachmentType } from '@/types/database'
 import { compressImageFile } from '@/lib/utils'
-import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
+import { registerModal, unregisterModal } from '@/lib/modalManager'
 import {
   X,
   Plus,
@@ -277,15 +277,13 @@ export function CreateTaskModal({
 
   useEffect(() => {
     if (isOpen) {
-      lockBodyScroll()
+      registerModal('create_task_modal')
     } else {
-      unlockBodyScroll()
+      unregisterModal('create_task_modal')
       setDragOffsetY(0)
     }
     return () => {
-      if (isOpen) {
-        unlockBodyScroll()
-      }
+      unregisterModal('create_task_modal')
     }
   }, [isOpen])
 

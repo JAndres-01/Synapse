@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import type { Schedule, Subject } from '@/types/database'
 import { DAYS_OF_WEEK, SCHEDULE_BLOCKS } from '@/lib/utils'
 import { Calendar, X, Trash2, Loader2, Video, MapPin } from 'lucide-react'
-import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
+import { registerModal, unregisterModal } from '@/lib/modalManager'
 
 interface AssignScheduleModalProps {
   isOpen: boolean
@@ -45,7 +45,7 @@ export function AssignScheduleModal({
 
   useEffect(() => {
     if (isOpen) {
-      lockBodyScroll()
+      registerModal('assign_schedule_modal')
       if (existingSchedule) {
         setSelectedSubjectId(existingSchedule.subject_id)
         setClassroomRoom(existingSchedule.classroom_room || 'Aula Principal')
@@ -56,13 +56,11 @@ export function AssignScheduleModal({
         setIsVirtual(false)
       }
     } else {
-      unlockBodyScroll()
+      unregisterModal('assign_schedule_modal')
       setDragOffsetY(0)
     }
     return () => {
-      if (isOpen) {
-        unlockBodyScroll()
-      }
+      unregisterModal('assign_schedule_modal')
     }
   }, [isOpen, existingSchedule, subjects])
 

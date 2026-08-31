@@ -27,11 +27,11 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
         if (timer) clearTimeout(timer)
         setIsClickBlocked(true)
       } else {
-        // Debounce: mantener clicks bloqueados durante 250ms al cerrar modal para absorber toques accidentales
+        // Debounce de seguridad al cerrar modal para absorber toques residuales de iOS
         if (timer) clearTimeout(timer)
         timer = setTimeout(() => {
           setIsClickBlocked(false)
-        }, 250)
+        }, 200)
       }
     }
 
@@ -92,15 +92,16 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
     <nav
       aria-label="Navegación principal"
       className={cn(
-        'fixed bottom-[calc(env(safe-area-inset-bottom,0px)+8px)] left-0 right-0 z-40 max-w-[360px] mx-auto px-3 transition-all duration-150 ease-out',
+        'fixed bottom-[calc(env(safe-area-inset-bottom,0px)+8px)] left-0 right-0 z-40 max-w-[340px] mx-auto px-3 transition-all duration-200 ease-out',
         shouldHide
-          ? 'opacity-0 translate-y-12 scale-90 pointer-events-none invisible'
+          ? 'opacity-0 translate-y-16 scale-90 pointer-events-none invisible'
           : 'opacity-100 translate-y-0 scale-100 pointer-events-auto visible'
       )}
     >
+      {/* Contenedor Flotante con Alto Contraste y Vidrio Esmerilado Intensificado */}
       <div
         className={cn(
-          'flex items-center justify-around px-2 py-1.5 rounded-2xl bg-zinc-950/90 backdrop-blur-xl border border-zinc-800/90 shadow-2xl shadow-black/80 transition-all',
+          'flex items-center justify-around px-2 py-1.5 rounded-full bg-zinc-850/85 backdrop-blur-2xl backdrop-saturate-200 border border-zinc-700/80 shadow-[0_16px_36px_rgba(0,0,0,0.85),inset_0_1px_1px_rgba(255,255,255,0.18)] transition-all',
           shouldHide ? 'pointer-events-none' : 'pointer-events-auto'
         )}
       >
@@ -111,24 +112,24 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
               key={tab.name}
               href={tab.href}
               className={cn(
-                'relative flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all duration-150 active:scale-90',
+                'relative flex flex-col items-center justify-center py-1 px-3 rounded-full transition-all duration-150 active:scale-90',
                 tab.isActive
-                  ? 'text-white'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  ? 'bg-zinc-700/80 text-white shadow-xs border border-zinc-600/60'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/30 border border-transparent'
               )}
             >
               <div className="relative">
                 <Icon
                   className={cn(
-                    'w-5 h-5 transition-transform duration-150',
-                    tab.isActive && 'scale-105 text-zinc-100'
+                    'w-4.5 h-4.5 transition-transform duration-150',
+                    tab.isActive ? 'scale-105 text-white' : 'text-zinc-400'
                   )}
-                  strokeWidth={tab.isActive ? 2.2 : 1.8}
+                  strokeWidth={tab.isActive ? 2.4 : 1.9}
                 />
 
                 {/* Badge de tareas pendientes */}
                 {tab.badge && (
-                  <span className="absolute -top-1 -right-2 min-w-[15px] h-3.5 px-1 rounded-full bg-zinc-100 text-zinc-950 text-[9px] font-bold flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-1 -right-2.5 min-w-[15px] h-3.5 px-1 rounded-full bg-white text-zinc-950 text-[9px] font-bold flex items-center justify-center shadow-sm">
                     {tab.badge}
                   </span>
                 )}
@@ -136,8 +137,8 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
 
               <span
                 className={cn(
-                  'text-[10px] font-medium mt-0.5 transition-opacity',
-                  tab.isActive ? 'text-zinc-100 opacity-100 font-semibold' : 'text-zinc-500 opacity-80'
+                  'text-[9.5px] font-medium mt-0.5 transition-colors',
+                  tab.isActive ? 'text-white font-bold' : 'text-zinc-400'
                 )}
               >
                 {tab.name}
@@ -145,7 +146,7 @@ export function FloatingIslandBar({ pendingTasksCount = 0 }: FloatingIslandBarPr
 
               {/* Punto indicador luminoso activo */}
               {tab.isActive && (
-                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
+                <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,1)]" />
               )}
             </Link>
           )

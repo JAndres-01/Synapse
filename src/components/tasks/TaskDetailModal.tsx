@@ -20,7 +20,7 @@ import {
 import confetti from 'canvas-confetti'
 import { createClient } from '@/lib/supabase/client'
 import { memoryCache } from '@/lib/cache'
-import { lockBodyScroll, unlockBodyScroll } from '@/lib/modalManager'
+import { registerModal, unregisterModal } from '@/lib/modalManager'
 
 interface TaskDetailModalProps {
   task: Task | null
@@ -145,15 +145,13 @@ export function TaskDetailModal({
 
   useEffect(() => {
     if (task) {
-      lockBodyScroll()
+      registerModal('task_detail_modal')
     } else {
-      unlockBodyScroll()
+      unregisterModal('task_detail_modal')
       setDragOffsetY(0)
     }
     return () => {
-      if (task) {
-        unlockBodyScroll()
-      }
+      unregisterModal('task_detail_modal')
     }
   }, [task])
 

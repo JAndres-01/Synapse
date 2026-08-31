@@ -186,7 +186,8 @@ function TasksPageContent() {
           created_at,
           subject:subjects(*),
           user_status:user_task_status(user_id, status, completed_at),
-          attachments:task_attachments(id, file_type, file_name)
+          attachments:task_attachments(id, file_type, file_name),
+          comments:task_comments(id)
         `)
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })

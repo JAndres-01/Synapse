@@ -10,11 +10,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Animated,
   Dimensions,
+  Keyboard,
+  Easing,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Subject, TaskType, TaskAttachment } from '@/types/personal'
 import {
   X,
@@ -66,6 +68,7 @@ export function MinimalistTaskModal({
   onDeleteTask,
   onTaskSaved,
 }: MinimalistTaskModalProps) {
+  const insets = useSafeAreaInsets()
   const [currentView, setCurrentView] = useState<'detail' | 'form'>('detail')
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -79,14 +82,51 @@ export function MinimalistTaskModal({
   const [dueDate, setDueDate] = useState<string>('')
   const [attachments, setAttachments] = useState<TaskAttachment[]>([])
 
+  const titleInputRef = useRef<TextInput>(null)
+
   // Menús desplegables en formulario
   const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
 
-  // Animaciones del Modal
+  // Animaciones del Modal y Sincronización 1:1 con Teclado
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const keyboardHeightAnim = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
+
+  // Sincronizador de eventos de teclado de iOS (duración y curva exactas del sistema)
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const kbHeight = e.endCoordinates.height
+      const duration = e.duration && e.duration > 0 ? e.duration : 250
+
+      Animated.timing(keyboardHeightAnim, {
+        toValue: Math.max(0, kbHeight - insets.bottom),
+        duration: duration,
+        easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
+        useNativeDriver: false,
+      }).start()
+    })
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      const duration = e.duration && e.duration > 0 ? e.duration : 250
+
+      Animated.timing(keyboardHeightAnim, {
+        toValue: 0,
+        duration: duration,
+        easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
+        useNativeDriver: false,
+      }).start()
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [insets.bottom, keyboardHeightAnim])
 
   useEffect(() => {
     if (mode !== 'none') {
@@ -115,6 +155,7 @@ export function MinimalistTaskModal({
       }
       setActivePicker(null)
 
+      // Entrada suave y sincronizada
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -123,13 +164,20 @@ export function MinimalistTaskModal({
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 480,
+          stiffness: 460,
           damping: 32,
-          mass: 0.8,
+          mass: 0.7,
           useNativeDriver: true,
         }),
       ]).start()
+
+      if (mode === 'create') {
+        setTimeout(() => {
+          titleInputRef.current?.focus()
+        }, 60)
+      }
     } else {
+      Keyboard.dismiss()
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -143,12 +191,14 @@ export function MinimalistTaskModal({
         }),
       ]).start(() => {
         setModalVisible(false)
+        keyboardHeightAnim.setValue(0)
       })
     }
-  }, [mode, task, subjects, fadeAnim, slideAnim])
+  }, [mode, task, subjects, fadeAnim, slideAnim, keyboardHeightAnim])
 
   const handleSmoothClose = () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -162,6 +212,7 @@ export function MinimalistTaskModal({
       }),
     ]).start(() => {
       onClose()
+      keyboardHeightAnim.setValue(0)
     })
   }
 
@@ -215,6 +266,7 @@ export function MinimalistTaskModal({
 
   const handleDelete = () => {
     if (!task) return
+    Keyboard.dismiss()
     Alert.alert(
       '¿Eliminar esta tarea?',
       'Esta acción no se puede deshacer.',
@@ -240,7 +292,7 @@ export function MinimalistTaskModal({
     )
   }
 
-  // Cambiar a vista de edición de forma instantánea dentro del mismo modal
+  // Cambiar a vista de edición dentro del mismo modal
   const handleSwitchToEdit = () => {
     triggerHaptic('light')
     if (task) {
@@ -252,6 +304,9 @@ export function MinimalistTaskModal({
       setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
     }
     setCurrentView('form')
+    setTimeout(() => {
+      titleInputRef.current?.focus()
+    }, 80)
   }
 
   // Guardar Cambios o Crear Nueva Tarea
@@ -262,6 +317,7 @@ export function MinimalistTaskModal({
     }
 
     try {
+      Keyboard.dismiss()
       setSaveLoading(true)
       const selectedSubj = subjects.find((s) => s.id === selectedSubjectId)
 
@@ -344,6 +400,7 @@ export function MinimalistTaskModal({
 
   const handlePickImage = async () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert('Permiso requerido', 'Se requiere acceso a tu galería para adjuntar fotos.')
@@ -372,6 +429,7 @@ export function MinimalistTaskModal({
 
   const handleTakePhoto = async () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para tomar fotos.')
@@ -444,17 +502,22 @@ export function MinimalistTaskModal({
 
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalRoot}
-      >
+      <View style={styles.modalRoot}>
         {/* Backdrop Estático con Fade */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante */}
-        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Hoja Inferior Deslizante con sincronización 1:1 de padding de teclado */}
+        <Animated.View
+          style={[
+            styles.sheetContainer,
+            {
+              transform: [{ translateY: slideAnim }],
+              paddingBottom: Animated.add(keyboardHeightAnim, insets.bottom + 20),
+            },
+          ]}
+        >
           {/* ========================================================================= */}
           {/* VISTA: DETALLE DE TAREA                                                   */}
           {/* ========================================================================= */}
@@ -467,7 +530,12 @@ export function MinimalistTaskModal({
                 </Pressable>
               </View>
 
-              <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.sheetScroll}
+                showsVerticalScrollIndicator={false}
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+              >
                 {/* Badges de Materia y Tipo */}
                 <View style={styles.badgesRow}>
                   {task?.subject ? (
@@ -674,6 +742,7 @@ export function MinimalistTaskModal({
                     <Pressable
                       onPress={() => {
                         triggerHaptic('light')
+                        Keyboard.dismiss()
                         setCurrentView('detail')
                       }}
                       hitSlop={12}
@@ -707,15 +776,20 @@ export function MinimalistTaskModal({
                 </View>
               </View>
 
-              <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.sheetScroll}
+                showsVerticalScrollIndicator={false}
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+              >
                 {/* Input de Título Grande y Limpio */}
                 <TextInput
+                  ref={titleInputRef}
                   placeholder="¿Qué tienes que hacer?"
                   placeholderTextColor="#52525B"
                   value={title}
                   onChangeText={setTitle}
                   style={styles.cleanTitleInput}
-                  autoFocus={!task}
                 />
 
                 {/* Input de Descripción Limpio */}
@@ -733,11 +807,13 @@ export function MinimalistTaskModal({
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.attributeBar}
+                  keyboardShouldPersistTaps="handled"
                 >
                   {/* Selector de Materia */}
                   <Pressable
                     onPress={() => {
                       triggerHaptic('selection')
+                      Keyboard.dismiss()
                       setActivePicker(activePicker === 'subject' ? null : 'subject')
                     }}
                     style={[
@@ -769,6 +845,7 @@ export function MinimalistTaskModal({
                   <Pressable
                     onPress={() => {
                       triggerHaptic('selection')
+                      Keyboard.dismiss()
                       setActivePicker(activePicker === 'date' ? null : 'date')
                     }}
                     style={[
@@ -792,6 +869,7 @@ export function MinimalistTaskModal({
                   <Pressable
                     onPress={() => {
                       triggerHaptic('selection')
+                      Keyboard.dismiss()
                       setActivePicker(activePicker === 'type' ? null : 'type')
                     }}
                     style={[
@@ -1001,7 +1079,7 @@ export function MinimalistTaskModal({
             </Pressable>
           </Modal>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   )
 }
@@ -1024,8 +1102,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '88%',
-    paddingBottom: 34,
+    maxHeight: '90%',
   },
   sheetHeader: {
     alignItems: 'center',

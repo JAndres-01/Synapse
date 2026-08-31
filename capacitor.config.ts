@@ -5,6 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Synapse',
   webDir: 'out',
   backgroundColor: '#09090b',
+  server: {
+    url: 'http://192.168.0.13:3000',
+    cleartext: true,
+  },
   plugins: {
     Keyboard: {
       resize: 'body',

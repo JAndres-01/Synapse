@@ -37,27 +37,27 @@ jobs:
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
 
-      - name: Build iOS Project with Xcode
+      - name: Build iOS Archive with Xcode
         run: |
           cd ios/App
           xcodebuild \
             -project App.xcodeproj \
             -scheme App \
-            -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -configuration Release \
-            -derivedDataPath build/DerivedData \
+            -archivePath build/Synapse.xcarchive \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            ARCHS="arm64" \
-            ONLY_ACTIVE_ARCH=NO \
-            clean build
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            DEVELOPMENT_TEAM="" \
+            archive
 
       - name: Package App into IPA Payload
         run: |
           mkdir -p build/Payload
-          cp -r ios/App/build/DerivedData/Build/Products/Release-iphoneos/App.app build/Payload/
+          cp -r ios/App/build/Synapse.xcarchive/Products/Applications/App.app build/Payload/
           cd build
           zip -r Synapse-iOS.ipa Payload
           cd ..

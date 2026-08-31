@@ -56,20 +56,25 @@ export default function TasksScreen() {
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
 
-  // Estado del Buscador Dinámico
+  // Estado del Buscador Dinámico con animación elástica de rebote
   const [isSearchActive, setIsSearchActive] = useState(false)
   const searchInputRef = useRef<TextInput>(null)
+  const searchScaleAnim = useRef(new Animated.Value(0.9)).current
+  const searchOpacityAnim = useRef(new Animated.Value(0)).current
 
   // Estado del Menú de Filtro de Materia
   const [showSubjectMenu, setShowSubjectMenu] = useState(false)
 
-  // Disparador de Ráfagas de Confetti (soporta múltiples tareas seguidas sin bug)
+  // Disparador de Ráfagas de Confetti (desde abajo hacia arriba)
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modales de Tarea
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+
+  // IDs de tareas que acaban de completarse y están en transición suave
+  const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
 
   // Animación del Segmented Control Deslizante
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
@@ -130,7 +135,7 @@ export default function TasksScreen() {
   useEffect(() => {
     const hideListener = Keyboard.addListener('keyboardDidHide', () => {
       if (searchQuery.trim() === '') {
-        setIsSearchActive(false)
+        handleCloseSearch()
       }
     })
 
@@ -151,54 +156,106 @@ export default function TasksScreen() {
   }, [statusIndex, segmentWidth, slideAnim])
 
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
-    // Animación fluida de reorganización de lista
     LayoutAnimation.configureNext({
-      duration: 280,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.75 },
+      duration: 300,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
     })
     triggerHaptic('selection')
     setStatusFilter(newStatus)
   }
 
-  // Activar Buscador Dinámico
+  // Activar Buscador con Rebote Elástico
   const handleOpenSearch = () => {
     triggerHaptic('light')
     setIsSearchActive(true)
-    setTimeout(() => {
+    searchScaleAnim.setValue(0.88)
+    searchOpacityAnim.setValue(0)
+
+    Animated.parallel([
+      Animated.spring(searchScaleAnim, {
+        toValue: 1,
+        stiffness: 550,
+        damping: 22,
+        mass: 0.7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(searchOpacityAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       searchInputRef.current?.focus()
-    }, 50)
+    })
   }
 
-  // Cancelar Buscador de forma INSTANTÁNEA (0 ms de retardo)
+  // Cancelar Buscador con Rebote Elástico Inverso
   const handleCloseSearch = () => {
     triggerHaptic('light')
     Keyboard.dismiss()
     setSearchQuery('')
-    setIsSearchActive(false)
+
+    Animated.parallel([
+      Animated.spring(searchScaleAnim, {
+        toValue: 0.9,
+        stiffness: 500,
+        damping: 24,
+        useNativeDriver: true,
+      }),
+      Animated.timing(searchOpacityAnim, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setIsSearchActive(false)
+    })
   }
 
+  // Toggle de Estado con transición fluida sin apilamientos
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
-    // Si se completó una tarea, disparar el cañón de micro-confetti instantáneo
+    // 1. Si se completa, disparar el cañón de confetti desde abajo
     if (nextStatus === 'completed') {
       setConfettiBurstTrigger((prev) => prev + 1)
     }
 
-    // Efecto de gravedad física: Reorganizar y rebotar suavemente las demás tareas
-    LayoutAnimation.configureNext({
-      duration: 320,
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.68 },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-    })
+    // 2. Si estamos en la pestaña "Pendientes", mantener la tarea visible por 380ms para ver el tachado y luego deslizar hacia arriba suavemente
+    if (statusFilter === 'pending' && nextStatus === 'completed') {
+      setTransitioningTaskIds((prev) => [...prev, taskId])
 
-    const updated = tasks.map((t) => {
-      if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-      return t
-    })
-    setTasks(updated)
-    await personalStorage.setTasks(updated)
+      // Actualizar inmediatamente estado local para mostrar el check
+      const updated = tasks.map((t) => {
+        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
+        return t
+      })
+      setTasks(updated)
+      await personalStorage.setTasks(updated)
+
+      // Después de 380ms, retirar de la lista y deslizar las demás tareas con gravedad suave
+      setTimeout(() => {
+        LayoutAnimation.configureNext({
+          duration: 360,
+          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        })
+        setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
+      }, 380)
+    } else {
+      // Reorganización normal con spring
+      LayoutAnimation.configureNext({
+        duration: 300,
+        update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      })
+      const updated = tasks.map((t) => {
+        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
+        return t
+      })
+      setTasks(updated)
+      await personalStorage.setTasks(updated)
+    }
 
     try {
       await supabase
@@ -212,8 +269,8 @@ export default function TasksScreen() {
 
   const handleDeleteTask = async (taskId: string) => {
     LayoutAnimation.configureNext({
-      duration: 280,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.7 },
+      duration: 300,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
       delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
     })
     const updated = await personalStorage.removeTask(taskId)
@@ -236,13 +293,16 @@ export default function TasksScreen() {
         if (!matchTitle && !matchSubj) return false
       }
 
-      // Filtro de Estado
-      if (statusFilter === 'pending' && task.status === 'completed') return false
+      // Filtro de Estado (permitir tareas en transición temporal para animación suave)
+      const isTransitioning = transitioningTaskIds.includes(task.id)
+      if (statusFilter === 'pending') {
+        if (task.status === 'completed' && !isTransitioning) return false
+      }
       if (statusFilter === 'completed' && task.status !== 'completed') return false
 
       return true
     })
-  }, [tasks, selectedSubjectId, searchQuery, statusFilter])
+  }, [tasks, selectedSubjectId, searchQuery, statusFilter, transitioningTaskIds])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -272,7 +332,7 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.screenWrapper}>
-      {/* Cañón de Micro-Confetti Ultra-Fino con Soporte Multi-Ráfaga */}
+      {/* Cañón de Micro-Confetti Disparando de Abajo Hacia Arriba */}
       <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
 
       <ScrollView
@@ -288,7 +348,7 @@ export default function TasksScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
       >
-        {/* Cabecera Principal y Barra de Acciones */}
+        {/* Cabecera Principal / Buscador con Rebote Elástico */}
         {!isSearchActive ? (
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -297,7 +357,7 @@ export default function TasksScreen() {
                 <Text style={styles.title}>Mis Tareas</Text>
               </View>
 
-              {/* Botón Dinámico de Búsqueda */}
+              {/* Botón de Búsqueda */}
               <Pressable
                 onPress={handleOpenSearch}
                 style={styles.searchIconButton}
@@ -311,8 +371,16 @@ export default function TasksScreen() {
             </Text>
           </View>
         ) : (
-          /* Buscador Dinámico con Cierre Instantáneo */
-          <View style={styles.dynamicSearchContainer}>
+          /* Buscador Dinámico con Rebote Elástico */
+          <Animated.View
+            style={[
+              styles.dynamicSearchContainer,
+              {
+                opacity: searchOpacityAnim,
+                transform: [{ scale: searchScaleAnim }],
+              },
+            ]}
+          >
             <View style={styles.dynamicSearchInputWrapper}>
               <Search size={15} color="#A1A1AA" style={styles.searchIcon} />
               <TextInput
@@ -324,7 +392,6 @@ export default function TasksScreen() {
                 onSubmitEditing={() => Keyboard.dismiss()}
                 style={styles.dynamicSearchInput}
                 returnKeyType="search"
-                autoFocus
               />
               {searchQuery.length > 0 && (
                 <Pressable
@@ -347,7 +414,7 @@ export default function TasksScreen() {
             >
               <Text style={styles.cancelSearchText}>Cancelar</Text>
             </Pressable>
-          </View>
+          </Animated.View>
         )}
 
         {/* Botón Desplegable para Filtrar por Materia */}
@@ -471,7 +538,7 @@ export default function TasksScreen() {
           </Pressable>
         </View>
 
-        {/* Lista Plana y Abierta con Física de Gravedad y Rebote Elástico */}
+        {/* Lista Plana y Abierta con Deslizamiento Elástico Suave */}
         <View style={styles.tasksListWrapper}>
           {filteredTasks.length > 0 ? (
             <View style={styles.openTaskRows}>
@@ -505,7 +572,7 @@ export default function TasksScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal Desplegable de Selección de Materia Estilo Apple Sheet */}
+      {/* Modal Desplegable de Selección de Materia */}
       <Modal
         visible={showSubjectMenu}
         transparent={true}
@@ -601,7 +668,7 @@ export default function TasksScreen() {
         </View>
       </Modal>
 
-      {/* Botón Flotante (+) con Física de Resorte y Haptic Apple */}
+      {/* Botón Flotante (+) con Física de Resorte */}
       <Animated.View
         style={[
           styles.fabWrapper,
@@ -863,7 +930,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   openTaskRows: {
-    // Lista 100% abierta sobre el canvas nativo (CERO card envolvente)
     paddingHorizontal: 2,
   },
   emptyContainer: {

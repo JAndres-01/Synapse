@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, Paperclip } from 'lucide-react-native'
@@ -19,15 +19,20 @@ export function MinimalistTaskRow({
 }: MinimalistTaskRowProps) {
   const isDone = task.status === 'completed'
 
-  // Animación de rebote físico en la fila y en el checkbox
+  // Animaciones de microinteracción táctil y de rebote
   const scaleAnim = useRef(new Animated.Value(1)).current
   const checkBounceAnim = useRef(new Animated.Value(1)).current
+  const rowFadeAnim = useRef(new Animated.Value(1)).current
+
+  useEffect(() => {
+    rowFadeAnim.setValue(isDone ? 0.65 : 1)
+  }, [isDone])
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
-      toValue: 0.98,
-      stiffness: 500,
-      damping: 30,
+      toValue: 0.985,
+      stiffness: 550,
+      damping: 28,
       useNativeDriver: true,
     }).start()
   }
@@ -35,29 +40,29 @@ export function MinimalistTaskRow({
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      stiffness: 450,
-      damping: 25,
+      stiffness: 500,
+      damping: 24,
       useNativeDriver: true,
     }).start()
   }
 
   const handleToggle = () => {
-    // Animación de rebote elástico exagerado y jugoso en el checkbox
+    // Animación de rebote elástico en el checkbox
     Animated.sequence([
       Animated.timing(checkBounceAnim, {
-        toValue: 1.45,
-        duration: 120,
+        toValue: 1.35,
+        duration: 110,
         useNativeDriver: true,
       }),
       Animated.timing(checkBounceAnim, {
-        toValue: 0.85,
-        duration: 80,
+        toValue: 0.88,
+        duration: 70,
         useNativeDriver: true,
       }),
       Animated.spring(checkBounceAnim, {
         toValue: 1,
         stiffness: 600,
-        damping: 15,
+        damping: 18,
         useNativeDriver: true,
       }),
     ]).start()
@@ -95,7 +100,7 @@ export function MinimalistTaskRow({
   const isWhite = task.subject?.color === '#FFFFFF'
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }], opacity: rowFadeAnim }]}>
       <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
         {/* Checkbox Circular con animación de rebote elástico */}
         <Pressable
@@ -114,7 +119,7 @@ export function MinimalistTaskRow({
           </Animated.View>
         </Pressable>
 
-        {/* Contenido de la Tarea (Abierto en el canvas, sin card envolvente) */}
+        {/* Contenido de la Tarea */}
         <Pressable
           onPress={() => {
             triggerHaptic('light')

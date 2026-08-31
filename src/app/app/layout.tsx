@@ -94,6 +94,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [classroom, user, supabase, fetchPendingCount])
 
+  // Estabilización anti-descuadre de pantalla cuando se abre el teclado en iOS
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleViewportShift = () => {
+      if (window.scrollX !== 0) {
+        window.scrollTo({ left: 0, top: window.scrollY, behavior: 'instant' })
+      }
+    }
+
+    const handleBlur = () => {
+      setTimeout(() => {
+        window.scrollTo({ left: 0, top: window.scrollY, behavior: 'instant' })
+      }, 50)
+    }
+
+    window.visualViewport?.addEventListener('resize', handleViewportShift)
+    window.visualViewport?.addEventListener('scroll', handleViewportShift)
+    window.addEventListener('scroll', handleViewportShift)
+    document.addEventListener('focusout', handleBlur)
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleViewportShift)
+      window.visualViewport?.removeEventListener('scroll', handleViewportShift)
+      window.removeEventListener('scroll', handleViewportShift)
+      document.removeEventListener('focusout', handleBlur)
+    }
+  }, [])
+
   if (loading && !classroom && !user) {
     return (
       <div className="flex-1 flex items-center justify-center min-h-[80vh]">

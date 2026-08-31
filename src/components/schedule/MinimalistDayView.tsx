@@ -16,7 +16,7 @@ interface MinimalistDayViewProps {
 const DAYS = [
   { num: 1, name: 'Lun' },
   { num: 2, name: 'Mar' },
-  { num: 3, name: 'Mié' },
+  { num: 3, name: 'MiÃ©' },
   { num: 4, name: 'Jue' },
   { num: 5, name: 'Vie' },
 ]
@@ -31,7 +31,7 @@ export function MinimalistDayView({
 
   return (
     <View style={styles.container}>
-      {/* Selector de Días Minimalista */}
+      {/* Selector de DÃ­as Minimalista */}
       <View style={styles.daysRow}>
         {DAYS.map((d) => {
           const isSelected = selectedDay === d.num
@@ -114,7 +114,7 @@ export function MinimalistDayView({
                 <View style={styles.breakBanner}>
                   <View style={styles.breakDot} />
                   <Text style={styles.breakText}>
-                    RECESO • {BREAK_BLOCK.startTime} - {BREAK_BLOCK.endTime} (30 MIN)
+                    RECESO â€¢ {BREAK_BLOCK.startTime} - {BREAK_BLOCK.endTime} (30 MIN)
                   </Text>
                 </View>
               )}

@@ -58,7 +58,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
         await personalStorage.setProfile(fallbackProf)
       }
     } catch {
-      // Fallback a perfil básico
+      // Fallback a perfil bÃ¡sico
       const fallbackProf: PersonalProfile = {
         id: userId,
         email: email || '',

@@ -31,7 +31,7 @@ interface MinimalistAssignSlotModalProps {
 const DAYS = [
   { num: 1, name: 'Lunes' },
   { num: 2, name: 'Martes' },
-  { num: 3, name: 'Miércoles' },
+  { num: 3, name: 'MiÃ©rcoles' },
   { num: 4, name: 'Jueves' },
   { num: 5, name: 'Viernes' },
 ]
@@ -115,8 +115,8 @@ export function MinimalistAssignSlotModal({
     if (!existingSchedule) return
 
     Alert.alert(
-      '¿Vaciar este bloque?',
-      'Se removerá la clase asignada en este horario.',
+      'Â¿Vaciar este bloque?',
+      'Se removerÃ¡ la clase asignada en este horario.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -154,9 +154,9 @@ export function MinimalistAssignSlotModal({
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Selector de Día */}
+            {/* Selector de DÃ­a */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>DÍA DE LA SEMANA</Text>
+              <Text style={styles.inputLabel}>DÃA DE LA SEMANA</Text>
               <View style={styles.daysRow}>
                 {DAYS.map((d) => (
                   <Pressable
@@ -243,9 +243,9 @@ export function MinimalistAssignSlotModal({
               </View>
             </View>
 
-            {/* Aula o Salón */}
+            {/* Aula o SalÃ³n */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>AULA / SALÓN (OPCIONAL)</Text>
+              <Text style={styles.inputLabel}>AULA / SALÃ“N (OPCIONAL)</Text>
               <View style={styles.inputBox}>
                 <MapPin size={14} color="#71717A" style={styles.inputIcon} />
                 <TextInput
@@ -262,7 +262,7 @@ export function MinimalistAssignSlotModal({
             <View style={styles.switchRow}>
               <View style={styles.switchInfo}>
                 <Text style={styles.switchTitle}>Clase Virtual / Remota</Text>
-                <Text style={styles.switchSub}>Marca si es en línea o autoestudio</Text>
+                <Text style={styles.switchSub}>Marca si es en lÃ­nea o autoestudio</Text>
               </View>
               <Switch
                 value={isVirtual}
@@ -275,7 +275,7 @@ export function MinimalistAssignSlotModal({
               />
             </View>
 
-            {/* Botones de Acción */}
+            {/* Botones de AcciÃ³n */}
             <View style={styles.actionsContainer}>
               <Pressable
                 onPress={handleSave}

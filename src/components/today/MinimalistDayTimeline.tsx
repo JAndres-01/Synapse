@@ -44,7 +44,7 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
                 <Text style={styles.blockNumText}>C{blockDef.block}</Text>
               </View>
 
-              {/* Indicador de Línea Vertical */}
+              {/* Indicador de LÃ­nea Vertical */}
               <View style={styles.lineCol}>
                 <View
                   style={[
@@ -64,7 +64,7 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
                 )}
               </View>
 
-              {/* Información de la Clase */}
+              {/* InformaciÃ³n de la Clase */}
               <View
                 style={[
                   styles.contentCol,

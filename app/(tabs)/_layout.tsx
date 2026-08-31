@@ -36,7 +36,7 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: 'none' }, // Ocultamos la barra nativa para usar nuestra cápsula flotante
+          tabBarStyle: { display: 'none' }, // Ocultamos la barra nativa para usar nuestra cÃ¡psula flotante
         }}
       >
         <Tabs.Screen name="today" />

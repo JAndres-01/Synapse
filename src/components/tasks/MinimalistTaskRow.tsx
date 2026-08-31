@@ -28,7 +28,7 @@ export function MinimalistTaskRow({
       const isPast = d.getTime() < now.getTime()
       const isToday = d.toDateString() === now.toDateString()
 
-      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+      const days = ['Dom', 'Lun', 'Mar', 'MiÃ©', 'Jue', 'Vie', 'SÃ¡b']
       const dayName = days[d.getDay()]
       const hours = d.getHours()
       const mins = String(d.getMinutes()).padStart(2, '0')
@@ -36,7 +36,7 @@ export function MinimalistTaskRow({
       const formattedH = hours % 12 || 12
 
       if (isToday) return { text: `Hoy ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: true }
-      if (isPast && !isDone) return { text: `Venció ${dayName}`, isPast: true, isToday: false }
+      if (isPast && !isDone) return { text: `VenciÃ³ ${dayName}`, isPast: true, isToday: false }
       return { text: `${dayName} ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: false }
     } catch {
       return null
@@ -86,7 +86,7 @@ export function MinimalistTaskRow({
           )}
 
           {task.type !== 'individual' && (
-            <Text style={styles.typeTag}>• {task.type}</Text>
+            <Text style={styles.typeTag}>â€¢ {task.type}</Text>
           )}
 
           {attachCount > 0 && (
@@ -104,7 +104,7 @@ export function MinimalistTaskRow({
                 dueInfo.isToday && styles.dueTextToday,
               ]}
             >
-              • {dueInfo.text}
+              â€¢ {dueInfo.text}
             </Text>
           )}
         </View>

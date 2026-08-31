@@ -64,12 +64,12 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         )}
       </View>
 
-      {/* Título Principal */}
+      {/* TÃ­tulo Principal */}
       <Text style={styles.headline} numberOfLines={1}>
         {liveData.headline}
       </Text>
 
-      {/* Subtítulo / Aula / Docente */}
+      {/* SubtÃ­tulo / Aula / Docente */}
       <View style={styles.detailsRow}>
         {activeSched?.classroom_room && (
           <View style={styles.detailItem}>

@@ -29,7 +29,7 @@ export default function AuthScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Campos requeridos', 'Por favor ingresa tu correo y contraseña.')
+      Alert.alert('Campos requeridos', 'Por favor ingresa tu correo y contraseÃ±a.')
       triggerHaptic('warning')
       return
     }
@@ -52,12 +52,12 @@ export default function AuthScreen() {
         const { error } = await signUpWithEmail(email, password, fullName)
         if (error) throw error
         triggerHaptic('success')
-        Alert.alert('¡Cuenta creada!', 'Bienvenido a Synapse Personal.', [
+        Alert.alert('Â¡Cuenta creada!', 'Bienvenido a Synapse Personal.', [
           { text: 'Comenzar', onPress: () => router.replace('/(tabs)/today') },
         ])
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo iniciar sesión.')
+      Alert.alert('Error', err.message || 'No se pudo iniciar sesiÃ³n.')
       triggerHaptic('error')
     } finally {
       setLoading(false)
@@ -74,7 +74,7 @@ export default function AuthScreen() {
           <Sparkles size={18} color="#FFFFFF" />
         </View>
         <Text style={styles.title}>Synapse</Text>
-        <Text style={styles.subtitle}>Tu Asistente Académico Personal</Text>
+        <Text style={styles.subtitle}>Tu Asistente AcadÃ©mico Personal</Text>
       </View>
 
       <View style={styles.formContainer}>
@@ -88,7 +88,7 @@ export default function AuthScreen() {
             style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
           >
             <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>
-              Iniciar Sesión
+              Iniciar SesiÃ³n
             </Text>
           </Pressable>
 
@@ -112,7 +112,7 @@ export default function AuthScreen() {
             <View style={styles.inputBox}>
               <User size={15} color="#71717A" style={styles.inputIcon} />
               <TextInput
-                placeholder="Ej. José Morales"
+                placeholder="Ej. JosÃ© Morales"
                 placeholderTextColor="#52525B"
                 value={fullName}
                 onChangeText={setFullName}
@@ -124,7 +124,7 @@ export default function AuthScreen() {
         )}
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>CORREO ELECTRÓNICO</Text>
+          <Text style={styles.inputLabel}>CORREO ELECTRÃ“NICO</Text>
           <View style={styles.inputBox}>
             <Mail size={15} color="#71717A" style={styles.inputIcon} />
             <TextInput
@@ -140,11 +140,11 @@ export default function AuthScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>CONTRASEÑA</Text>
+          <Text style={styles.inputLabel}>CONTRASEÃ‘A</Text>
           <View style={styles.inputBox}>
             <Lock size={15} color="#71717A" style={styles.inputIcon} />
             <TextInput
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               placeholderTextColor="#52525B"
               value={password}
               onChangeText={setPassword}
@@ -154,7 +154,7 @@ export default function AuthScreen() {
           </View>
         </View>
 
-        {/* Botón Principal */}
+        {/* BotÃ³n Principal */}
         <Pressable
           onPress={handleSubmit}
           disabled={loading}

@@ -51,7 +51,7 @@ export function MinimalistTaskDetailModal({
   const isCompleted = task.status === 'completed'
 
   const formatDueDate = (dateStr?: string | null) => {
-    if (!dateStr) return { text: 'Sin fecha límite', isOverdue: false, isToday: false }
+    if (!dateStr) return { text: 'Sin fecha lÃ­mite', isOverdue: false, isToday: false }
     try {
       const date = new Date(dateStr)
       if (isNaN(date.getTime())) return { text: 'Sin fecha', isOverdue: false, isToday: false }
@@ -59,7 +59,7 @@ export function MinimalistTaskDetailModal({
       const isPast = date.getTime() < now.getTime()
       const isToday = date.toDateString() === now.toDateString()
 
-      const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+      const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'MiÃ©rcoles', 'Jueves', 'Viernes', 'SÃ¡bado']
       const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
       const dayName = daysOfWeek[date.getDay()]
@@ -72,10 +72,10 @@ export function MinimalistTaskDetailModal({
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isCompleted) {
-        return { text: `Completada • ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
+        return { text: `Completada â€¢ ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
       }
       if (isPast) {
-        return { text: `Venció el ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: true, isToday }
+        return { text: `VenciÃ³ el ${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: true, isToday }
       }
       if (isToday) {
         return { text: `Vence hoy a las ${timeStr}`, isOverdue: false, isToday: true }
@@ -96,8 +96,8 @@ export function MinimalistTaskDetailModal({
 
   const handleDelete = () => {
     Alert.alert(
-      '¿Eliminar esta tarea?',
-      'Esta acción no se puede deshacer.',
+      'Â¿Eliminar esta tarea?',
+      'Esta acciÃ³n no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -187,7 +187,7 @@ export function MinimalistTaskDetailModal({
               )}
             </View>
 
-            {/* Título y Botón Checkmark */}
+            {/* TÃ­tulo y BotÃ³n Checkmark */}
             <View style={styles.titleRow}>
               <Text style={[styles.title, isCompleted && styles.titleCompleted]}>
                 {task.title}
@@ -208,7 +208,7 @@ export function MinimalistTaskDetailModal({
               </Pressable>
             </View>
 
-            {/* Banner de Fecha Límite */}
+            {/* Banner de Fecha LÃ­mite */}
             <View
               style={[
                 styles.dueBanner,
@@ -296,7 +296,7 @@ export function MinimalistTaskDetailModal({
               </View>
             )}
 
-            {/* Botones de Acción (Editar / Eliminar) */}
+            {/* Botones de AcciÃ³n (Editar / Eliminar) */}
             <View style={styles.actionsRow}>
               <Pressable
                 onPress={() => {

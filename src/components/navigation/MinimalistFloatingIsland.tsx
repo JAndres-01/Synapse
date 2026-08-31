@@ -96,7 +96,7 @@ export function MinimalistFloatingIsland({
           ]}
         />
 
-        {/* Botones de navegación */}
+        {/* Botones de navegaciÃ³n */}
         {TABS.map((tab) => {
           const IconComponent = tab.icon
           const isActive = tab.key === activeTab

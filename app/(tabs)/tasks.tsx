@@ -140,7 +140,7 @@ export default function TasksScreen() {
         return false
       }
 
-      // Filtro de Búsqueda
+      // Filtro de BÃºsqueda
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const matchTitle = task.title?.toLowerCase().includes(q)
@@ -181,7 +181,7 @@ export default function TasksScreen() {
             <Text style={styles.title}>Mis Tareas</Text>
           </View>
           <Text style={styles.subtitle}>
-            Organiza tus entregas, talleres, lecturas y exámenes
+            Organiza tus entregas, talleres, lecturas y exÃ¡menes
           </Text>
         </View>
 
@@ -296,17 +296,17 @@ export default function TasksScreen() {
               <Text style={styles.emptyTitle}>
                 {statusFilter === 'completed'
                   ? 'No hay tareas completadas'
-                  : '¡Al día! No tienes tareas pendientes'}
+                  : 'Â¡Al dÃ­a! No tienes tareas pendientes'}
               </Text>
               <Text style={styles.emptySub}>
-                Toca el botón + flotante para añadir un nuevo pendiente o entrega.
+                Toca el botÃ³n + flotante para aÃ±adir un nuevo pendiente o entrega.
               </Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Botón Flotante (+) Minimalista */}
+      {/* BotÃ³n Flotante (+) Minimalista */}
       <Pressable
         onPress={() => {
           triggerHaptic('medium')
@@ -332,7 +332,7 @@ export default function TasksScreen() {
         }}
       />
 
-      {/* Modal de Creación */}
+      {/* Modal de CreaciÃ³n */}
       {user && (
         <MinimalistCreateTaskModal
           visible={showCreateModal}

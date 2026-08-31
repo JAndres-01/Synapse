@@ -3,14 +3,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 let clientInstance: SupabaseClient | null = null
 
-// Adaptador de almacenamiento hÃ­brido (LocalStorage + Cookies)
+// Adaptador de almacenamiento hÃƒÂ­brido (LocalStorage + Cookies)
 // En iOS PWA standalone, WebKit puede purgar document.cookie en HTTP no encriptado al cerrar la app,
 // pero localStorage permanece 100% persistente y seguro.
 const customAuthStorage = {
   getItem: (key: string): string | null => {
     if (typeof window === 'undefined') return null
     try {
-      // 1. Intentar desde localStorage (mÃ¡xima persistencia en iOS PWA)
+      // 1. Intentar desde localStorage (mÃƒÂ¡xima persistencia en iOS PWA)
       const fromLocal = window.localStorage.getItem(key)
       if (fromLocal) return fromLocal
 
@@ -37,7 +37,7 @@ const customAuthStorage = {
     }
 
     try {
-      // Guardar en cookie con duraciÃ³n de 1 aÃ±o (31536000s)
+      // Guardar en cookie con duraciÃƒÂ³n de 1 aÃƒÂ±o (31536000s)
       document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`
     } catch (e) {
       console.warn('Error escribiendo en cookie:', e)

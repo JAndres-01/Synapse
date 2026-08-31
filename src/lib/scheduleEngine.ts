@@ -46,7 +46,7 @@ export interface LiveStatusResult {
 
 export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatusResult {
   const now = new Date()
-  const day = now.getDay() // 0: Dom, 1: Lun ... 6: Sáb
+  const day = now.getDay() // 0: Dom, 1: Lun ... 6: SÃ¡b
 
   // Fin de semana
   if (day === 0 || day === 6) {
@@ -57,8 +57,8 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       minutesRemaining: 0,
       progressPercentage: 0,
       badgeText: 'Fin de Semana',
-      headline: 'Días de Descanso',
-      subheadline: 'Prepárate para las clases del lunes',
+      headline: 'DÃ­as de Descanso',
+      subheadline: 'PrepÃ¡rate para las clases del lunes',
     }
   }
 
@@ -77,13 +77,13 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       nextSchedule: firstSched || null,
       minutesRemaining: minsToStart,
       progressPercentage: 0,
-      badgeText: 'Próxima Jornada',
+      badgeText: 'PrÃ³xima Jornada',
       headline: firstSched?.subject ? firstSched.subject.name : 'Inicio de Clases',
       subheadline: `Comienza a las 7:00 AM (${minsToStart} min restantes)`,
     }
   }
 
-  // Después de la 1:00 PM
+  // DespuÃ©s de la 1:00 PM
   if (currentMinutes >= schoolEnd) {
     return {
       status: 'after_school',
@@ -92,8 +92,8 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
       minutesRemaining: 0,
       progressPercentage: 100,
       badgeText: 'Jornada Finalizada',
-      headline: 'Clases del Día Completadas',
-      subheadline: 'Revisa tus tareas y pendientes para mañana',
+      headline: 'Clases del DÃ­a Completadas',
+      subheadline: 'Revisa tus tareas y pendientes para maÃ±ana',
     }
   }
 
@@ -127,7 +127,7 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
     if (currentMinutes >= startMins && currentMinutes < endMins) {
       const sched = schedulesToday.find((s) => s.block_number === blockDef.block)
       const nextSched = schedulesToday.find((s) => s.block_number === blockDef.block + 1)
-      const minsRemaining = endMins - currentMinutes
+      const minutesRemaining = endMins - currentMinutes
       const totalBlockMins = endMins - startMins
       const progress = ((currentMinutes - startMins) / totalBlockMins) * 100
 
@@ -140,7 +140,7 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
           progressPercentage: Math.min(100, Math.max(0, progress)),
           badgeText: 'Clase en Vivo',
           headline: sched.subject.name,
-          subheadline: `Quedan ${minsRemaining} min • Termina a las ${blockDef.endTime}`,
+          subheadline: `Quedan ${minutesRemaining} min â€¢ Termina a las ${blockDef.endTime}`,
         }
       } else {
         return {
@@ -151,7 +151,7 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
           progressPercentage: Math.min(100, Math.max(0, progress)),
           badgeText: 'Bloque Libre',
           headline: 'Autoestudio / Sin Clase',
-          subheadline: `Termina a las ${blockDef.endTime} (${minsRemaining} min restantes)`,
+          subheadline: `Termina a las ${blockDef.endTime} (${minutesRemaining} min restantes)`,
         }
       }
     }

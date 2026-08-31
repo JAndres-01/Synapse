@@ -150,7 +150,7 @@ export default function ScheduleScreen() {
                 <Calendar size={18} color="#818CF8" />
                 <Text style={styles.title}>Horario de Clases</Text>
               </View>
-              <Text style={styles.subtitle}>4 bloques diarios • 7:00 AM - 1:00 PM</Text>
+              <Text style={styles.subtitle}>4 bloques diarios â€¢ 7:00 AM - 1:00 PM</Text>
             </View>
 
             <Pressable

@@ -47,6 +47,9 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
+// Curva oficial de aceleración y desaceleración de hojas y teclados en iOS
+const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+
 interface MinimalistTaskModalProps {
   mode: TaskModalMode
   task: Task | null
@@ -94,31 +97,31 @@ export function MinimalistTaskModal({
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
 
-  // Sincronización 1:1 con el teclado de iOS por medio de transform translateY nativo
+  // Sincronización 1:1 con la curva y velocidad del teclado de iOS
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
 
     const showSub = Keyboard.addListener(showEvent, (e) => {
       const kbHeight = e.endCoordinates.height
-      const duration = e.duration && e.duration > 0 ? e.duration : 250
+      const duration = e.duration && e.duration > 0 ? e.duration : 220
       const targetOffset = -Math.max(0, kbHeight - insets.bottom)
 
       Animated.timing(keyboardTranslateY, {
         toValue: targetOffset,
         duration: duration,
-        easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
+        easing: APPLE_EASING,
         useNativeDriver: true,
       }).start()
     })
 
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
-      const duration = e.duration && e.duration > 0 ? e.duration : 250
+      const duration = e.duration && e.duration > 0 ? e.duration : 200
 
       Animated.timing(keyboardTranslateY, {
         toValue: 0,
         duration: duration,
-        easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
+        easing: APPLE_EASING,
         useNativeDriver: true,
       }).start()
     })
@@ -156,38 +159,39 @@ export function MinimalistTaskModal({
       }
       setActivePicker(null)
 
-      // Entrada elástica suave en GPU Driver
+      // Entrada sincronizada y veloz coincidiendo exactamente con la subida del teclado
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 180,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
+        Animated.timing(slideAnim, {
           toValue: 0,
-          stiffness: 460,
-          damping: 32,
-          mass: 0.7,
+          duration: 220,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }),
       ]).start()
 
+      // Enfoque inmediato en el mismo frame para que el teclado arranque en paralelo exacto con la hoja
       if (mode === 'create') {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           titleInputRef.current?.focus()
-        }, 60)
+        })
       }
     } else {
       Keyboard.dismiss()
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 180,
+          duration: 160,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
-          duration: 220,
+          duration: 200,
+          easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(keyboardTranslateY, {
@@ -207,12 +211,13 @@ export function MinimalistTaskModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 220,
+        duration: 200,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(keyboardTranslateY, {
@@ -313,9 +318,9 @@ export function MinimalistTaskModal({
       setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
     }
     setCurrentView('form')
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       titleInputRef.current?.focus()
-    }, 80)
+    })
   }
 
   // Guardar Cambios o Crear Nueva Tarea

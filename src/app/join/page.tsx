@@ -29,22 +29,29 @@ export default function JoinClassroomPage() {
   // Unirse a un salón existente mediante PIN
   const handleJoinByPin = async (e: React.FormEvent) => {
     e.preventDefault()
-    const cleanCode = inviteCode.trim().toUpperCase()
-    if (!cleanCode || !user) return
+    const raw = inviteCode.trim().toUpperCase()
+    if (!raw || !user) return
 
     try {
       setLoading(true)
       setErrorMsg(null)
 
-      // 1. Buscar el salón por código PIN
-      const { data: room, error: roomErr } = await supabase
+      // Extraer números (ej: de "syn481" o "481" o "SYN-481" extrae "481")
+      const digitsMatch = raw.match(/\d+/)
+      const digits = digitsMatch ? digitsMatch[0] : ''
+      const withHyphen = digits ? `SYN-${digits}` : raw
+      const withoutHyphen = digits ? `SYN${digits}` : raw
+
+      // 1. Buscar el salón por código PIN en Supabase
+      const { data: rooms, error: roomErr } = await supabase
         .from('classrooms')
         .select('*')
-        .eq('invite_code', cleanCode)
-        .single()
+        .or(`invite_code.ilike.${raw},invite_code.ilike.${withHyphen},invite_code.ilike.${withoutHyphen},invite_code.ilike.%${digits}%`)
+
+      const room = rooms && rooms.length > 0 ? rooms[0] : null
 
       if (roomErr || !room) {
-        throw new Error('Código de salón no encontrado. Verifica el PIN con tu delegado.')
+        throw new Error(`Salón con PIN "${raw}" no encontrado. Verifica si el código es ${withHyphen}.`)
       }
 
       // 2. Unir al usuario como miembro en classroom_members

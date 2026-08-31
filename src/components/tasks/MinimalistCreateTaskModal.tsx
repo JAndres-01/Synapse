@@ -13,6 +13,7 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native'
 import type { Task, Subject, TaskType, TaskAttachment } from '@/types/personal'
 import {
@@ -22,6 +23,8 @@ import {
   Link2,
   Check,
   ChevronDown,
+  Calendar,
+  Layers,
   Paperclip,
   Trash2,
 } from 'lucide-react-native'
@@ -54,15 +57,14 @@ export function MinimalistCreateTaskModal({
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [taskType, setTaskType] = useState<TaskType>('individual')
   const [dueDate, setDueDate] = useState<string>('')
-  const [activeDatePreset, setActiveDatePreset] = useState<'tomorrow' | 'next_class' | 'week' | null>(null)
   const [attachments, setAttachments] = useState<TaskAttachment[]>([])
-  const [showSubjectPicker, setShowSubjectPicker] = useState(false)
-  const [showAddLink, setShowAddLink] = useState(false)
+
+  // Menús desplegables minimalistas
+  const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
-  const [linkTitle, setLinkTitle] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Animación del modal: Backdrop con fade estático + Sheet con deslizamiento elástico
+  // Animaciones del modal
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const [modalVisible, setModalVisible] = useState(visible)
@@ -117,8 +119,8 @@ export function MinimalistCreateTaskModal({
       setTaskType('individual')
       setDueDate('')
       setAttachments([])
-      setActiveDatePreset(null)
     }
+    setActivePicker(null)
   }, [initialTask, visible, subjects])
 
   const handleSmoothClose = () => {
@@ -139,29 +141,38 @@ export function MinimalistCreateTaskModal({
     })
   }
 
-  const setPresetDate = (preset: 'tomorrow' | 'next_class' | 'week') => {
+  const setPresetDate = (preset: 'today' | 'tomorrow' | 'friday' | 'next_week' | 'clear') => {
     triggerHaptic('selection')
-    setActiveDatePreset(preset)
     const now = new Date()
 
-    if (preset === 'tomorrow') {
+    if (preset === 'clear') {
+      setDueDate('')
+      setActivePicker(null)
+      return
+    }
+
+    if (preset === 'today') {
+      now.setHours(23, 59, 0, 0)
+      setDueDate(now.toISOString())
+    } else if (preset === 'tomorrow') {
       const tomorrow = new Date(now)
       tomorrow.setDate(tomorrow.getDate() + 1)
       tomorrow.setHours(23, 59, 0, 0)
       setDueDate(tomorrow.toISOString())
-    } else if (preset === 'week') {
+    } else if (preset === 'friday') {
       const friday = new Date(now)
       const day = friday.getDay()
       const diff = (5 - day + 7) % 7 || 7
       friday.setDate(friday.getDate() + diff)
       friday.setHours(23, 59, 0, 0)
       setDueDate(friday.toISOString())
-    } else if (preset === 'next_class') {
-      const in2Days = new Date(now)
-      in2Days.setDate(in2Days.getDate() + 2)
-      in2Days.setHours(7, 0, 0, 0)
-      setDueDate(in2Days.toISOString())
+    } else if (preset === 'next_week') {
+      const nextWeek = new Date(now)
+      nextWeek.setDate(nextWeek.getDate() + 7)
+      nextWeek.setHours(23, 59, 0, 0)
+      setDueDate(nextWeek.toISOString())
     }
+    setActivePicker(null)
   }
 
   const handlePickImage = async () => {
@@ -196,7 +207,7 @@ export function MinimalistCreateTaskModal({
     triggerHaptic('light')
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para tomar fotos de pizarrones.')
+      Alert.alert('Permiso requerido', 'Se requiere acceso a la cámara para tomar fotos.')
       return
     }
 
@@ -228,15 +239,14 @@ export function MinimalistCreateTaskModal({
 
     const newAttachment: TaskAttachment = {
       id: Math.random().toString(36).substring(7),
-      file_name: linkTitle.trim() || formatted,
+      file_name: formatted.replace(/^https?:\/\/(www\.)?/, '').slice(0, 24),
       file_url: formatted,
       file_type: 'link',
     }
 
     setAttachments((prev) => [...prev, newAttachment])
     setLinkUrl('')
-    setLinkTitle('')
-    setShowAddLink(false)
+    setActivePicker(null)
     triggerHaptic('success')
   }
 
@@ -247,7 +257,7 @@ export function MinimalistCreateTaskModal({
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Campo requerido', 'Por favor ingresa el título de la tarea.')
+      Alert.alert('Título requerido', 'Por favor escribe el nombre de la tarea.')
       return
     }
 
@@ -298,6 +308,26 @@ export function MinimalistCreateTaskModal({
     }
   }
 
+  const formatDueDateLabel = (dateStr?: string) => {
+    if (!dateStr) return 'Sin fecha'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return 'Sin fecha'
+      const now = new Date()
+      const isToday = d.toDateString() === now.toDateString()
+      const tomorrow = new Date(now)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const isTomorrow = d.toDateString() === tomorrow.toDateString()
+
+      if (isToday) return 'Hoy'
+      if (isTomorrow) return 'Mañana'
+      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+      return `${days[d.getDay()]} ${d.getDate()}`
+    } catch {
+      return 'Sin fecha'
+    }
+  }
+
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
   const isWhite = selectedSubject?.color === '#FFFFFF'
 
@@ -309,313 +339,309 @@ export function MinimalistCreateTaskModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalRoot}
       >
-        {/* Backdrop Estático con Fade (NO se desliza) */}
+        {/* Backdrop Estático con Fade */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante */}
+        {/* Hoja Inferior Ultra-Minimalista */}
         <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
-          {/* Header */}
+          {/* Header Minimalista */}
           <View style={styles.sheetHeader}>
             <View style={styles.dragHandle} />
-            <Text style={styles.sheetTitle}>
-              {initialTask ? 'Editar Tarea' : 'Nueva Tarea'}
-            </Text>
-            <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.closeBtn}>
-              <X size={18} color="#A1A1AA" />
-            </Pressable>
+            <View style={styles.headerRow}>
+              <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.cancelBtn}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
+              </Pressable>
+
+              <Text style={styles.sheetTitle}>
+                {initialTask ? 'Editar Tarea' : 'Nueva Tarea'}
+              </Text>
+
+              <Pressable
+                onPress={handleSave}
+                disabled={loading}
+                hitSlop={12}
+                style={styles.saveHeaderBtn}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveHeaderBtnText}>Guardar</Text>
+                )}
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Título de la Tarea */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>TÍTULO *</Text>
-              <TextInput
-                placeholder="Ej. Taller #2 de Cálculo, Ensayo..."
-                placeholderTextColor="#71717A"
-                value={title}
-                onChangeText={setTitle}
-                style={styles.textInput}
-              />
-            </View>
+            {/* Input de Título Grande y Limpio (Sin recuadro tosco) */}
+            <TextInput
+              placeholder="¿Qué tienes que hacer?"
+              placeholderTextColor="#52525B"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.cleanTitleInput}
+              autoFocus={!initialTask}
+            />
 
-            {/* Selector de Materia */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>MATERIA</Text>
+            {/* Input de Descripción Limpio */}
+            <TextInput
+              placeholder="Añadir notas, detalles o páginas..."
+              placeholderTextColor="#52525B"
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              style={styles.cleanDescInput}
+            />
+
+            {/* Barra de Atributos Rápidos (Cápsulas Horizontales Minimalistas) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.attributeBar}
+            >
+              {/* Selector de Materia */}
               <Pressable
                 onPress={() => {
-                  triggerHaptic('light')
-                  setShowSubjectPicker(!showSubjectPicker)
+                  triggerHaptic('selection')
+                  setActivePicker(activePicker === 'subject' ? null : 'subject')
                 }}
                 style={[
-                  styles.subjectPickerBtn,
+                  styles.attrPill,
                   selectedSubject && {
+                    backgroundColor: isWhite
+                      ? 'rgba(255, 255, 255, 0.15)'
+                      : `${selectedSubject.color || '#FFFFFF'}22`,
                     borderColor: isWhite
                       ? 'rgba(255, 255, 255, 0.4)'
                       : `${selectedSubject.color || '#FFFFFF'}60`,
-                    backgroundColor: isWhite
-                      ? 'rgba(255, 255, 255, 0.12)'
-                      : `${selectedSubject.color || '#FFFFFF'}18`,
                   },
                 ]}
               >
-                {selectedSubject ? (
-                  <View style={styles.selectedSubjRow}>
-                    <View
-                      style={[
-                        styles.dot,
-                        { backgroundColor: selectedSubject.color || '#FFFFFF' },
-                        isWhite && styles.whiteDotBorder,
-                      ]}
-                    />
-                    <Text style={styles.selectedSubjText}>{selectedSubject.name}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.placeholderSubjText}>Selecciona una materia...</Text>
-                )}
-                <ChevronDown size={14} color="#A1A1AA" />
+                <View
+                  style={[
+                    styles.dot,
+                    { backgroundColor: selectedSubject?.color || '#71717A' },
+                    isWhite && styles.whiteDotBorder,
+                  ]}
+                />
+                <Text style={styles.attrPillText}>
+                  {selectedSubject ? selectedSubject.name : 'Materia'}
+                </Text>
+                <ChevronDown size={12} color="#71717A" />
               </Pressable>
 
-              {/* Lista Desplegable de Materias */}
-              {showSubjectPicker && (
-                <View style={styles.subjectPickerDropdown}>
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('selection')
-                      setSelectedSubjectId(null)
-                      setShowSubjectPicker(false)
-                    }}
-                    style={[
-                      styles.subjDropdownItem,
-                      selectedSubjectId === null && styles.subjDropdownItemActive,
-                    ]}
-                  >
-                    <Text style={styles.subjDropdownItemText}>General (Sin materia)</Text>
-                    {selectedSubjectId === null && <Check size={14} color="#FFFFFF" />}
-                  </Pressable>
+              {/* Selector de Fecha */}
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('selection')
+                  setActivePicker(activePicker === 'date' ? null : 'date')
+                }}
+                style={[
+                  styles.attrPill,
+                  Boolean(dueDate) && styles.attrPillActive,
+                ]}
+              >
+                <Calendar size={13} color={dueDate ? '#FFFFFF' : '#71717A'} />
+                <Text
+                  style={[
+                    styles.attrPillText,
+                    Boolean(dueDate) && styles.attrPillTextActive,
+                  ]}
+                >
+                  {formatDueDateLabel(dueDate)}
+                </Text>
+                <ChevronDown size={12} color="#71717A" />
+              </Pressable>
 
-                  {subjects.map((s) => {
-                    const isSelected = selectedSubjectId === s.id
-                    const isSubjWhite = s.color === '#FFFFFF'
-                    return (
-                      <Pressable
-                        key={s.id}
-                        onPress={() => {
-                          triggerHaptic('selection')
-                          setSelectedSubjectId(s.id)
-                          setShowSubjectPicker(false)
-                        }}
-                        style={[
-                          styles.subjDropdownItem,
-                          isSelected && styles.subjDropdownItemActive,
-                        ]}
-                      >
-                        <View style={styles.selectedSubjRow}>
-                          <View
-                            style={[
-                              styles.dot,
-                              { backgroundColor: s.color || '#FFFFFF' },
-                              isSubjWhite && styles.whiteDotBorder,
-                            ]}
-                          />
-                          <Text style={styles.subjDropdownItemText}>{s.name}</Text>
-                        </View>
-                        {isSelected && <Check size={14} color={s.color || '#FFFFFF'} />}
-                      </Pressable>
-                    )
-                  })}
-                </View>
-              )}
-            </View>
+              {/* Selector de Tipo */}
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('selection')
+                  setActivePicker(activePicker === 'type' ? null : 'type')
+                }}
+                style={[
+                  styles.attrPill,
+                  taskType !== 'individual' && styles.attrPillActive,
+                ]}
+              >
+                <Layers size={13} color={taskType !== 'individual' ? '#FFFFFF' : '#71717A'} />
+                <Text
+                  style={[
+                    styles.attrPillText,
+                    taskType !== 'individual' && styles.attrPillTextActive,
+                  ]}
+                >
+                  {taskType}
+                </Text>
+                <ChevronDown size={12} color="#71717A" />
+              </Pressable>
 
-            {/* Tipo de Tarea (Segmented Control Muted) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>TIPO DE ENTREGA</Text>
-              <View style={styles.typeRow}>
-                {(['individual', 'grupal', 'proyecto', 'examen'] as TaskType[]).map((t) => {
-                  const isSelected = taskType === t
+              {/* Foto Cámara */}
+              <Pressable onPress={handleTakePhoto} style={styles.attrIconPill}>
+                <Camera size={15} color="#A1A1AA" />
+              </Pressable>
+
+              {/* Galería */}
+              <Pressable onPress={handlePickImage} style={styles.attrIconPill}>
+                <ImageIcon size={15} color="#A1A1AA" />
+              </Pressable>
+
+              {/* Enlace */}
+              <Pressable
+                onPress={() => {
+                  triggerHaptic('light')
+                  setActivePicker(activePicker === 'link' ? null : 'link')
+                }}
+                style={styles.attrIconPill}
+              >
+                <Link2 size={15} color="#A1A1AA" />
+              </Pressable>
+            </ScrollView>
+
+            {/* Menús Desplegables de Selección Rápida */}
+            {activePicker === 'subject' && (
+              <View style={styles.inlineMenu}>
+                <Text style={styles.inlineMenuHeader}>Elegir materia</Text>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('selection')
+                    setSelectedSubjectId(null)
+                    setActivePicker(null)
+                  }}
+                  style={[
+                    styles.inlineMenuItem,
+                    selectedSubjectId === null && styles.inlineMenuItemActive,
+                  ]}
+                >
+                  <Text style={styles.inlineMenuItemText}>General (Sin materia)</Text>
+                  {selectedSubjectId === null && <Check size={14} color="#FFFFFF" />}
+                </Pressable>
+
+                {subjects.map((s) => {
+                  const isSelected = selectedSubjectId === s.id
+                  const isSubjWhite = s.color === '#FFFFFF'
                   return (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => {
+                        triggerHaptic('selection')
+                        setSelectedSubjectId(s.id)
+                        setActivePicker(null)
+                      }}
+                      style={[
+                        styles.inlineMenuItem,
+                        isSelected && styles.inlineMenuItemActive,
+                      ]}
+                    >
+                      <View style={styles.inlineMenuLeft}>
+                        <View
+                          style={[
+                            styles.dot,
+                            { backgroundColor: s.color || '#FFFFFF' },
+                            isSubjWhite && styles.whiteDotBorder,
+                          ]}
+                        />
+                        <Text style={styles.inlineMenuItemText}>{s.name}</Text>
+                      </View>
+                      {isSelected && <Check size={14} color={s.color || '#FFFFFF'} />}
+                    </Pressable>
+                  )
+                })}
+              </View>
+            )}
+
+            {activePicker === 'date' && (
+              <View style={styles.inlineMenu}>
+                <Text style={styles.inlineMenuHeader}>Fecha de entrega</Text>
+                <View style={styles.dateOptionsRow}>
+                  <Pressable onPress={() => setPresetDate('today')} style={styles.dateOptionBtn}>
+                    <Text style={styles.dateOptionText}>Hoy</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPresetDate('tomorrow')} style={styles.dateOptionBtn}>
+                    <Text style={styles.dateOptionText}>Mañana</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPresetDate('friday')} style={styles.dateOptionBtn}>
+                    <Text style={styles.dateOptionText}>Viernes</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setPresetDate('next_week')} style={styles.dateOptionBtn}>
+                    <Text style={styles.dateOptionText}>7 días</Text>
+                  </Pressable>
+                  {Boolean(dueDate) && (
+                    <Pressable onPress={() => setPresetDate('clear')} style={styles.dateOptionClearBtn}>
+                      <Text style={styles.dateOptionClearText}>Quitar</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            )}
+
+            {activePicker === 'type' && (
+              <View style={styles.inlineMenu}>
+                <Text style={styles.inlineMenuHeader}>Tipo de tarea</Text>
+                <View style={styles.typeOptionsRow}>
+                  {(['individual', 'grupal', 'proyecto', 'examen'] as TaskType[]).map((t) => (
                     <Pressable
                       key={t}
                       onPress={() => {
                         triggerHaptic('selection')
                         setTaskType(t)
+                        setActivePicker(null)
                       }}
                       style={[
-                        styles.typePill,
-                        isSelected && styles.typePillActive,
+                        styles.typeOptionBtn,
+                        taskType === t && styles.typeOptionBtnActive,
                       ]}
                     >
                       <Text
                         style={[
-                          styles.typePillText,
-                          isSelected && styles.typePillTextActive,
+                          styles.typeOptionText,
+                          taskType === t && styles.typeOptionTextActive,
                         ]}
                       >
                         {t}
                       </Text>
                     </Pressable>
-                  )
-                })}
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
 
-            {/* Fecha Límite Rápida */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>FECHA LÍMITE RÁPIDA</Text>
-              <View style={styles.presetRow}>
-                <Pressable
-                  onPress={() => setPresetDate('tomorrow')}
-                  style={[
-                    styles.presetPill,
-                    activeDatePreset === 'tomorrow' && styles.presetPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.presetText,
-                      activeDatePreset === 'tomorrow' && styles.presetTextActive,
-                    ]}
-                  >
-                    Mañana 11:59 PM
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setPresetDate('week')}
-                  style={[
-                    styles.presetPill,
-                    activeDatePreset === 'week' && styles.presetPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.presetText,
-                      activeDatePreset === 'week' && styles.presetTextActive,
-                    ]}
-                  >
-                    Viernes
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => setPresetDate('next_class')}
-                  style={[
-                    styles.presetPill,
-                    activeDatePreset === 'next_class' && styles.presetPillActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.presetText,
-                      activeDatePreset === 'next_class' && styles.presetTextActive,
-                    ]}
-                  >
-                    En 2 días
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Descripción / Notas */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>NOTAS / INSTRUCCIONES</Text>
-              <TextInput
-                placeholder="Detalles, páginas del libro, observaciones..."
-                placeholderTextColor="#71717A"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                numberOfLines={3}
-                style={[styles.textInput, styles.textArea]}
-              />
-            </View>
-
-            {/* Fotos y Adjuntos */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>ADJUNTOS Y FOTOS DE PIZARRÓN</Text>
-              <View style={styles.attachmentButtonsRow}>
-                <Pressable onPress={handleTakePhoto} style={styles.attBtn}>
-                  <Camera size={14} color="#FFFFFF" />
-                  <Text style={styles.attBtnText}>Foto</Text>
-                </Pressable>
-
-                <Pressable onPress={handlePickImage} style={styles.attBtn}>
-                  <ImageIcon size={14} color="#FFFFFF" />
-                  <Text style={styles.attBtnText}>Galería</Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('light')
-                    setShowAddLink(!showAddLink)
-                  }}
-                  style={styles.attBtn}
-                >
-                  <Link2 size={14} color="#FFFFFF" />
-                  <Text style={styles.attBtnText}>Enlace</Text>
-                </Pressable>
-              </View>
-
-              {/* Formulario de Enlace */}
-              {showAddLink && (
-                <View style={styles.linkForm}>
+            {activePicker === 'link' && (
+              <View style={styles.inlineMenu}>
+                <Text style={styles.inlineMenuHeader}>Pegar enlace web o Drive</Text>
+                <View style={styles.linkRow}>
                   <TextInput
-                    placeholder="URL (ej: drive.google.com/...)"
+                    placeholder="https://..."
                     placeholderTextColor="#71717A"
                     value={linkUrl}
                     onChangeText={setLinkUrl}
-                    style={styles.linkInput}
+                    style={styles.cleanLinkInput}
+                    autoCapitalize="none"
                   />
-                  <TextInput
-                    placeholder="Nombre del enlace (opcional)"
-                    placeholderTextColor="#71717A"
-                    value={linkTitle}
-                    onChangeText={setLinkTitle}
-                    style={styles.linkInput}
-                  />
-                  <Pressable onPress={handleAddLink} style={styles.linkAddBtn}>
-                    <Text style={styles.linkAddBtnText}>Agregar Enlace</Text>
+                  <Pressable onPress={handleAddLink} style={styles.linkConfirmBtn}>
+                    <Text style={styles.linkConfirmBtnText}>Añadir</Text>
                   </Pressable>
                 </View>
-              )}
+              </View>
+            )}
 
-              {/* Lista de Adjuntos Cargados */}
-              {attachments.length > 0 && (
-                <View style={styles.attachmentsList}>
-                  {attachments.map((a) => (
-                    <View key={a.id} style={styles.attachmentItem}>
-                      <Paperclip size={13} color="#A1A1AA" />
-                      <Text style={styles.attachmentItemText} numberOfLines={1}>
-                        {a.file_name}
-                      </Text>
-                      <Pressable
-                        onPress={() => handleRemoveAttachment(a.id)}
-                        hitSlop={8}
-                      >
-                        <Trash2 size={13} color="#EF4444" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Botón Guardar Principal */}
-            <Pressable
-              onPress={handleSave}
-              disabled={loading}
-              style={styles.saveBtn}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#09090B" />
-              ) : (
-                <Text style={styles.saveBtnText}>
-                  {initialTask ? 'Guardar Cambios' : 'Crear Tarea'}
-                </Text>
-              )}
-            </Pressable>
+            {/* Adjuntos Cargados (Píldoras Delicadas) */}
+            {attachments.length > 0 && (
+              <View style={styles.attachmentsSection}>
+                {attachments.map((a) => (
+                  <View key={a.id} style={styles.attachedPill}>
+                    <Paperclip size={12} color="#A1A1AA" />
+                    <Text style={styles.attachedPillText} numberOfLines={1}>
+                      {a.file_name}
+                    </Text>
+                    <Pressable onPress={() => handleRemoveAttachment(a.id)} hitSlop={10}>
+                      <X size={12} color="#71717A" />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
           </ScrollView>
         </Animated.View>
       </KeyboardAvoidingView>
@@ -641,208 +667,215 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '90%',
-    paddingBottom: 36,
+    maxHeight: '85%',
+    paddingBottom: 34,
   },
   sheetHeader: {
     alignItems: 'center',
     paddingTop: 10,
-    paddingBottom: 10,
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    paddingBottom: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   dragHandle: {
     width: 36,
     height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 18,
+  },
+  cancelBtn: {
+    paddingVertical: 4,
+  },
+  cancelBtnText: {
+    color: '#A1A1AA',
+    fontSize: 14,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  closeBtn: {
-    position: 'absolute',
-    right: 18,
-    top: 14,
-    padding: 4,
+  saveHeaderBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  saveHeaderBtnText: {
+    color: '#09090B',
+    fontSize: 13,
+    fontWeight: '800',
   },
   sheetScroll: {
     paddingHorizontal: 20,
     paddingTop: 14,
   },
-  inputGroup: {
-    marginBottom: 16,
-    gap: 6,
-  },
-  label: {
-    color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-  textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  cleanTitleInput: {
     color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    paddingVertical: 8,
+    letterSpacing: -0.4,
+  },
+  cleanDescInput: {
+    color: '#A1A1AA',
     fontSize: 14,
+    lineHeight: 20,
+    paddingVertical: 8,
+    minHeight: 60,
   },
-  textArea: {
-    height: 75,
-    textAlignVertical: 'top',
-  },
-  subjectPickerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  selectedSubjRow: {
+  attributeBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 12,
   },
-  selectedSubjText: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  placeholderSubjText: {
-    color: '#71717A',
-    fontSize: 13.5,
-  },
-  subjectPickerDropdown: {
-    backgroundColor: '#18181B',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#27272A',
-    marginTop: 6,
-    padding: 6,
-    gap: 4,
-  },
-  subjDropdownItem: {
+  attrPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  subjDropdownItemActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  attrPillActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  subjDropdownItemText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+  attrPillText: {
+    color: '#D4D4D8',
+    fontSize: 12,
     fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  attrPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  attrIconPill: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   whiteDotBorder: {
     borderWidth: 0.8,
     borderColor: '#71717A',
   },
-  typeRow: {
+  inlineMenu: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 6,
+    gap: 6,
+  },
+  inlineMenuHeader: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  inlineMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  inlineMenuItemActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  inlineMenuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inlineMenuItemText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  dateOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  dateOptionBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  dateOptionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dateOptionClearBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  dateOptionClearText: {
+    color: '#F87171',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  typeOptionsRow: {
     flexDirection: 'row',
     gap: 6,
   },
-  typePill: {
+  typeOptionBtn: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
-  typePillActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+  typeOptionBtnActive: {
+    backgroundColor: '#FFFFFF',
   },
-  typePillText: {
+  typeOptionText: {
     color: '#71717A',
     fontSize: 11.5,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  typePillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  typeOptionTextActive: {
+    color: '#09090B',
+    fontWeight: '800',
   },
-  presetRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  presetPill: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  presetPillActive: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderColor: 'rgba(245, 158, 11, 0.4)',
-  },
-  presetText: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  presetTextActive: {
-    color: '#FDE68A',
-    fontWeight: '700',
-  },
-  attachmentButtonsRow: {
+  linkRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  attBtn: {
+  cleanLinkInput: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
-    paddingVertical: 10,
-  },
-  attBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  linkForm: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
-    padding: 10,
-    gap: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  linkInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 10,
     paddingHorizontal: 10,
@@ -850,54 +883,37 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
   },
-  linkAddBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  linkConfirmBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
     borderRadius: 10,
-    paddingVertical: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  linkAddBtnText: {
-    color: '#FFFFFF',
+  linkConfirmBtnText: {
+    color: '#09090B',
     fontSize: 12,
     fontWeight: '700',
   },
-  attachmentsList: {
-    marginTop: 8,
+  attachmentsSection: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
+    marginTop: 10,
   },
-  attachmentItem: {
+  attachedPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    maxWidth: '100%',
   },
-  attachmentItemText: {
+  attachedPillText: {
     color: '#D4D4D8',
-    fontSize: 12,
-    flex: 1,
-  },
-  saveBtn: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  saveBtnText: {
-    color: '#09090B',
-    fontSize: 14.5,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    fontSize: 11.5,
+    maxWidth: 160,
   },
 })

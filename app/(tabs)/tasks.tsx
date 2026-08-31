@@ -56,19 +56,19 @@ export default function TasksScreen() {
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
 
-  // Estado del Buscador Dinámico con animación elástica de rebote
+  // Estado del Buscador Dinámico
   const [isSearchActive, setIsSearchActive] = useState(false)
   const searchInputRef = useRef<TextInput>(null)
   const searchScaleAnim = useRef(new Animated.Value(0.9)).current
   const searchOpacityAnim = useRef(new Animated.Value(0)).current
 
-  // Estado del Menú de Filtro de Materia con animación suave iOS
+  // Estado del Menú de Filtro de Materia
   const [showSubjectMenu, setShowSubjectMenu] = useState(false)
   const [subjMenuVisible, setSubjMenuVisible] = useState(false)
   const menuFadeAnim = useRef(new Animated.Value(0)).current
   const menuSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
-  // Disparador de Ráfagas de Confetti (desde abajo hacia arriba)
+  // Disparador de Confetti
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modales de Tarea
@@ -76,16 +76,16 @@ export default function TasksScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
-  // IDs de tareas que acaban de completarse y están en transición suave
+  // IDs de tareas en transición
   const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
 
-  // Animación del Segmented Control Deslizante
+  // Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
   const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 3)
   const statusIndex = statusFilter === 'pending' ? 0 : statusFilter === 'completed' ? 1 : 2
   const slideAnim = useRef(new Animated.Value(0)).current
 
-  // Animación del botón flotante FAB
+  // FAB animation
   const fabScaleAnim = useRef(new Animated.Value(1)).current
 
   const loadData = useCallback(async () => {
@@ -134,7 +134,6 @@ export default function TasksScreen() {
     loadData()
   }, [loadData])
 
-  // Manejo de apertura / cierre animado del menú de materias
   useEffect(() => {
     if (showSubjectMenu) {
       setSubjMenuVisible(true)
@@ -170,7 +169,6 @@ export default function TasksScreen() {
     }
   }, [showSubjectMenu, menuFadeAnim, menuSlideAnim])
 
-  // Desactivar automáticamente el buscador cuando se oculta el teclado si no hay texto
   useEffect(() => {
     const hideListener = Keyboard.addListener('keyboardDidHide', () => {
       if (searchQuery.trim() === '') {
@@ -183,7 +181,6 @@ export default function TasksScreen() {
     }
   }, [searchQuery])
 
-  // Animación de deslizamiento de la pastilla activa
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: statusIndex * segmentWidth,
@@ -203,7 +200,6 @@ export default function TasksScreen() {
     setStatusFilter(newStatus)
   }
 
-  // Activar Buscador con Rebote Elástico
   const handleOpenSearch = () => {
     triggerHaptic('light')
     setIsSearchActive(true)
@@ -228,7 +224,6 @@ export default function TasksScreen() {
     })
   }
 
-  // Cancelar Buscador con Rebote Elástico Inverso
   const handleCloseSearch = () => {
     triggerHaptic('light')
     Keyboard.dismiss()
@@ -251,7 +246,6 @@ export default function TasksScreen() {
     })
   }
 
-  // Toggle de Estado con transición fluida sin apilamientos
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
@@ -312,14 +306,21 @@ export default function TasksScreen() {
     supabase.from('tasks').delete().eq('id', taskId).then(() => {})
   }
 
+  // Flujo seguro y fluido para abrir el editor desde el detalle
+  const handleOpenEditFromDetail = (task: Task) => {
+    setSelectedTask(null)
+    setTaskToEdit(task)
+    setTimeout(() => {
+      setShowCreateModal(true)
+    }, 80)
+  }
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      // Filtro de Materia
       if (selectedSubjectId !== 'all' && task.subject_id !== selectedSubjectId) {
         return false
       }
 
-      // Filtro de Búsqueda
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const matchTitle = task.title?.toLowerCase().includes(q)
@@ -327,7 +328,6 @@ export default function TasksScreen() {
         if (!matchTitle && !matchSubj) return false
       }
 
-      // Filtro de Estado
       const isTransitioning = transitioningTaskIds.includes(task.id)
       if (statusFilter === 'pending') {
         if (task.status === 'completed' && !isTransitioning) return false
@@ -366,7 +366,6 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.screenWrapper}>
-      {/* Cañón de Micro-Confetti Disparando de Abajo Hacia Arriba */}
       <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
 
       <ScrollView
@@ -382,7 +381,6 @@ export default function TasksScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
       >
-        {/* Cabecera Principal / Buscador con Rebote Elástico */}
         {!isSearchActive ? (
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -391,7 +389,6 @@ export default function TasksScreen() {
                 <Text style={styles.title}>Mis Tareas</Text>
               </View>
 
-              {/* Botón de Búsqueda */}
               <Pressable
                 onPress={handleOpenSearch}
                 style={styles.searchIconButton}
@@ -405,7 +402,6 @@ export default function TasksScreen() {
             </Text>
           </View>
         ) : (
-          /* Buscador Dinámico con Rebote Elástico */
           <Animated.View
             style={[
               styles.dynamicSearchContainer,
@@ -493,7 +489,6 @@ export default function TasksScreen() {
             <ChevronDown size={14} color="#A1A1AA" />
           </Pressable>
 
-          {/* Tag de reinicio rápido si hay un filtro aplicado */}
           {selectedSubjectId !== 'all' && (
             <Pressable
               onPress={() => {
@@ -507,14 +502,13 @@ export default function TasksScreen() {
           )}
         </View>
 
-        {/* Segmented Control iOS con Colores Muted Elegantes (No Neón) */}
+        {/* Segmented Control iOS */}
         <View
           style={styles.segmentedContainer}
           onLayout={(e: LayoutChangeEvent) => {
             setSegmentContainerWidth(e.nativeEvent.layout.width)
           }}
         >
-          {/* Pastilla Activa Deslizante con Color Dinámico Tenue */}
           <Animated.View
             style={[
               styles.activeSegmentPill,
@@ -528,7 +522,6 @@ export default function TasksScreen() {
             ]}
           />
 
-          {/* Botones de Selección */}
           <Pressable
             onPress={() => handleStatusChange('pending')}
             style={styles.segmentButton}
@@ -572,7 +565,7 @@ export default function TasksScreen() {
           </Pressable>
         </View>
 
-        {/* Lista Plana y Abierta con Deslizamiento Elástico Suave */}
+        {/* Lista Plana y Abierta */}
         <View style={styles.tasksListWrapper}>
           {filteredTasks.length > 0 ? (
             <View style={styles.openTaskRows}>
@@ -606,7 +599,7 @@ export default function TasksScreen() {
         </View>
       </ScrollView>
 
-      {/* Modal Desplegable de Selección de Materia con Backdrop Estático y Sheet Deslizante */}
+      {/* Modal Desplegable de Filtro de Materia */}
       {subjMenuVisible && (
         <Modal
           visible={subjMenuVisible}
@@ -641,7 +634,6 @@ export default function TasksScreen() {
               </View>
 
               <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
-                {/* Opción Todas */}
                 <Pressable
                   onPress={() => {
                     triggerHaptic('selection')
@@ -664,7 +656,6 @@ export default function TasksScreen() {
                   )}
                 </Pressable>
 
-                {/* Lista de Materias Registradas */}
                 {subjects.map((subj) => {
                   const isSelected = selectedSubjectId === subj.id
                   const isWhite = subj.color === '#FFFFFF'
@@ -711,7 +702,7 @@ export default function TasksScreen() {
         </Modal>
       )}
 
-      {/* Botón Flotante (+) con Física de Resorte */}
+      {/* Botón Flotante (+) */}
       <Animated.View
         style={[
           styles.fabWrapper,
@@ -742,14 +733,10 @@ export default function TasksScreen() {
         onClose={() => setSelectedTask(null)}
         onToggleStatus={handleToggleStatus}
         onDeleteTask={handleDeleteTask}
-        onEditTask={(t) => {
-          setSelectedTask(null)
-          setTaskToEdit(t)
-          setShowCreateModal(true)
-        }}
+        onEditTask={handleOpenEditFromDetail}
       />
 
-      {/* Modal de Creación */}
+      {/* Modal de Creación / Edición */}
       {user && (
         <MinimalistCreateTaskModal
           visible={showCreateModal}

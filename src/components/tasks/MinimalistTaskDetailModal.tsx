@@ -375,7 +375,6 @@ export function MinimalistTaskDetailModal({
                 onPress={() => {
                   triggerHaptic('light')
                   if (task) {
-                    onClose()
                     onEditTask?.(task)
                   }
                 }}

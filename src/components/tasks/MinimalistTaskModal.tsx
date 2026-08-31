@@ -88,20 +88,13 @@ export function MinimalistTaskModal({
   const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
 
-  // Animaciones del Modal y Sincronización 1:1 con Teclado
+  // Animaciones del Modal y Teclado 100% en GPU Driver Nativo (translateY)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-  const keyboardHeightAnim = useRef(new Animated.Value(0)).current
+  const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
 
-  const baseBottomPadding = Math.max(insets.bottom, 16) + 16
-
-  const sheetPaddingBottom = keyboardHeightAnim.interpolate({
-    inputRange: [0, 600],
-    outputRange: [baseBottomPadding, 600 + baseBottomPadding],
-  })
-
-  // Sincronizador de eventos de teclado de iOS (duración y curva exactas del sistema)
+  // Sincronización 1:1 con el teclado de iOS por medio de transform translateY nativo
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
@@ -109,23 +102,24 @@ export function MinimalistTaskModal({
     const showSub = Keyboard.addListener(showEvent, (e) => {
       const kbHeight = e.endCoordinates.height
       const duration = e.duration && e.duration > 0 ? e.duration : 250
+      const targetOffset = -Math.max(0, kbHeight - insets.bottom)
 
-      Animated.timing(keyboardHeightAnim, {
-        toValue: Math.max(0, kbHeight - insets.bottom),
+      Animated.timing(keyboardTranslateY, {
+        toValue: targetOffset,
         duration: duration,
         easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start()
     })
 
     const hideSub = Keyboard.addListener(hideEvent, (e) => {
       const duration = e.duration && e.duration > 0 ? e.duration : 250
 
-      Animated.timing(keyboardHeightAnim, {
+      Animated.timing(keyboardTranslateY, {
         toValue: 0,
         duration: duration,
         easing: Easing.bezier(0.17, 0.59, 0.4, 0.77),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start()
     })
 
@@ -133,7 +127,7 @@ export function MinimalistTaskModal({
       showSub.remove()
       hideSub.remove()
     }
-  }, [insets.bottom, keyboardHeightAnim])
+  }, [insets.bottom, keyboardTranslateY])
 
   useEffect(() => {
     if (mode !== 'none') {
@@ -162,7 +156,7 @@ export function MinimalistTaskModal({
       }
       setActivePicker(null)
 
-      // Entrada suave y sincronizada
+      // Entrada elástica suave en GPU Driver
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -196,12 +190,16 @@ export function MinimalistTaskModal({
           duration: 220,
           useNativeDriver: true,
         }),
+        Animated.timing(keyboardTranslateY, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
         setModalVisible(false)
-        keyboardHeightAnim.setValue(0)
       })
     }
-  }, [mode, task, subjects, fadeAnim, slideAnim, keyboardHeightAnim])
+  }, [mode, task, subjects, fadeAnim, slideAnim, keyboardTranslateY])
 
   const handleSmoothClose = () => {
     triggerHaptic('light')
@@ -217,9 +215,13 @@ export function MinimalistTaskModal({
         duration: 220,
         useNativeDriver: true,
       }),
+      Animated.timing(keyboardTranslateY, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       onClose()
-      keyboardHeightAnim.setValue(0)
     })
   }
 
@@ -510,18 +512,21 @@ export function MinimalistTaskModal({
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop Estático con Fade */}
+        {/* Backdrop Estático con Fade (useNativeDriver: true) */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante con sincronización 1:1 de padding de teclado */}
+        {/* Hoja Inferior Deslizante (useNativeDriver: true 100% GPU) */}
         <Animated.View
           style={[
             styles.sheetContainer,
             {
-              transform: [{ translateY: slideAnim }],
-              paddingBottom: sheetPaddingBottom,
+              paddingBottom: Math.max(insets.bottom, 16) + 16,
+              transform: [
+                { translateY: slideAnim },
+                { translateY: keyboardTranslateY },
+              ],
             },
           ]}
         >

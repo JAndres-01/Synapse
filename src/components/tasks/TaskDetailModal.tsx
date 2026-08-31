@@ -140,6 +140,21 @@ export function TaskDetailModal({
   const [loadedComments, setLoadedComments] = useState<TaskComment[]>([])
   const supabase = createClient()
 
+  const loadTaskDetails = React.useCallback(async () => {
+    if (!task?.id) return
+    try {
+      const [attRes, comRes] = await Promise.all([
+        supabase.from('task_attachments').select('*').eq('task_id', task.id),
+        supabase.from('task_comments').select('*, author:profiles(*)').eq('task_id', task.id).order('created_at', { ascending: true })
+      ])
+
+      if (attRes.data) setLoadedAttachments(attRes.data)
+      if (comRes.data) setLoadedComments(comRes.data as TaskComment[])
+    } catch (err) {
+      console.error('Error cargando detalles bajo demanda:', err)
+    }
+  }, [task?.id, supabase])
+
   // Carga bajo demanda de adjuntos completos y comentarios solo para la tarea abierta
   useEffect(() => {
     if (!task?.id) {
@@ -148,27 +163,9 @@ export function TaskDetailModal({
       return
     }
 
-    let isMounted = true
-
-    const loadTaskDetails = async () => {
-      try {
-        const [attRes, comRes] = await Promise.all([
-          supabase.from('task_attachments').select('*').eq('task_id', task.id),
-          supabase.from('task_comments').select('*, author:profiles(*)').eq('task_id', task.id).order('created_at', { ascending: true })
-        ])
-
-        if (isMounted) {
-          if (attRes.data) setLoadedAttachments(attRes.data)
-          if (comRes.data) setLoadedComments(comRes.data as TaskComment[])
-        }
-      } catch (err) {
-        console.error('Error cargando detalles bajo demanda:', err)
-      }
-    }
-
     loadTaskDetails()
 
-    // Suscripción Realtime solo para los comentarios de esta tarea
+    // Suscripción Realtime para reflejar nuevos comentarios de compañeros al instante (0ms)
     const channel = supabase
       .channel(`modal_task_comments_${task.id}`)
       .on(
@@ -184,10 +181,9 @@ export function TaskDetailModal({
       .subscribe()
 
     return () => {
-      isMounted = false
       supabase.removeChannel(channel)
     }
-  }, [task?.id, supabase])
+  }, [task?.id, supabase, loadTaskDetails])
 
   const comments = loadedComments.length > 0 ? loadedComments : (task?.comments || [])
 
@@ -327,17 +323,49 @@ export function TaskDetailModal({
         serializedImageUrl = JSON.stringify(previewAttachments)
       }
 
+      const tempId = 'cmt-opt-' + Date.now()
+      const nowIso = new Date().toISOString()
+      const optimisticComment: TaskComment = {
+        id: tempId,
+        task_id: task.id,
+        author_id: currentUser?.id || '',
+        parent_comment_id: replyingTo ? replyingTo.id : null,
+        content: commentText.trim(),
+        image_url: serializedImageUrl,
+        file_name: serializedFileName,
+        file_type: serializedFileType,
+        created_at: nowIso,
+        author: currentProfile
+          ? currentProfile
+          : {
+              id: currentUser?.id || '',
+              email: currentUser?.email || '',
+              full_name: 'Tú',
+              avatar_url: null,
+              role: 'student',
+              created_at: nowIso,
+              updated_at: nowIso,
+            },
+      }
+
+      // 1. Mostrar de inmediato en la pantalla (0ms de latencia)
+      setLoadedComments((prev) => [...prev, optimisticComment])
+      const sentText = commentText.trim()
+      const sentReplyingTo = replyingTo ? replyingTo.id : null
+      setCommentText('')
+      setPreviewAttachments([])
+      setReplyingTo(null)
+
+      // 2. Guardar en Supabase y refrescar
       await onAddComment(
         task.id,
-        commentText.trim(),
-        replyingTo ? replyingTo.id : null,
+        sentText,
+        sentReplyingTo,
         serializedImageUrl,
         serializedFileName,
         serializedFileType
       )
-      setCommentText('')
-      setPreviewAttachments([])
-      setReplyingTo(null)
+      await loadTaskDetails()
     } catch (err) {
       console.error('Error enviando comentario:', err)
     } finally {

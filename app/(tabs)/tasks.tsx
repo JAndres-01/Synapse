@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  Animated,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
@@ -16,7 +17,7 @@ import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskDetailModal } from '@/components/tasks/MinimalistTaskDetailModal'
 import { MinimalistCreateTaskModal } from '@/components/tasks/MinimalistCreateTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CheckSquare, Plus, Search, CheckCircle2 } from 'lucide-react-native'
+import { CheckSquare, Plus, Search, CheckCircle2, X } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 export default function TasksScreen() {
@@ -31,11 +32,15 @@ export default function TasksScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
 
   // Modales
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+
+  // Animación del botón flotante FAB
+  const fabScaleAnim = useRef(new Animated.Value(1)).current
 
   const loadData = useCallback(async () => {
     const [cachedTasks, cachedSubjs] = await Promise.all([
@@ -137,43 +142,80 @@ export default function TasksScreen() {
     loadData()
   }
 
+  const handleClearSearch = () => {
+    triggerHaptic('selection')
+    setSearchQuery('')
+  }
+
+  const handleFabPressIn = () => {
+    Animated.spring(fabScaleAnim, {
+      toValue: 0.9,
+      stiffness: 600,
+      damping: 25,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleFabPressOut = () => {
+    Animated.spring(fabScaleAnim, {
+      toValue: 1,
+      stiffness: 500,
+      damping: 20,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 },
+          { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
       >
-        {/* Header */}
+        {/* Header Estilo iOS Grande */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>
-            <CheckSquare size={18} color="#FFFFFF" />
+            <CheckSquare size={20} color="#FFFFFF" />
             <Text style={styles.title}>Mis Tareas</Text>
           </View>
           <Text style={styles.subtitle}>
-            Organiza tus entregas, talleres, lecturas y exámenes
+            Entregas, talleres, lecturas y exámenes
           </Text>
         </View>
 
-        {/* Buscador */}
-        <View style={styles.searchBar}>
-          <Search size={14} color="#71717A" style={styles.searchIcon} />
+        {/* Buscador Estilo iOS Nativo (Cápsula Translúcida con Botón Limpiar) */}
+        <View
+          style={[
+            styles.searchBar,
+            isSearchFocused && styles.searchBarFocused,
+          ]}
+        >
+          <Search size={15} color={isSearchFocused ? '#FFFFFF' : '#A1A1AA'} style={styles.searchIcon} />
           <TextInput
             placeholder="Buscar por tarea o materia..."
-            placeholderTextColor="#52525B"
+            placeholderTextColor="#71717A"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             style={styles.searchInput}
+            returnKeyType="search"
+            clearButtonMode="never"
           />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={handleClearSearch} hitSlop={10} style={styles.clearSearchBtn}>
+              <X size={13} color="#D4D4D8" />
+            </Pressable>
+          )}
         </View>
 
-        {/* Filtros de Materias (Pills Horizontales) */}
+        {/* Filtros de Materias Mejorados (Cápsulas de Cristal Estilo Apple) */}
         {subjects.length > 0 && (
           <ScrollView
             horizontal
@@ -182,38 +224,63 @@ export default function TasksScreen() {
           >
             <Pressable
               onPress={() => {
-                triggerHaptic('light')
+                triggerHaptic('selection')
                 setSelectedSubjectId('all')
               }}
-              style={[styles.subjPill, selectedSubjectId === 'all' && styles.subjPillActive]}
+              style={[
+                styles.subjPill,
+                selectedSubjectId === 'all' && styles.subjPillAllActive,
+              ]}
             >
-              <Text style={[styles.subjPillText, selectedSubjectId === 'all' && styles.subjPillTextActive]}>
-                Todas
+              <Text
+                style={[
+                  styles.subjPillText,
+                  selectedSubjectId === 'all' && styles.subjPillTextAllActive,
+                ]}
+              >
+                Todas ({tasks.length})
               </Text>
             </Pressable>
 
             {subjects.map((s) => {
               const isSelected = selectedSubjectId === s.id
-              const isWhite = s.color === '#FFFFFF'
+              const subjColor = s.color || '#FFFFFF'
+              const isWhite = subjColor === '#FFFFFF'
+              const count = tasks.filter((t) => t.subject_id === s.id).length
 
               return (
                 <Pressable
                   key={s.id}
                   onPress={() => {
-                    triggerHaptic('light')
+                    triggerHaptic('selection')
                     setSelectedSubjectId(s.id)
                   }}
-                  style={[styles.subjPill, isSelected && styles.subjPillActive]}
+                  style={[
+                    styles.subjPill,
+                    isSelected && {
+                      backgroundColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : `${subjColor}28`,
+                      borderColor: isWhite
+                        ? 'rgba(255, 255, 255, 0.45)'
+                        : `${subjColor}70`,
+                    },
+                  ]}
                 >
                   <View
                     style={[
                       styles.dot,
-                      { backgroundColor: s.color || '#FFFFFF' },
+                      { backgroundColor: subjColor },
                       isWhite && styles.whiteDotBorder,
                     ]}
                   />
-                  <Text style={[styles.subjPillText, isSelected && styles.subjPillTextActive]}>
-                    {s.name}
+                  <Text
+                    style={[
+                      styles.subjPillText,
+                      isSelected && styles.subjPillTextActive,
+                    ]}
+                  >
+                    {s.name} {count > 0 ? `(${count})` : ''}
                   </Text>
                 </Pressable>
               )
@@ -221,49 +288,73 @@ export default function TasksScreen() {
           </ScrollView>
         )}
 
-        {/* Filtros de Estado */}
-        <View style={styles.statusFiltersRow}>
+        {/* Segmented Control iOS para Estado (Pendientes / Completadas / Todas) */}
+        <View style={styles.segmentedControl}>
           <Pressable
             onPress={() => {
-              triggerHaptic('light')
+              triggerHaptic('selection')
               setStatusFilter('pending')
             }}
-            style={[styles.statusPill, statusFilter === 'pending' && styles.statusPillActive]}
+            style={[
+              styles.segmentBtn,
+              statusFilter === 'pending' && styles.segmentBtnActive,
+            ]}
           >
-            <Text style={[styles.statusPillText, statusFilter === 'pending' && styles.statusPillTextActive]}>
+            <Text
+              style={[
+                styles.segmentText,
+                statusFilter === 'pending' && styles.segmentTextActive,
+              ]}
+            >
               Pendientes
             </Text>
           </Pressable>
 
           <Pressable
             onPress={() => {
-              triggerHaptic('light')
+              triggerHaptic('selection')
               setStatusFilter('completed')
             }}
-            style={[styles.statusPill, statusFilter === 'completed' && styles.statusPillActive]}
+            style={[
+              styles.segmentBtn,
+              statusFilter === 'completed' && styles.segmentBtnActive,
+            ]}
           >
-            <Text style={[styles.statusPillText, statusFilter === 'completed' && styles.statusPillTextActive]}>
+            <Text
+              style={[
+                styles.segmentText,
+                statusFilter === 'completed' && styles.segmentTextActive,
+              ]}
+            >
               Completadas
             </Text>
           </Pressable>
 
           <Pressable
             onPress={() => {
-              triggerHaptic('light')
+              triggerHaptic('selection')
               setStatusFilter('all')
             }}
-            style={[styles.statusPill, statusFilter === 'all' && styles.statusPillActive]}
+            style={[
+              styles.segmentBtn,
+              statusFilter === 'all' && styles.segmentBtnActive,
+            ]}
           >
-            <Text style={[styles.statusPillText, statusFilter === 'all' && styles.statusPillTextActive]}>
+            <Text
+              style={[
+                styles.segmentText,
+                statusFilter === 'all' && styles.segmentTextActive,
+              ]}
+            >
               Todas
             </Text>
           </Pressable>
         </View>
 
-        {/* Lista Plana de Tareas (Zero Carditis) */}
-        <View style={styles.tasksContainer}>
+        {/* Lista Plana y Abierta Directa en el Canvas (CERO Carditis) */}
+        <View style={styles.tasksListWrapper}>
           {filteredTasks.length > 0 ? (
-            <View style={styles.flatListCard}>
+            <View style={styles.openTaskRows}>
               {filteredTasks.map((task, idx) => (
                 <MinimalistTaskRow
                   key={task.id}
@@ -276,31 +367,47 @@ export default function TasksScreen() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <CheckCircle2 size={32} color="#27272A" />
+              <CheckCircle2 size={36} color="#27272A" />
               <Text style={styles.emptyTitle}>
                 {statusFilter === 'completed'
                   ? 'No hay tareas completadas'
+                  : searchQuery.length > 0
+                  ? 'No se encontraron resultados'
                   : '¡Al día! No tienes tareas pendientes'}
               </Text>
               <Text style={styles.emptySub}>
-                Toca el botón + flotante para añadir un nuevo pendiente o entrega.
+                {searchQuery.length > 0
+                  ? 'Intenta buscar con otro término o selecciona otra materia.'
+                  : 'Toca el botón + flotante para añadir un nuevo pendiente o entrega.'}
               </Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Botón Flotante (+) Minimalista */}
-      <Pressable
-        onPress={() => {
-          triggerHaptic('medium')
-          setTaskToEdit(null)
-          setShowCreateModal(true)
-        }}
-        style={[styles.fab, { bottom: Math.max(insets.bottom, 12) + 70 }]}
+      {/* Botón Flotante (+) con Física de Resorte y Haptic Apple */}
+      <Animated.View
+        style={[
+          styles.fabWrapper,
+          {
+            bottom: Math.max(insets.bottom, 12) + 72,
+            transform: [{ scale: fabScaleAnim }],
+          },
+        ]}
       >
-        <Plus size={22} color="#09090B" strokeWidth={2.8} />
-      </Pressable>
+        <Pressable
+          onPress={() => {
+            triggerHaptic('medium')
+            setTaskToEdit(null)
+            setShowCreateModal(true)
+          }}
+          onPressIn={handleFabPressIn}
+          onPressOut={handleFabPressOut}
+          style={styles.fab}
+        >
+          <Plus size={22} color="#09090B" strokeWidth={2.8} />
+        </Pressable>
+      </Animated.View>
 
       {/* Modal de Detalle */}
       <MinimalistTaskDetailModal
@@ -344,10 +451,10 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
   },
   header: {
-    gap: 2,
+    gap: 3,
     paddingHorizontal: 2,
   },
   headerTitleRow: {
@@ -357,23 +464,27 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   subtitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 12.5,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181B',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
-    height: 40,
+    height: 42,
+  },
+  searchBarFocused: {
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   searchIcon: {
     marginRight: 8,
@@ -381,33 +492,47 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
+  },
+  clearSearchBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subjPillsScroll: {
     gap: 6,
+    paddingVertical: 2,
   },
   subjPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: '#18181B',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.09)',
   },
-  subjPillActive: {
-    backgroundColor: '#27272A',
-    borderColor: '#52525B',
+  subjPillAllActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   subjPillText: {
-    color: '#71717A',
-    fontSize: 11,
+    color: '#A1A1AA',
+    fontSize: 12,
     fontWeight: '600',
+  },
+  subjPillTextAllActive: {
+    color: '#09090B',
+    fontWeight: '800',
   },
   subjPillTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
   dot: {
     width: 6,
@@ -416,73 +541,78 @@ const styles = StyleSheet.create({
   },
   whiteDotBorder: {
     borderWidth: 0.8,
-    borderColor: '#52525B',
+    borderColor: '#71717A',
   },
-  statusFiltersRow: {
+  segmentedControl: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  statusPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 3,
+    borderRadius: 13,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  statusPillActive: {
-    backgroundColor: '#27272A',
-    borderColor: '#3F3F46',
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
   },
-  statusPillText: {
+  segmentBtnActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  segmentText: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
-  statusPillTextActive: {
+  segmentTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
-  tasksContainer: {
-    marginTop: 4,
+  tasksListWrapper: {
+    marginTop: 6,
   },
-  flatListCard: {
-    backgroundColor: '#18181B',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#27272A',
-    paddingHorizontal: 14,
+  openTaskRows: {
+    // Lista 100% abierta sobre el canvas nativo (CERO card envolvente)
+    paddingHorizontal: 2,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 56,
     gap: 8,
   },
   emptyTitle: {
     color: '#E4E4E7',
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '600',
   },
   emptySub: {
     color: '#71717A',
     fontSize: 12,
     textAlign: 'center',
-    paddingHorizontal: 32,
-    lineHeight: 16,
+    paddingHorizontal: 36,
+    lineHeight: 17,
   },
-  fab: {
+  fabWrapper: {
     position: 'absolute',
     right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    zIndex: 99,
+  },
+  fab: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
     elevation: 8,
   },
 })

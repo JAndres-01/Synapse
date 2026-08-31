@@ -21,8 +21,7 @@ import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
-import { MinimalistTaskDetailModal } from '@/components/tasks/MinimalistTaskDetailModal'
-import { MinimalistCreateTaskModal } from '@/components/tasks/MinimalistCreateTaskModal'
+import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -71,10 +70,9 @@ export default function TasksScreen() {
   // Disparador de Confetti
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
-  // Modales de Tarea
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+  // Modal Unificado de Tareas (Detalle, Crear y Editar en una sola arquitectura)
+  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   // IDs de tareas en transición
   const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
@@ -304,15 +302,6 @@ export default function TasksScreen() {
     const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
     supabase.from('tasks').delete().eq('id', taskId).then(() => {})
-  }
-
-  // Flujo seguro y fluido para abrir el editor desde el detalle
-  const handleOpenEditFromDetail = (task: Task) => {
-    setSelectedTask(null)
-    setTaskToEdit(task)
-    setTimeout(() => {
-      setShowCreateModal(true)
-    }, 80)
   }
 
   const filteredTasks = useMemo(() => {
@@ -575,7 +564,11 @@ export default function TasksScreen() {
                   task={task}
                   isLast={idx === filteredTasks.length - 1}
                   onToggleStatus={handleToggleStatus}
-                  onOpenDetail={(t) => setSelectedTask(t)}
+                  onOpenDetail={(t) => {
+                    triggerHaptic('light')
+                    setActiveTask(t)
+                    setTaskModalMode('detail')
+                  }}
                 />
               ))}
             </View>
@@ -715,8 +708,8 @@ export default function TasksScreen() {
         <Pressable
           onPress={() => {
             triggerHaptic('medium')
-            setTaskToEdit(null)
-            setShowCreateModal(true)
+            setActiveTask(null)
+            setTaskModalMode('create')
           }}
           onPressIn={handleFabPressIn}
           onPressOut={handleFabPressOut}
@@ -726,27 +719,19 @@ export default function TasksScreen() {
         </Pressable>
       </Animated.View>
 
-      {/* Modal de Detalle */}
-      <MinimalistTaskDetailModal
-        task={selectedTask}
-        visible={Boolean(selectedTask)}
-        onClose={() => setSelectedTask(null)}
-        onToggleStatus={handleToggleStatus}
-        onDeleteTask={handleDeleteTask}
-        onEditTask={handleOpenEditFromDetail}
-      />
-
-      {/* Modal de Creación / Edición */}
+      {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
       {user && (
-        <MinimalistCreateTaskModal
-          visible={showCreateModal}
-          onClose={() => {
-            setShowCreateModal(false)
-            setTaskToEdit(null)
-          }}
+        <MinimalistTaskModal
+          mode={taskModalMode}
+          task={activeTask}
           userId={user.id}
           subjects={subjects}
-          initialTask={taskToEdit}
+          onClose={() => {
+            setTaskModalMode('none')
+            setActiveTask(null)
+          }}
+          onToggleStatus={handleToggleStatus}
+          onDeleteTask={handleDeleteTask}
           onTaskSaved={loadData}
         />
       )}

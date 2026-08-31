@@ -8,8 +8,6 @@ import {
   User,
   Rocket,
   FileText,
-  MessageSquare,
-  Image as ImageIcon,
   Lock,
   Paperclip,
 } from 'lucide-react'
@@ -130,29 +128,6 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
   }
 
   const dueInfo = formatDueDate(task.due_date)
-  const commentsCount = task.comments?.length || 0
-  const photosCount = (task.comments || []).reduce((acc, c) => {
-    if (!c.image_url) return acc
-    if (c.image_url.startsWith('[') && c.image_url.endsWith(']')) {
-      try {
-        const arr = JSON.parse(c.image_url)
-        if (Array.isArray(arr)) {
-          return (
-            acc +
-            arr.filter(
-              (item: { fileType?: string; file_type?: string }) =>
-                item.fileType === 'image' || item.file_type === 'image'
-            ).length
-          )
-        }
-      } catch {}
-    }
-    const isImage =
-      c.file_type === 'image' ||
-      (!c.file_type &&
-        (c.image_url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp)$/i.test(c.image_url)))
-    return acc + (isImage ? 1 : 0)
-  }, 0)
   const attachmentsCount = task.attachments?.length || 0
 
   const handleCheck = (e: React.MouseEvent) => {
@@ -263,20 +238,6 @@ export function TaskCard({ task, currentUserId, onToggleStatus, onOpenDetail }: 
             <span className="flex items-center gap-1 text-zinc-500">
               <Paperclip className="w-2.5 h-2.5" />
               <span>{attachmentsCount}</span>
-            </span>
-          )}
-
-          {!task.is_private && photosCount > 0 && (
-            <span className="flex items-center gap-1 text-zinc-500">
-              <ImageIcon className="w-2.5 h-2.5" />
-              <span>{photosCount}</span>
-            </span>
-          )}
-
-          {!task.is_private && commentsCount > 0 && (
-            <span className="flex items-center gap-1 text-zinc-500">
-              <MessageSquare className="w-2.5 h-2.5" />
-              <span>{commentsCount}</span>
             </span>
           )}
         </div>

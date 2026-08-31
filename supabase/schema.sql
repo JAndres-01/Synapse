@@ -108,18 +108,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 8. TABLA: TASK_COMMENTS (Hilos de respuestas y fotos de apuntes / pizarra)
-CREATE TABLE IF NOT EXISTS public.task_comments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
-    author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    parent_comment_id UUID REFERENCES public.task_comments(id) ON DELETE CASCADE,
-    content TEXT NOT NULL DEFAULT '',
-    image_url TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- 9. TABLA: TASK_ATTACHMENTS (Archivos adjuntos)
+-- 8. TABLA: TASK_ATTACHMENTS (Archivos adjuntos)
 CREATE TABLE IF NOT EXISTS public.task_attachments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,

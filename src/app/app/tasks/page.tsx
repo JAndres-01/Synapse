@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
-import type { Task, Subject, TaskType, TaskStatus, Schedule, AttachmentType, TaskAttachment, TaskComment } from '@/types/database'
+import type { Task, Subject, TaskType, TaskStatus, Schedule, AttachmentType, TaskAttachment } from '@/types/database'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
@@ -187,8 +187,7 @@ function TasksPageContent() {
           created_at,
           subject:subjects(*),
           user_status:user_task_status(user_id, status, completed_at),
-          attachments:task_attachments(id, file_type, file_name),
-          comments:task_comments(id)
+          attachments:task_attachments(id, file_type, file_name)
         `)
         .eq('classroom_id', classroom.id)
         .order('due_date', { ascending: true })
@@ -252,9 +251,6 @@ function TasksPageContent() {
           broadcast: { ack: false, self: false },
         },
       })
-      .on('broadcast', { event: 'comment_added' }, () => {
-        loadTasksData()
-      })
       .on('broadcast', { event: 'tasks_updated' }, () => {
         loadTasksData()
       })
@@ -271,11 +267,6 @@ function TasksPageContent() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_attachments' },
-        () => loadTasksData()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_comments' },
         () => loadTasksData()
       )
       .subscribe()
@@ -433,7 +424,6 @@ function TasksPageContent() {
         created_at: nowIso,
       })),
       user_status: [],
-      comments: [],
     }
 
     setTasks((prev) => {
@@ -628,139 +618,6 @@ function TasksPageContent() {
     } catch (err) {
       console.error('Error eliminando tarea:', err)
       loadTasksData()
-    }
-  }
-
-  // Agregar comentario en hilo de discusión
-  const handleAddComment = async (
-    taskId: string,
-    content: string,
-    parentCommentId?: string | null,
-    imageUrl?: string | null,
-    fileName?: string | null,
-    fileType?: AttachmentType | null
-  ) => {
-    // Obtener sesión activa garantizada de Supabase
-    const { data: sessionData } = await supabase.auth.getSession()
-    const activeUserId = sessionData?.session?.user?.id || user?.id || (typeof window !== 'undefined' ? (() => {
-      try { return JSON.parse(localStorage.getItem('synapse_cached_user') || '{}')?.id } catch { return null }
-    })() : null)
-
-    if (!activeUserId) {
-      console.error('No se encontró usuario autenticado para comentar')
-      return
-    }
-
-    const tempId = 'cmt-' + Date.now()
-    const nowIso = new Date().toISOString()
-
-    const optimisticComment: TaskComment = {
-      id: tempId,
-      task_id: taskId,
-      author_id: activeUserId,
-      parent_comment_id: parentCommentId || null,
-      content,
-      image_url: imageUrl || null,
-      file_name: fileName || null,
-      file_type: fileType || null,
-      created_at: nowIso,
-      author: profile || {
-        id: activeUserId,
-        email: user?.email || '',
-        full_name: (user?.user_metadata?.full_name as string) || 'Tú',
-        avatar_url: null,
-        role: 'student',
-        created_at: nowIso,
-        updated_at: nowIso,
-      },
-    }
-
-    // 1. Renderizado optimista instantáneo (0ms)
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          return {
-            ...t,
-            comments: [...(t.comments || []), optimisticComment],
-          }
-        }
-        return t
-      })
-    )
-
-    if (selectedTaskForDetail?.id === taskId) {
-      setSelectedTaskForDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              comments: [...(prev.comments || []), optimisticComment],
-            }
-          : null
-      )
-    }
-
-    // 2. Persistencia en Supabase
-    try {
-      const payload: Record<string, unknown> = {
-        task_id: taskId,
-        author_id: activeUserId,
-        content: content || '',
-        parent_comment_id: parentCommentId || null,
-        image_url: imageUrl || null,
-      }
-      if (fileName) payload.file_name = fileName
-      if (fileType) payload.file_type = fileType
-
-      const { data: insertedComment, error } = await supabase
-        .from('task_comments')
-        .insert(payload)
-        .select('*, author:profiles(*)')
-        .single()
-
-      if (error) {
-        console.warn('Reintentando inserción simple sin join en task_comments:', error)
-        const { error: simpleErr } = await supabase
-          .from('task_comments')
-          .insert(payload)
-        if (simpleErr) throw simpleErr
-      } else if (insertedComment) {
-        const realComment = insertedComment as unknown as TaskComment
-        setTasks((prev) =>
-          prev.map((t) => {
-            if (t.id === taskId) {
-              return {
-                ...t,
-                comments: (t.comments || []).map((c) =>
-                  c.id === tempId ? realComment : c
-                ),
-              }
-            }
-            return t
-          })
-        )
-
-        setSelectedTaskForDetail((prev) => {
-          if (!prev || prev.id !== taskId) return prev
-          return {
-            ...prev,
-            comments: (prev.comments || []).map((c) =>
-              c.id === tempId ? realComment : c
-            ),
-          }
-        })
-
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new Event('tasks_updated'))
-        }
-
-        channelRef.current?.send({
-          type: 'broadcast',
-          event: 'comment_added',
-          payload: { taskId },
-        })
-      }
-    } catch (err) {
-      console.error('Error insertando comentario en Supabase:', err)
     }
   }
 
@@ -1024,7 +881,6 @@ function TasksPageContent() {
           setTaskToEdit(t)
           setShowCreateModal(true)
         }}
-        onAddComment={handleAddComment}
       />
     </div>
   )

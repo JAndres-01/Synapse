@@ -79,20 +79,6 @@ export interface TaskAttachment {
   uploader?: Profile
 }
 
-export interface TaskComment {
-  id: string
-  task_id: string
-  author_id: string
-  parent_comment_id?: string | null
-  content: string
-  image_url?: string | null
-  file_name?: string | null
-  file_type?: AttachmentType | null
-  created_at: string
-  author?: Profile
-  replies?: TaskComment[]
-}
-
 export interface UserTaskStatus {
   id: string
   user_id: string
@@ -115,7 +101,6 @@ export interface Task {
   subject?: Subject
   attachments?: TaskAttachment[]
   user_status?: UserTaskStatus[]
-  comments?: TaskComment[]
 }
 
 export interface Notice {

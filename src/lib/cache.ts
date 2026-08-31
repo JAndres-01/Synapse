@@ -1,8 +1,7 @@
-import type { Task, Schedule, Subject, TaskAttachment, TaskComment } from '@/types/database'
+import type { Task, Schedule, Subject, TaskAttachment } from '@/types/database'
 
 export interface TaskDetailsCache {
   attachments: TaskAttachment[]
-  comments: TaskComment[]
   lastFetched: number
 }
 

@@ -11,6 +11,7 @@ import {
   Modal,
   Dimensions,
   LayoutChangeEvent,
+  Keyboard,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
@@ -19,6 +20,7 @@ import type { Task, Subject } from '@/types/personal'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskDetailModal } from '@/components/tasks/MinimalistTaskDetailModal'
 import { MinimalistCreateTaskModal } from '@/components/tasks/MinimalistCreateTaskModal'
+import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   CheckSquare,
@@ -55,12 +57,15 @@ export default function TasksScreen() {
   // Estado del Menú de Filtro de Materia
   const [showSubjectMenu, setShowSubjectMenu] = useState(false)
 
+  // Estado del Efecto Confetti al completar tarea
+  const [showConfetti, setShowConfetti] = useState(false)
+
   // Modales de Tarea
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
-  // Animación del Segmented Control Deslizante
+  // Animación del Segmented Control Deslizante con colores sutiles
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
   const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 3)
   const statusIndex = statusFilter === 'pending' ? 0 : statusFilter === 'completed' ? 1 : 2
@@ -115,7 +120,27 @@ export default function TasksScreen() {
     loadData()
   }, [loadData])
 
-  // Animación de deslizamiento de la pastilla activa en el segmented control
+  // Desactivar automáticamente el buscador cuando se oculta el teclado si no hay texto
+  useEffect(() => {
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
+      if (searchQuery.trim() === '') {
+        Animated.spring(searchAnim, {
+          toValue: 0,
+          stiffness: 450,
+          damping: 28,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsSearchActive(false)
+        })
+      }
+    })
+
+    return () => {
+      hideListener.remove()
+    }
+  }, [searchQuery, searchAnim])
+
+  // Animación de deslizamiento de la pastilla activa
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: statusIndex * segmentWidth,
@@ -147,6 +172,7 @@ export default function TasksScreen() {
 
   const handleCloseSearch = () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     setSearchQuery('')
     Animated.spring(searchAnim, {
       toValue: 0,
@@ -160,6 +186,11 @@ export default function TasksScreen() {
 
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+
+    // Si se completó una tarea, disparar el cañón de confetti!
+    if (nextStatus === 'completed') {
+      setShowConfetti(true)
+    }
 
     const updated = tasks.map((t) => {
       if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
@@ -235,6 +266,12 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.screenWrapper}>
+      {/* Efecto de Confetti al Completar Tareas */}
+      <MinimalistConfetti
+        visible={showConfetti}
+        onAnimationEnd={() => setShowConfetti(false)}
+      />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -242,6 +279,8 @@ export default function TasksScreen() {
           { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={() => Keyboard.dismiss()}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
@@ -269,7 +308,7 @@ export default function TasksScreen() {
             </Text>
           </View>
         ) : (
-          /* Buscador Dinámico Expandido con Botón Cancelar */
+          /* Buscador Dinámico Expandido */
           <View style={styles.dynamicSearchContainer}>
             <View style={styles.dynamicSearchInputWrapper}>
               <Search size={15} color="#A1A1AA" style={styles.searchIcon} />
@@ -279,6 +318,7 @@ export default function TasksScreen() {
                 placeholderTextColor="#71717A"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                onSubmitEditing={() => Keyboard.dismiss()}
                 style={styles.dynamicSearchInput}
                 returnKeyType="search"
                 autoFocus
@@ -359,17 +399,20 @@ export default function TasksScreen() {
           )}
         </View>
 
-        {/* Segmented Control iOS con Pastilla Deslizante (120 FPS GPU Spring) */}
+        {/* Segmented Control iOS con Colores Muted Elegantes (No Neón) */}
         <View
           style={styles.segmentedContainer}
           onLayout={(e: LayoutChangeEvent) => {
             setSegmentContainerWidth(e.nativeEvent.layout.width)
           }}
         >
-          {/* Pastilla Activa Deslizante */}
+          {/* Pastilla Activa Deslizante con Color Dinámico Tenue */}
           <Animated.View
             style={[
               styles.activeSegmentPill,
+              statusFilter === 'pending' && styles.pillPending,
+              statusFilter === 'completed' && styles.pillCompleted,
+              statusFilter === 'all' && styles.pillAll,
               {
                 width: segmentWidth,
                 transform: [{ translateX: slideAnim }],
@@ -385,7 +428,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'pending' && styles.segmentButtonTextActive,
+                statusFilter === 'pending' && styles.segmentTextPending,
               ]}
             >
               Pendientes
@@ -399,7 +442,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'completed' && styles.segmentButtonTextActive,
+                statusFilter === 'completed' && styles.segmentTextCompleted,
               ]}
             >
               Completadas
@@ -413,7 +456,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'all' && styles.segmentButtonTextActive,
+                statusFilter === 'all' && styles.segmentTextAll,
               ]}
             >
               Todas
@@ -748,7 +791,7 @@ const styles = StyleSheet.create({
   segmentedContainer: {
     flexDirection: 'row',
     position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -761,10 +804,20 @@ const styles = StyleSheet.create({
     top: 3,
     bottom: 3,
     left: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  pillPending: {
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+  },
+  pillCompleted: {
+    backgroundColor: 'rgba(16, 185, 129, 0.16)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+  },
+  pillAll: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
   },
   segmentButton: {
     flex: 1,
@@ -778,7 +831,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  segmentButtonTextActive: {
+  segmentTextPending: {
+    color: '#FDE68A',
+    fontWeight: '700',
+  },
+  segmentTextCompleted: {
+    color: '#A7F3D0',
+    fontWeight: '700',
+  },
+  segmentTextAll: {
     color: '#FFFFFF',
     fontWeight: '700',
   },

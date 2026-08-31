@@ -19,9 +19,9 @@ export function MinimalistTaskRow({
 }: MinimalistTaskRowProps) {
   const isDone = task.status === 'completed'
 
-  // Animación de rebote físico estilo iOS
+  // Animación de rebote físico en la fila y en el checkbox
   const scaleAnim = useRef(new Animated.Value(1)).current
-  const checkScaleAnim = useRef(new Animated.Value(1)).current
+  const checkBounceAnim = useRef(new Animated.Value(1)).current
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -42,17 +42,22 @@ export function MinimalistTaskRow({
   }
 
   const handleToggle = () => {
-    // Micro-animación de resorte en el checkbox
+    // Animación de rebote elástico exagerado y jugoso en el checkbox
     Animated.sequence([
-      Animated.timing(checkScaleAnim, {
-        toValue: 1.25,
-        duration: 100,
+      Animated.timing(checkBounceAnim, {
+        toValue: 1.45,
+        duration: 120,
         useNativeDriver: true,
       }),
-      Animated.spring(checkScaleAnim, {
+      Animated.timing(checkBounceAnim, {
+        toValue: 0.85,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(checkBounceAnim, {
         toValue: 1,
-        stiffness: 500,
-        damping: 20,
+        stiffness: 600,
+        damping: 15,
         useNativeDriver: true,
       }),
     ]).start()
@@ -92,7 +97,7 @@ export function MinimalistTaskRow({
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }]}>
       <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
-        {/* Checkbox Circular con animación de resorte */}
+        {/* Checkbox Circular con animación de rebote elástico */}
         <Pressable
           onPress={handleToggle}
           style={styles.checkboxTouchArea}
@@ -102,10 +107,10 @@ export function MinimalistTaskRow({
             style={[
               styles.checkbox,
               isDone && styles.checkboxDone,
-              { transform: [{ scale: checkScaleAnim }] },
+              { transform: [{ scale: checkBounceAnim }] },
             ]}
           >
-            {isDone && <Check size={11} color="#09090B" strokeWidth={3} />}
+            {isDone && <Check size={11} color="#09090B" strokeWidth={3.5} />}
           </Animated.View>
         </Pressable>
 

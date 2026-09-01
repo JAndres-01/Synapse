@@ -17,7 +17,7 @@ import {
   Easing,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { Task, Subject, TaskType, TaskAttachment } from '@/types/personal'
+import type { Task, Subject, TaskType, TaskAttachment, Schedule } from '@/types/personal'
 import {
   X,
   Clock,
@@ -30,6 +30,7 @@ import {
   Image as ImageIcon,
   Link2,
   ChevronDown,
+  ChevronRight,
   Calendar,
   Layers,
   ArrowLeft,
@@ -37,6 +38,7 @@ import {
   Rocket,
   FileText,
   Users,
+  GraduationCap,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Linking from 'expo-linking'
@@ -49,6 +51,27 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+
+function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
+  const now = new Date()
+  const currentDay = now.getDay() // 0: Dom, 1: Lun, ..., 5: Vie, 6: Sáb
+  const [h, m] = timeStr.split(':').map(Number)
+
+  let daysToAdd = (dayOfWeek - currentDay + 7) % 7
+
+  if (daysToAdd === 0) {
+    const classTimeToday = new Date(now)
+    classTimeToday.setHours(h, m, 0, 0)
+    if (now.getTime() >= classTimeToday.getTime()) {
+      daysToAdd = 7
+    }
+  }
+
+  const targetDate = new Date(now)
+  targetDate.setDate(targetDate.getDate() + daysToAdd)
+  targetDate.setHours(h, m, 0, 0)
+  return targetDate
+}
 
 interface MinimalistTaskModalProps {
   mode: TaskModalMode
@@ -85,6 +108,14 @@ export function MinimalistTaskModal({
   const [dueDate, setDueDate] = useState<string>('')
   const [attachments, setAttachments] = useState<TaskAttachment[]>([])
 
+  // Horarios de Clases
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [datePickerTab, setDatePickerTab] = useState<'class' | 'manual'>('class')
+  const [selectedClassDay, setSelectedClassDay] = useState<number>(() => {
+    const currentDay = new Date().getDay()
+    return currentDay >= 1 && currentDay <= 5 ? currentDay : 1
+  })
+
   const titleInputRef = useRef<TextInput>(null)
 
   // Menús desplegables en formulario
@@ -96,6 +127,17 @@ export function MinimalistTaskModal({
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
+
+  // Cargar horarios del usuario para el selector de clases
+  useEffect(() => {
+    if (modalVisible) {
+      personalStorage.getSchedules().then((list) => {
+        if (list && Array.isArray(list)) {
+          setSchedules(list)
+        }
+      })
+    }
+  }, [modalVisible])
 
   // Sincronización con el teclado de iOS (solo cuando el modal está activo)
   useEffect(() => {
@@ -362,6 +404,18 @@ export function MinimalistTaskModal({
     }
   }
 
+  const handleSelectClass = (sched: Schedule, subj?: Subject | null) => {
+    triggerHaptic('success')
+    const targetDate = getNextClassDate(sched.day_of_week, sched.start_time || '07:00')
+    setDueDate(targetDate.toISOString())
+    if (sched.subject_id) {
+      setSelectedSubjectId(sched.subject_id)
+    } else if (subj?.id) {
+      setSelectedSubjectId(subj.id)
+    }
+    setActivePicker(null)
+  }
+
   const setPresetDate = (preset: 'today' | 'tomorrow' | 'friday' | 'next_week' | 'clear') => {
     triggerHaptic('selection')
     const now = new Date()
@@ -394,6 +448,13 @@ export function MinimalistTaskModal({
       setDueDate(nextWeek.toISOString())
     }
     setActivePicker(null)
+  }
+
+  const setCustomHour = (hours: number, minutes: number) => {
+    triggerHaptic('selection')
+    const base = dueDate ? new Date(dueDate) : new Date()
+    base.setHours(hours, minutes, 0, 0)
+    setDueDate(base.toISOString())
   }
 
   const handlePickImage = async () => {
@@ -484,10 +545,16 @@ export function MinimalistTaskModal({
       tomorrow.setDate(tomorrow.getDate() + 1)
       const isTomorrow = d.toDateString() === tomorrow.toDateString()
 
-      if (isToday) return 'Hoy'
-      if (isTomorrow) return 'Mañana'
+      const hours = d.getHours()
+      const mins = String(d.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const hStr = hours % 12 || 12
+      const timePart = `${hStr}:${mins} ${ampm}`
+
+      if (isToday) return `Hoy ${timePart}`
+      if (isTomorrow) return `Mañana ${timePart}`
       const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      return `${days[d.getDay()]} ${d.getDate()}`
+      return `${days[d.getDay()]} ${d.getDate()} (${timePart})`
     } catch {
       return 'Sin fecha'
     }
@@ -495,6 +562,10 @@ export function MinimalistTaskModal({
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
   const isFormSubjWhite = selectedSubject?.color === '#FFFFFF'
+
+  const filteredDaySchedules = schedules
+    .filter((s) => s.day_of_week === selectedClassDay)
+    .sort((a, b) => (a.block_number || 0) - (b.block_number || 0))
 
   if (!modalVisible) return null
 
@@ -806,7 +877,7 @@ export function MinimalistTaskModal({
                     <ChevronDown size={12} color="#71717A" />
                   </Pressable>
 
-                  {/* Selector de Fecha */}
+                  {/* Selector de Fecha (Manual o Por Clase) */}
                   <Pressable
                     onPress={() => {
                       triggerHaptic('selection')
@@ -926,28 +997,203 @@ export function MinimalistTaskModal({
                   </View>
                 )}
 
+                {/* SELECTOR DE FECHA CON MODO POR CLASE Y MODO MANUAL */}
                 {activePicker === 'date' && (
-                  <View style={styles.inlineMenu}>
-                    <Text style={styles.inlineMenuHeader}>Fecha de entrega</Text>
-                    <View style={styles.dateOptionsRow}>
-                      <Pressable onPress={() => setPresetDate('today')} style={styles.dateOptionBtn}>
-                        <Text style={styles.dateOptionText}>Hoy</Text>
+                  <View style={styles.inlineDateMenu}>
+                    {/* Selector de Modo: Por Clase vs Manual */}
+                    <View style={styles.dateSegmentedRow}>
+                      <Pressable
+                        onPress={() => {
+                          triggerHaptic('selection')
+                          setDatePickerTab('class')
+                        }}
+                        style={[
+                          styles.dateSegmentBtn,
+                          datePickerTab === 'class' && styles.dateSegmentBtnActive,
+                        ]}
+                      >
+                        <GraduationCap
+                          size={13}
+                          color={datePickerTab === 'class' ? '#FFFFFF' : '#71717A'}
+                        />
+                        <Text
+                          style={[
+                            styles.dateSegmentText,
+                            datePickerTab === 'class' && styles.dateSegmentTextActive,
+                          ]}
+                        >
+                          Para Clase
+                        </Text>
                       </Pressable>
-                      <Pressable onPress={() => setPresetDate('tomorrow')} style={styles.dateOptionBtn}>
-                        <Text style={styles.dateOptionText}>Mañana</Text>
+
+                      <Pressable
+                        onPress={() => {
+                          triggerHaptic('selection')
+                          setDatePickerTab('manual')
+                        }}
+                        style={[
+                          styles.dateSegmentBtn,
+                          datePickerTab === 'manual' && styles.dateSegmentBtnActive,
+                        ]}
+                      >
+                        <Calendar
+                          size={13}
+                          color={datePickerTab === 'manual' ? '#FFFFFF' : '#71717A'}
+                        />
+                        <Text
+                          style={[
+                            styles.dateSegmentText,
+                            datePickerTab === 'manual' && styles.dateSegmentTextActive,
+                          ]}
+                        >
+                          Manual
+                        </Text>
                       </Pressable>
-                      <Pressable onPress={() => setPresetDate('friday')} style={styles.dateOptionBtn}>
-                        <Text style={styles.dateOptionText}>Viernes</Text>
-                      </Pressable>
-                      <Pressable onPress={() => setPresetDate('next_week')} style={styles.dateOptionBtn}>
-                        <Text style={styles.dateOptionText}>7 días</Text>
-                      </Pressable>
-                      {Boolean(dueDate) && (
-                        <Pressable onPress={() => setPresetDate('clear')} style={styles.dateOptionClearBtn}>
-                          <Text style={styles.dateOptionClearText}>Quitar</Text>
-                        </Pressable>
-                      )}
                     </View>
+
+                    {/* MODO 1: MINI CALENDARIO / SELECCIÓN DE CLASE */}
+                    {datePickerTab === 'class' && (
+                      <View style={styles.classPickerContainer}>
+                        {/* Selector de Día de la Semana */}
+                        <View style={styles.classDayBar}>
+                          {[
+                            { day: 1, label: 'Lun' },
+                            { day: 2, label: 'Mar' },
+                            { day: 3, label: 'Mié' },
+                            { day: 4, label: 'Jue' },
+                            { day: 5, label: 'Vie' },
+                          ].map((d) => {
+                            const isSelected = selectedClassDay === d.day
+                            return (
+                              <Pressable
+                                key={d.day}
+                                onPress={() => {
+                                  triggerHaptic('selection')
+                                  setSelectedClassDay(d.day)
+                                }}
+                                style={[
+                                  styles.classDayPill,
+                                  isSelected && styles.classDayPillActive,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.classDayText,
+                                    isSelected && styles.classDayTextActive,
+                                  ]}
+                                >
+                                  {d.label}
+                                </Text>
+                              </Pressable>
+                            )
+                          })}
+                        </View>
+
+                        {/* Lista de Clases del Día Seleccionado */}
+                        <View style={styles.classListContainer}>
+                          {filteredDaySchedules.length === 0 ? (
+                            <View style={styles.emptyClassesBox}>
+                              <Text style={styles.emptyClassesText}>
+                                Sin clases configuradas para este día
+                              </Text>
+                            </View>
+                          ) : (
+                            filteredDaySchedules.map((sched) => {
+                              const subj =
+                                subjects.find((s) => s.id === sched.subject_id) ||
+                                sched.subject
+                              const isWhite = subj?.color === '#FFFFFF'
+
+                              return (
+                                <Pressable
+                                  key={sched.id || `${sched.day_of_week}_${sched.block_number}`}
+                                  onPress={() => handleSelectClass(sched, subj)}
+                                  style={styles.classCardRow}
+                                >
+                                  <View style={styles.classTimeBox}>
+                                    <Clock size={11} color="#818CF8" />
+                                    <Text style={styles.classTimeText}>
+                                      {sched.start_time || '07:00'}
+                                    </Text>
+                                  </View>
+
+                                  <View style={styles.classSubjectInfo}>
+                                    <View style={styles.classSubjectTitleRow}>
+                                      <View
+                                        style={[
+                                          styles.dot,
+                                          { backgroundColor: subj?.color || '#FFFFFF' },
+                                          isWhite && styles.whiteDotBorder,
+                                        ]}
+                                      />
+                                      <Text
+                                        style={styles.classSubjectName}
+                                        numberOfLines={1}
+                                      >
+                                        {subj?.name || 'Materia'}
+                                      </Text>
+                                    </View>
+                                    {sched.classroom_room && (
+                                      <Text style={styles.classRoomText}>
+                                        {sched.classroom_room}
+                                      </Text>
+                                    )}
+                                  </View>
+
+                                  <ChevronRight size={13} color="#71717A" />
+                                </Pressable>
+                              )
+                            })
+                          )}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* MODO 2: PRESETS MANUALES Y HORA */}
+                    {datePickerTab === 'manual' && (
+                      <View style={styles.manualPickerContainer}>
+                        <Text style={styles.miniSectionTitle}>DÍAS RÁPIDOS</Text>
+                        <View style={styles.dateOptionsRow}>
+                          <Pressable onPress={() => setPresetDate('today')} style={styles.dateOptionBtn}>
+                            <Text style={styles.dateOptionText}>Hoy (23:59)</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setPresetDate('tomorrow')} style={styles.dateOptionBtn}>
+                            <Text style={styles.dateOptionText}>Mañana</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setPresetDate('friday')} style={styles.dateOptionBtn}>
+                            <Text style={styles.dateOptionText}>Viernes</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setPresetDate('next_week')} style={styles.dateOptionBtn}>
+                            <Text style={styles.dateOptionText}>7 días</Text>
+                          </Pressable>
+                        </View>
+
+                        <Text style={[styles.miniSectionTitle, { marginTop: 10 }]}>HORA</Text>
+                        <View style={styles.dateOptionsRow}>
+                          <Pressable onPress={() => setCustomHour(7, 0)} style={styles.hourOptionBtn}>
+                            <Text style={styles.hourOptionText}>07:00 AM</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setCustomHour(13, 0)} style={styles.hourOptionBtn}>
+                            <Text style={styles.hourOptionText}>01:00 PM</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setCustomHour(18, 0)} style={styles.hourOptionBtn}>
+                            <Text style={styles.hourOptionText}>06:00 PM</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setCustomHour(23, 59)} style={styles.hourOptionBtn}>
+                            <Text style={styles.hourOptionText}>11:59 PM</Text>
+                          </Pressable>
+                        </View>
+
+                        {Boolean(dueDate) && (
+                          <Pressable
+                            onPress={() => setPresetDate('clear')}
+                            style={styles.dateOptionClearBtn}
+                          >
+                            <Text style={styles.dateOptionClearText}>Quitar fecha</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
                   </View>
                 )}
 
@@ -1347,6 +1593,140 @@ const styles = StyleSheet.create({
     marginTop: 6,
     gap: 6,
   },
+  inlineDateMenu: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 6,
+    gap: 10,
+  },
+  dateSegmentedRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    padding: 3,
+    gap: 4,
+  },
+  dateSegmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 6,
+  },
+  dateSegmentBtnActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  dateSegmentText: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dateSegmentTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  classPickerContainer: {
+    gap: 10,
+  },
+  classDayBar: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  classDayPill: {
+    flex: 1,
+    paddingVertical: 7,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  classDayPillActive: {
+    backgroundColor: '#818CF8',
+  },
+  classDayText: {
+    color: '#71717A',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  classDayTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  classListContainer: {
+    gap: 6,
+  },
+  emptyClassesBox: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  emptyClassesText: {
+    color: '#71717A',
+    fontSize: 12,
+  },
+  classCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 10,
+    padding: 10,
+    gap: 10,
+  },
+  classTimeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(129, 140, 248, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  classTimeText: {
+    color: '#818CF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  classSubjectInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  classSubjectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  classSubjectName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  classRoomText: {
+    color: '#71717A',
+    fontSize: 11,
+  },
+  manualPickerContainer: {
+    gap: 6,
+  },
+  miniSectionTitle: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  hourOptionBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 10,
+  },
+  hourOptionText: {
+    color: '#A1A1AA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   inlineMenuHeader: {
     color: '#71717A',
     fontSize: 10.5,
@@ -1396,6 +1776,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
   dateOptionClearText: {
     color: '#F87171',

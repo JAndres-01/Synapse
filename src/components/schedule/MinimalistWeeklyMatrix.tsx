@@ -79,35 +79,37 @@ function MatrixSlotCard({
       >
         {hasSubj ? (
           <View style={styles.slotFilledContent}>
-            {/* Cabecera de la celda: Punto de color + Indicador sutil de tareas + Bloque */}
-            <View style={styles.slotHeaderRow}>
-              <View style={styles.slotHeaderLeft}>
-                <View
-                  style={[
-                    styles.subjDot,
-                    { backgroundColor: subjColor },
-                    isWhite && styles.whiteDotBorder,
-                  ]}
-                />
-                <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+            {/* Sección Superior: Cabecera y Nombre de la Materia siempre fijos arriba */}
+            <View style={styles.slotTopSection}>
+              <View style={styles.slotHeaderRow}>
+                <View style={styles.slotHeaderLeft}>
+                  <View
+                    style={[
+                      styles.subjDot,
+                      { backgroundColor: subjColor },
+                      isWhite && styles.whiteDotBorder,
+                    ]}
+                  />
+                  <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+                </View>
+
+                {/* Indicador Minimalista de Tareas Pendientes para este día y materia */}
+                {pendingTaskCount > 0 && (
+                  <View style={styles.taskBadge}>
+                    <CheckSquare size={8.5} color="#FFFFFF" />
+                    <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Indicador Minimalista de Tareas Pendientes para este día y materia */}
-              {pendingTaskCount > 0 && (
-                <View style={styles.taskBadge}>
-                  <CheckSquare size={8.5} color="#FFFFFF" />
-                  <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
-                </View>
-              )}
+              {/* Nombre de la Materia SIEMPRE alineado en la parte superior */}
+              <Text style={styles.slotSubjectName} numberOfLines={2}>
+                {schedule!.subject!.name}
+              </Text>
             </View>
 
-            {/* Nombre de la Materia */}
-            <Text style={styles.slotSubjectName} numberOfLines={2}>
-              {schedule!.subject!.name}
-            </Text>
-
-            {/* Aula o Profesor */}
-            {(Boolean(schedule?.classroom_room) || Boolean(schedule?.subject?.teacher_name)) && (
+            {/* Sección Inferior: Aula o Profesor anclados abajo */}
+            {(Boolean(schedule?.classroom_room) || Boolean(schedule?.subject?.teacher_name)) ? (
               <View style={styles.slotMetaRow}>
                 {Boolean(schedule?.classroom_room) && (
                   <View style={styles.slotMetaItem}>
@@ -126,6 +128,8 @@ function MatrixSlotCard({
                   </View>
                 )}
               </View>
+            ) : (
+              <View style={styles.slotMetaEmpty} />
             )}
           </View>
         ) : (
@@ -369,6 +373,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
+  slotTopSection: {
+    gap: 4,
+  },
   slotHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -413,7 +420,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 15,
     letterSpacing: -0.2,
-    marginVertical: 2,
   },
   slotMetaRow: {
     flexDirection: 'row',
@@ -430,6 +436,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '500',
     maxWidth: 95,
+  },
+  slotMetaEmpty: {
+    height: 10,
   },
   slotEmptyContent: {
     alignItems: 'center',

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
-import { calculateLiveClassStatus, type LiveStatusResult } from '@/lib/scheduleEngine'
+import { calculateLiveClassStatus } from '@/lib/scheduleEngine'
 import { MapPin, User, Clock } from 'lucide-react-native'
 
 interface MinimalistLiveHeroProps {
@@ -9,22 +9,23 @@ interface MinimalistLiveHeroProps {
 }
 
 export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroProps) {
-  const [liveData, setLiveData] = useState<LiveStatusResult>(() =>
-    calculateLiveClassStatus(schedulesToday)
-  )
+  const [, setTick] = useState(0)
 
   useEffect(() => {
-    setLiveData(calculateLiveClassStatus(schedulesToday))
-
     const interval = setInterval(() => {
-      setLiveData(calculateLiveClassStatus(schedulesToday))
-    }, 15000)
+      setTick((prev) => prev + 1)
+    }, 30000)
 
     return () => clearInterval(interval)
-  }, [schedulesToday])
+  }, [])
+
+  const liveData = useMemo(
+    () => calculateLiveClassStatus(schedulesToday),
+    [schedulesToday]
+  )
 
   const isLive = liveData.status === 'active'
-  const isBreak = liveData.status === 'break'
+  const isBreak = (liveData as any).status === 'break'
   const activeSched = liveData.activeSchedule
 
   return (
@@ -106,20 +107,21 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
 
 const styles = StyleSheet.create({
   heroContainer: {
-    backgroundColor: 'rgba(24, 24, 27, 0.7)',
+    backgroundColor: '#18181B',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#27272A',
     padding: 16,
-    gap: 8,
+    gap: 10,
+    overflow: 'hidden',
   },
   heroContainerLive: {
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    backgroundColor: 'rgba(16, 185, 129, 0.04)',
+    borderColor: 'rgba(129, 140, 248, 0.4)',
+    backgroundColor: '#13131A',
   },
   heroContainerBreak: {
     borderColor: 'rgba(245, 158, 11, 0.4)',
-    backgroundColor: 'rgba(245, 158, 11, 0.04)',
+    backgroundColor: '#181510',
   },
   topRow: {
     flexDirection: 'row',
@@ -132,59 +134,58 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   pulseDotLive: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#818CF8',
   },
   pulseDotBreak: {
     backgroundColor: '#F59E0B',
   },
   pulseDotDefault: {
-    backgroundColor: '#71717A',
+    backgroundColor: '#52525B',
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   badgeTextLive: {
-    color: '#34D399',
+    color: '#818CF8',
   },
   badgeTextBreak: {
-    color: '#FBBF24',
+    color: '#F59E0B',
   },
   badgeTextDefault: {
-    color: '#A1A1AA',
+    color: '#71717A',
   },
   timeTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#18181B',
+    backgroundColor: '#27272A',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 3.5,
     borderRadius: 8,
   },
   timeTagText: {
-    color: '#D4D4D8',
+    color: '#A1A1AA',
     fontSize: 10.5,
-    fontFamily: 'monospace',
+    fontWeight: '600',
   },
   headline: {
     color: '#FFFFFF',
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.4,
-    marginTop: 2,
+    letterSpacing: -0.3,
   },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     flexWrap: 'wrap',
-    gap: 10,
   },
   detailItem: {
     flexDirection: 'row',
@@ -192,24 +193,23 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   detailText: {
-    color: '#D4D4D8',
-    fontSize: 12,
-    fontWeight: '500',
+    color: '#A1A1AA',
+    fontSize: 11.5,
   },
   subheadline: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
   },
   progressBarBg: {
     height: 3,
     backgroundColor: '#27272A',
-    borderRadius: 2,
-    marginTop: 8,
+    borderRadius: 1.5,
     overflow: 'hidden',
+    marginTop: 4,
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#10B981',
-    borderRadius: 2,
+    backgroundColor: '#818CF8',
+    borderRadius: 1.5,
   },
 })

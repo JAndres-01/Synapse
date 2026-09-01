@@ -19,19 +19,24 @@ export function MinimalistTaskRow({
 }: MinimalistTaskRowProps) {
   const isDone = task.status === 'completed'
 
-  // Animaciones de microinteracción táctil y de rebote
+  // Animaciones de microinteracción táctil, resorte y entrada fluida
   const scaleAnim = useRef(new Animated.Value(1)).current
   const checkBounceAnim = useRef(new Animated.Value(1)).current
-  const rowFadeAnim = useRef(new Animated.Value(1)).current
+  const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
+  const rowSlideAnim = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    rowFadeAnim.setValue(isDone ? 0.65 : 1)
+    Animated.timing(rowFadeAnim, {
+      toValue: isDone ? 0.6 : 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start()
   }, [isDone])
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
       toValue: 0.985,
-      stiffness: 550,
+      stiffness: 600,
       damping: 28,
       useNativeDriver: true,
     }).start()
@@ -51,7 +56,7 @@ export function MinimalistTaskRow({
     Animated.sequence([
       Animated.timing(checkBounceAnim, {
         toValue: 1.35,
-        duration: 110,
+        duration: 100,
         useNativeDriver: true,
       }),
       Animated.timing(checkBounceAnim, {
@@ -100,7 +105,7 @@ export function MinimalistTaskRow({
   const isWhite = task.subject?.color === '#FFFFFF'
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }], opacity: rowFadeAnim }]}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }, { translateY: rowSlideAnim }], opacity: rowFadeAnim }]}>
       <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
         {/* Checkbox Circular con animación de rebote elástico */}
         <Pressable
@@ -119,7 +124,7 @@ export function MinimalistTaskRow({
           </Animated.View>
         </Pressable>
 
-        {/* Contenido de la Tarea */}
+        {/* Contenido de la Tarea con micro-scale reactivo */}
         <Pressable
           onPress={() => {
             triggerHaptic('light')
@@ -150,16 +155,7 @@ export function MinimalistTaskRow({
               </View>
             )}
 
-            {task.type !== 'individual' && (
-              <Text style={styles.typeTag}>• {task.type}</Text>
-            )}
-
-            {attachCount > 0 && (
-              <View style={styles.attachTag}>
-                <Paperclip size={11} color="#71717A" />
-                <Text style={styles.attachCount}>{attachCount}</Text>
-              </View>
-            )}
+            {task.subject && dueInfo && <Text style={styles.metaDot}>•</Text>}
 
             {dueInfo && (
               <Text
@@ -167,10 +163,28 @@ export function MinimalistTaskRow({
                   styles.dueText,
                   dueInfo.isPast && styles.dueTextPast,
                   dueInfo.isToday && styles.dueTextToday,
+                  isDone && styles.dueTextDone,
                 ]}
               >
-                • {dueInfo.text}
+                {dueInfo.text}
               </Text>
+            )}
+
+            {Boolean(task.type) && task.type !== 'individual' && (
+              <>
+                <Text style={styles.metaDot}>•</Text>
+                <Text style={styles.typeText}>{task.type}</Text>
+              </>
+            )}
+
+            {attachCount > 0 && (
+              <>
+                <Text style={styles.metaDot}>•</Text>
+                <View style={styles.attachTag}>
+                  <Paperclip size={10} color="#71717A" />
+                  <Text style={styles.attachText}>{attachCount}</Text>
+                </View>
+              </>
             )}
           </View>
         </Pressable>
@@ -182,27 +196,27 @@ export function MinimalistTaskRow({
 const styles = StyleSheet.create({
   rowContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 4,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
     gap: 12,
   },
   rowBorder: {
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   checkboxTouchArea: {
-    padding: 2,
+    paddingTop: 3,
+    paddingRight: 2,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.8,
-    borderColor: '#52525B',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#3F3F46',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
   },
   checkboxDone: {
     backgroundColor: '#FFFFFF',
@@ -220,19 +234,19 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   titleDone: {
-    textDecorationLine: 'line-through',
     color: '#71717A',
+    textDecorationLine: 'line-through',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
   },
   subjectTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   dot: {
     width: 6,
@@ -245,33 +259,42 @@ const styles = StyleSheet.create({
   },
   subjectName: {
     color: '#A1A1AA',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '500',
   },
-  typeTag: {
-    color: '#71717A',
+  metaDot: {
+    color: '#3F3F46',
     fontSize: 11,
+  },
+  dueText: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  dueTextPast: {
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  dueTextToday: {
+    color: '#818CF8',
+    fontWeight: '600',
+  },
+  dueTextDone: {
+    color: '#52525B',
+  },
+  typeText: {
+    color: '#71717A',
+    fontSize: 11.5,
+    fontWeight: '500',
     textTransform: 'capitalize',
   },
   attachTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 2,
   },
-  attachCount: {
+  attachText: {
     color: '#71717A',
-    fontSize: 10.5,
-  },
-  dueText: {
-    color: '#71717A',
-    fontSize: 11.5,
-  },
-  dueTextPast: {
-    color: '#F87171',
-    fontWeight: '600',
-  },
-  dueTextToday: {
-    color: '#FBBF24',
-    fontWeight: '600',
+    fontSize: 11,
   },
 })

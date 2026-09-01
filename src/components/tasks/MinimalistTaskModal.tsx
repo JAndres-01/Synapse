@@ -152,9 +152,11 @@ export function MinimalistTaskModal({
 
   const titleInputRef = useRef<TextInput>(null)
 
-  // Menús desplegables en formulario
+  // Menús desplegables en formulario con animación fluida
   const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
+  const pickerFadeAnim = useRef(new Animated.Value(0)).current
+  const pickerSlideAnim = useRef(new Animated.Value(-6)).current
 
   // Animaciones del Modal, Teclado y Gesto PanResponder
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -162,6 +164,27 @@ export function MinimalistTaskModal({
   const panY = useRef(new Animated.Value(0)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
+
+  // Disparar animación de entrada suave al abrir o cambiar de picker
+  useEffect(() => {
+    if (activePicker) {
+      pickerFadeAnim.setValue(0)
+      pickerSlideAnim.setValue(-6)
+      Animated.parallel([
+        Animated.timing(pickerFadeAnim, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+        Animated.spring(pickerSlideAnim, {
+          toValue: 0,
+          stiffness: 500,
+          damping: 28,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [activePicker, datePickerTab, showNativeDatePicker, showNativeTimePicker])
 
   // Cargar horarios del usuario para el selector de clases
   useEffect(() => {
@@ -984,237 +1007,250 @@ export function MinimalistTaskModal({
                   </Pressable>
                 </ScrollView>
 
-                {/* Menús Desplegables de Selección */}
+                {/* Menús Desplegables de Selección con Transición Animada */}
                 {activePicker === 'subject' && (
-                  <View style={styles.inlineMenu}>
-                    <Text style={styles.inlineMenuHeader}>Elegir materia</Text>
-                    <Pressable
-                      onPress={() => {
-                        triggerHaptic('selection')
-                        setSelectedSubjectId(null)
-                        setActivePicker(null)
-                      }}
-                      style={[
-                        styles.inlineMenuItem,
-                        selectedSubjectId === null && styles.inlineMenuItemActive,
-                      ]}
-                    >
-                      <Text style={styles.inlineMenuItemText}>General (Sin materia)</Text>
-                      {selectedSubjectId === null && <Check size={14} color="#FFFFFF" />}
-                    </Pressable>
+                  <Animated.View
+                    style={{
+                      opacity: pickerFadeAnim,
+                      transform: [{ translateY: pickerSlideAnim }],
+                    }}
+                  >
+                    <View style={styles.inlineMenu}>
+                      <Text style={styles.inlineMenuHeader}>Elegir materia</Text>
+                      <Pressable
+                        onPress={() => {
+                          triggerHaptic('selection')
+                          setSelectedSubjectId(null)
+                          setActivePicker(null)
+                        }}
+                        style={[
+                          styles.inlineMenuItem,
+                          selectedSubjectId === null && styles.inlineMenuItemActive,
+                        ]}
+                      >
+                        <Text style={styles.inlineMenuItemText}>General (Sin materia)</Text>
+                        {selectedSubjectId === null && <Check size={14} color="#FFFFFF" />}
+                      </Pressable>
 
-                    {subjects.map((s) => {
-                      const isSelected = selectedSubjectId === s.id
-                      const isSubjWhite = s.color === '#FFFFFF'
-                      return (
-                        <Pressable
-                          key={s.id}
-                          onPress={() => {
-                            triggerHaptic('selection')
-                            setSelectedSubjectId(s.id)
-                            setActivePicker(null)
-                          }}
-                          style={[
-                            styles.inlineMenuItem,
-                            isSelected && styles.inlineMenuItemActive,
-                          ]}
-                        >
-                          <View style={styles.inlineMenuLeft}>
-                            <View
-                              style={[
-                                styles.dot,
-                                { backgroundColor: s.color || '#FFFFFF' },
-                                isSubjWhite && styles.whiteDotBorder,
-                              ]}
-                            />
-                            <Text style={styles.inlineMenuItemText}>{s.name}</Text>
-                          </View>
-                          {isSelected && <Check size={14} color={s.color || '#FFFFFF'} />}
-                        </Pressable>
-                      )
-                    })}
-                  </View>
+                      {subjects.map((s) => {
+                        const isSelected = selectedSubjectId === s.id
+                        const isSubjWhite = s.color === '#FFFFFF'
+                        return (
+                          <Pressable
+                            key={s.id}
+                            onPress={() => {
+                              triggerHaptic('selection')
+                              setSelectedSubjectId(s.id)
+                              setActivePicker(null)
+                            }}
+                            style={[
+                              styles.inlineMenuItem,
+                              isSelected && styles.inlineMenuItemActive,
+                            ]}
+                          >
+                            <View style={styles.inlineMenuLeft}>
+                              <View
+                                style={[
+                                  styles.dot,
+                                  { backgroundColor: s.color || '#FFFFFF' },
+                                  isSubjWhite && styles.whiteDotBorder,
+                                ]}
+                              />
+                              <Text style={styles.inlineMenuItemText}>{s.name}</Text>
+                            </View>
+                            {isSelected && <Check size={14} color={s.color || '#FFFFFF'} />}
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </Animated.View>
                 )}
 
                 {/* SELECTOR DE FECHA CON MODO PARA CLASE Y MODO MANUAL NATIVO DE IPHONE */}
                 {activePicker === 'date' && (
-                  <View style={styles.inlineDateMenu}>
-                    {/* Selector de Modo: Para Clase vs Manual */}
-                    <View style={styles.dateSegmentedRow}>
-                      <Pressable
-                        onPress={() => {
-                          triggerHaptic('selection')
-                          setDatePickerTab('class')
-                          setShowNativeDatePicker(false)
-                          setShowNativeTimePicker(false)
-                        }}
-                        style={[
-                          styles.dateSegmentBtn,
-                          datePickerTab === 'class' && styles.dateSegmentBtnActive,
-                        ]}
-                      >
-                        <GraduationCap
-                          size={13}
-                          color={datePickerTab === 'class' ? '#FFFFFF' : '#71717A'}
-                        />
-                        <Text
+                  <Animated.View
+                    style={{
+                      opacity: pickerFadeAnim,
+                      transform: [{ translateY: pickerSlideAnim }],
+                    }}
+                  >
+                    <View style={styles.inlineDateMenu}>
+                      {/* Selector de Modo: Para Clase vs Manual */}
+                      <View style={styles.dateSegmentedRow}>
+                        <Pressable
+                          onPress={() => {
+                            triggerHaptic('selection')
+                            setDatePickerTab('class')
+                            setShowNativeDatePicker(false)
+                            setShowNativeTimePicker(false)
+                          }}
                           style={[
-                            styles.dateSegmentText,
-                            datePickerTab === 'class' && styles.dateSegmentTextActive,
+                            styles.dateSegmentBtn,
+                            datePickerTab === 'class' && styles.dateSegmentBtnActive,
                           ]}
                         >
-                          Para Clase
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => {
-                          triggerHaptic('selection')
-                          setDatePickerTab('manual')
-                        }}
-                        style={[
-                          styles.dateSegmentBtn,
-                          datePickerTab === 'manual' && styles.dateSegmentBtnActive,
-                        ]}
-                      >
-                        <Calendar
-                          size={13}
-                          color={datePickerTab === 'manual' ? '#FFFFFF' : '#71717A'}
-                        />
-                        <Text
-                          style={[
-                            styles.dateSegmentText,
-                            datePickerTab === 'manual' && styles.dateSegmentTextActive,
-                          ]}
-                        >
-                          Manual
-                        </Text>
-                      </Pressable>
-                    </View>
-
-                    {/* MODO 1: MINI CALENDARIO / SELECCIÓN DE CLASE */}
-                    {datePickerTab === 'class' && (
-                      <View style={styles.classPickerContainer}>
-                        {/* Selector de Día de la Semana */}
-                        <View style={styles.classDayBar}>
-                          {[
-                            { day: 1, label: 'Lun' },
-                            { day: 2, label: 'Mar' },
-                            { day: 3, label: 'Mié' },
-                            { day: 4, label: 'Jue' },
-                            { day: 5, label: 'Vie' },
-                          ].map((d) => {
-                            const isSelected = selectedClassDay === d.day
-                            return (
-                              <Pressable
-                                key={d.day}
-                                onPress={() => {
-                                  triggerHaptic('selection')
-                                  setSelectedClassDay(d.day)
-                                }}
-                                style={[
-                                  styles.classDayPill,
-                                  isSelected && styles.classDayPillActive,
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.classDayText,
-                                    isSelected && styles.classDayTextActive,
-                                  ]}
-                                >
-                                  {d.label}
-                                </Text>
-                              </Pressable>
-                            )
-                          })}
-                        </View>
-
-                        {/* Lista de Clases del Día Seleccionado */}
-                        <View style={styles.classListContainer}>
-                          {filteredDaySchedules.length === 0 ? (
-                            <View style={styles.emptyClassesBox}>
-                              <Text style={styles.emptyClassesText}>
-                                Sin clases configuradas para este día
-                              </Text>
-                            </View>
-                          ) : (
-                            filteredDaySchedules.map((sched) => {
-                              const subj =
-                                subjects.find((s) => s.id === sched.subject_id) ||
-                                sched.subject
-                              const isWhite = subj?.color === '#FFFFFF'
-
-                              return (
-                                <Pressable
-                                  key={sched.id || `${sched.day_of_week}_${sched.block_number}`}
-                                  onPress={() => handleSelectClass(sched, subj)}
-                                  style={styles.classCardRow}
-                                >
-                                  <View style={styles.classTimeBox}>
-                                    <Clock size={11} color="#818CF8" />
-                                    <Text style={styles.classTimeText}>
-                                      {sched.start_time || '07:00'}
-                                    </Text>
-                                  </View>
-
-                                  <View style={styles.classSubjectInfo}>
-                                    <View style={styles.classSubjectTitleRow}>
-                                      <View
-                                        style={[
-                                          styles.dot,
-                                          { backgroundColor: subj?.color || '#FFFFFF' },
-                                          isWhite && styles.whiteDotBorder,
-                                        ]}
-                                      />
-                                      <Text
-                                        style={styles.classSubjectName}
-                                        numberOfLines={1}
-                                      >
-                                        {subj?.name || 'Materia'}
-                                      </Text>
-                                    </View>
-                                    {sched.classroom_room && (
-                                      <Text style={styles.classRoomText}>
-                                        {sched.classroom_room}
-                                      </Text>
-                                    )}
-                                  </View>
-
-                                  <ChevronRight size={13} color="#71717A" />
-                                </Pressable>
-                              )
-                            })
-                          )}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* MODO 2: DOS BOTONES LIMPIOS (FECHA Y HORA) CON SELECTORES NATIVOS DE IPHONE */}
-                    {datePickerTab === 'manual' && (
-                      <View style={styles.nativePickerContainer}>
-                        <View style={styles.nativeButtonsRow}>
-                          {/* Botón 1: Elegir Fecha */}
-                          <Pressable
-                            onPress={() => {
-                              triggerHaptic('light')
-                              if (!dueDate) {
-                                const now = new Date()
-                                now.setHours(23, 59, 0, 0)
-                                setDueDate(now.toISOString())
-                              }
-                              setShowNativeDatePicker((prev) => !prev)
-                              setShowNativeTimePicker(false)
-                            }}
+                          <GraduationCap
+                            size={13}
+                            color={datePickerTab === 'class' ? '#FFFFFF' : '#71717A'}
+                          />
+                          <Text
                             style={[
-                              styles.nativePickerBtn,
-                              showNativeDatePicker && styles.nativePickerBtnActive,
+                              styles.dateSegmentText,
+                              datePickerTab === 'class' && styles.dateSegmentTextActive,
                             ]}
                           >
-                            <Calendar size={15} color={showNativeDatePicker ? '#818CF8' : '#A1A1AA'} />
-                            <View style={styles.nativeBtnInfo}>
-                              <Text style={styles.nativeBtnLabel}>Fecha</Text>
-                              <Text style={styles.nativeBtnValue} numberOfLines={1}>
+                            Para Clase
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => {
+                            triggerHaptic('selection')
+                            setDatePickerTab('manual')
+                          }}
+                          style={[
+                            styles.dateSegmentBtn,
+                            datePickerTab === 'manual' && styles.dateSegmentBtnActive,
+                          ]}
+                        >
+                          <Calendar
+                            size={13}
+                            color={datePickerTab === 'manual' ? '#FFFFFF' : '#71717A'}
+                          />
+                          <Text
+                            style={[
+                              styles.dateSegmentText,
+                              datePickerTab === 'manual' && styles.dateSegmentTextActive,
+                            ]}
+                          >
+                            Manual
+                          </Text>
+                        </Pressable>
+                      </View>
+
+                      {/* MODO 1: MINI CALENDARIO / SELECCIÓN DE CLASE */}
+                      {datePickerTab === 'class' && (
+                        <View style={styles.classPickerContainer}>
+                          {/* Selector de Día de la Semana */}
+                          <View style={styles.classDayBar}>
+                            {[
+                              { day: 1, label: 'Lun' },
+                              { day: 2, label: 'Mar' },
+                              { day: 3, label: 'Mié' },
+                              { day: 4, label: 'Jue' },
+                              { day: 5, label: 'Vie' },
+                            ].map((d) => {
+                              const isSelected = selectedClassDay === d.day
+                              return (
+                                <Pressable
+                                  key={d.day}
+                                  onPress={() => {
+                                    triggerHaptic('selection')
+                                    setSelectedClassDay(d.day)
+                                  }}
+                                  style={[
+                                    styles.classDayPill,
+                                    isSelected && styles.classDayPillActive,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.classDayText,
+                                      isSelected && styles.classDayTextActive,
+                                    ]}
+                                  >
+                                    {d.label}
+                                  </Text>
+                                </Pressable>
+                              )
+                            })}
+                          </View>
+
+                          {/* Lista de Clases del Día Seleccionado */}
+                          <View style={styles.classListContainer}>
+                            {filteredDaySchedules.length === 0 ? (
+                              <View style={styles.emptyClassesBox}>
+                                <Text style={styles.emptyClassesText}>
+                                  Sin clases configuradas para este día
+                                </Text>
+                              </View>
+                            ) : (
+                              filteredDaySchedules.map((sched) => {
+                                const subj =
+                                  subjects.find((s) => s.id === sched.subject_id) ||
+                                  sched.subject
+                                const isWhite = subj?.color === '#FFFFFF'
+
+                                return (
+                                  <Pressable
+                                    key={sched.id || `${sched.day_of_week}_${sched.block_number}`}
+                                    onPress={() => handleSelectClass(sched, subj)}
+                                    style={styles.classCardRow}
+                                  >
+                                    <View style={styles.classTimeBox}>
+                                      <Clock size={11} color="#818CF8" />
+                                      <Text style={styles.classTimeText}>
+                                        {sched.start_time || '07:00'}
+                                      </Text>
+                                    </View>
+
+                                    <View style={styles.classSubjectInfo}>
+                                      <View style={styles.classSubjectTitleRow}>
+                                        <View
+                                          style={[
+                                            styles.dot,
+                                            { backgroundColor: subj?.color || '#FFFFFF' },
+                                            isWhite && styles.whiteDotBorder,
+                                          ]}
+                                        />
+                                        <Text
+                                          style={styles.classSubjectName}
+                                          numberOfLines={1}
+                                        >
+                                          {subj?.name || 'Materia'}
+                                        </Text>
+                                      </View>
+                                      {sched.classroom_room && (
+                                        <Text style={styles.classRoomText}>
+                                          {sched.classroom_room}
+                                        </Text>
+                                      )}
+                                    </View>
+
+                                    <ChevronRight size={13} color="#71717A" />
+                                  </Pressable>
+                                )
+                              })
+                            )}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* MODO 2: DOS BOTONES LIMPIOS (FECHA Y HORA) CON SELECTORES NATIVOS DE IPHONE */}
+                      {datePickerTab === 'manual' && (
+                        <View style={styles.nativePickerContainer}>
+                          <View style={styles.nativeButtonsRow}>
+                            {/* Botón 1: Elegir Fecha */}
+                            <Pressable
+                              onPress={() => {
+                                triggerHaptic('light')
+                                if (!dueDate) {
+                                  const now = new Date()
+                                  now.setHours(23, 59, 0, 0)
+                                  setDueDate(now.toISOString())
+                                }
+                                setShowNativeDatePicker((prev) => !prev)
+                                setShowNativeTimePicker(false)
+                              }}
+                              style={[
+                                styles.nativePickerBtn,
+                                showNativeDatePicker && styles.nativePickerBtnActive,
+                              ]}
+                            >
+                              <Calendar size={15} color={showNativeDatePicker ? '#818CF8' : '#A1A1AA'} />
+                              <View style={styles.nativeBtnInfo}>
+                                <Text style={styles.nativeBtnLabel}>Fecha</Text>
+                                <Text style={styles.nativeBtnValue} numberOfLines={1}>
                                 {formatManualDateOnly(dueDate)}
                               </Text>
                             </View>
@@ -1320,56 +1356,71 @@ export function MinimalistTaskModal({
                       </View>
                     )}
                   </View>
+                </Animated.View>
                 )}
 
                 {activePicker === 'type' && (
-                  <View style={styles.inlineMenu}>
-                    <Text style={styles.inlineMenuHeader}>Tipo de tarea</Text>
-                    <View style={styles.typeOptionsRow}>
-                      {(['individual', 'grupal', 'proyecto', 'examen'] as TaskType[]).map((t) => (
-                        <Pressable
-                          key={t}
-                          onPress={() => {
-                            triggerHaptic('selection')
-                            setTaskType(t)
-                            setActivePicker(null)
-                          }}
-                          style={[
-                            styles.typeOptionBtn,
-                            taskType === t && styles.typeOptionBtnActive,
-                          ]}
-                        >
-                          <Text
+                  <Animated.View
+                    style={{
+                      opacity: pickerFadeAnim,
+                      transform: [{ translateY: pickerSlideAnim }],
+                    }}
+                  >
+                    <View style={styles.inlineMenu}>
+                      <Text style={styles.inlineMenuHeader}>Tipo de tarea</Text>
+                      <View style={styles.typeOptionsRow}>
+                        {(['individual', 'grupal', 'proyecto', 'examen'] as TaskType[]).map((t) => (
+                          <Pressable
+                            key={t}
+                            onPress={() => {
+                              triggerHaptic('selection')
+                              setTaskType(t)
+                              setActivePicker(null)
+                            }}
                             style={[
-                              styles.typeOptionText,
-                              taskType === t && styles.typeOptionTextActive,
+                              styles.typeOptionBtn,
+                              taskType === t && styles.typeOptionBtnActive,
                             ]}
                           >
-                            {t}
-                          </Text>
-                        </Pressable>
-                      ))}
+                            <Text
+                              style={[
+                                styles.typeOptionText,
+                                taskType === t && styles.typeOptionTextActive,
+                              ]}
+                            >
+                              {t}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
                     </View>
-                  </View>
+                  </Animated.View>
                 )}
 
                 {activePicker === 'link' && (
-                  <View style={styles.inlineMenu}>
-                    <Text style={styles.inlineMenuHeader}>Pegar enlace</Text>
-                    <View style={styles.linkRow}>
-                      <TextInput
-                        placeholder="https://..."
-                        placeholderTextColor="#71717A"
-                        value={linkUrl}
-                        onChangeText={setLinkUrl}
-                        style={styles.cleanLinkInput}
-                        autoCapitalize="none"
-                      />
-                      <Pressable onPress={handleAddLink} style={styles.linkConfirmBtn}>
-                        <Text style={styles.linkConfirmBtnText}>Añadir</Text>
-                      </Pressable>
+                  <Animated.View
+                    style={{
+                      opacity: pickerFadeAnim,
+                      transform: [{ translateY: pickerSlideAnim }],
+                    }}
+                  >
+                    <View style={styles.inlineMenu}>
+                      <Text style={styles.inlineMenuHeader}>Pegar enlace</Text>
+                      <View style={styles.linkRow}>
+                        <TextInput
+                          placeholder="https://..."
+                          placeholderTextColor="#71717A"
+                          value={linkUrl}
+                          onChangeText={setLinkUrl}
+                          style={styles.cleanLinkInput}
+                          autoCapitalize="none"
+                        />
+                        <Pressable onPress={handleAddLink} style={styles.linkConfirmBtn}>
+                          <Text style={styles.linkConfirmBtnText}>Añadir</Text>
+                        </Pressable>
+                      </View>
                     </View>
-                  </View>
+                  </Animated.View>
                 )}
 
                 {/* Adjuntos Cargados */}
@@ -2021,5 +2072,6 @@ const styles = StyleSheet.create({
   lightboxTip: {
     color: '#71717A',
     fontSize: 12,
+    marginTop: 16,
   },
 })

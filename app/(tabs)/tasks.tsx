@@ -129,6 +129,9 @@ export default function TasksScreen() {
     }
   }, [user?.id])
 
+  // Estado de Tarea Resaltada (brillo y elevación animada)
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
+
   const params = useLocalSearchParams<{ taskId?: string }>()
 
   useEffect(() => {
@@ -139,8 +142,16 @@ export default function TasksScreen() {
     if (params.taskId && tasks.length > 0) {
       const found = tasks.find((t) => t.id === params.taskId)
       if (found) {
-        setActiveTask(found)
-        setTaskModalMode('detail')
+        // Asegurar que la tarea sea visible si ya estaba completada
+        if (found.status === 'completed' && statusFilter === 'pending') {
+          setStatusFilter('all')
+        }
+        // Resaltar la tarea con brillo blanco y elevación
+        setHighlightedTaskId(found.id)
+        const timer = setTimeout(() => {
+          setHighlightedTaskId(null)
+        }, 2800)
+        return () => clearTimeout(timer)
       }
     }
   }, [params.taskId, tasks])
@@ -585,6 +596,7 @@ export default function TasksScreen() {
                   key={task.id}
                   task={task}
                   isLast={idx === filteredTasks.length - 1}
+                  isHighlighted={highlightedTaskId === task.id}
                   onToggleStatus={handleToggleStatus}
                   onOpenDetail={(t) => {
                     triggerHaptic('light')

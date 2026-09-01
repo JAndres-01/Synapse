@@ -7,6 +7,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 interface MinimalistTaskRowProps {
   task: Task
   isLast?: boolean
+  isHighlighted?: boolean
   onToggleStatus: (taskId: string, currentStatus: string) => void
   onOpenDetail: (task: Task) => void
 }
@@ -14,6 +15,7 @@ interface MinimalistTaskRowProps {
 export function MinimalistTaskRow({
   task,
   isLast = false,
+  isHighlighted = false,
   onToggleStatus,
   onOpenDetail,
 }: MinimalistTaskRowProps) {
@@ -25,6 +27,10 @@ export function MinimalistTaskRow({
   const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
   const rowSlideAnim = useRef(new Animated.Value(0)).current
 
+  // Animación de Brillo Blanco y Elevación al Resaltar
+  const highlightAnim = useRef(new Animated.Value(0)).current
+  const liftAnim = useRef(new Animated.Value(0)).current
+
   useEffect(() => {
     Animated.timing(rowFadeAnim, {
       toValue: isDone ? 0.6 : 1,
@@ -32,6 +38,43 @@ export function MinimalistTaskRow({
       useNativeDriver: true,
     }).start()
   }, [isDone])
+
+  useEffect(() => {
+    if (isHighlighted) {
+      triggerHaptic('medium')
+      Animated.parallel([
+        Animated.spring(liftAnim, {
+          toValue: -5,
+          stiffness: 450,
+          damping: 18,
+          useNativeDriver: true,
+        }),
+        Animated.timing(highlightAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: false,
+        }),
+      ]).start()
+
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.spring(liftAnim, {
+            toValue: 0,
+            stiffness: 280,
+            damping: 24,
+            useNativeDriver: true,
+          }),
+          Animated.timing(highlightAnim, {
+            toValue: 0,
+            duration: 900,
+            useNativeDriver: false,
+          }),
+        ]).start()
+      }, 1600)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isHighlighted])
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -104,96 +147,133 @@ export function MinimalistTaskRow({
   const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
   const isWhite = task.subject?.color === '#FFFFFF'
 
+  const interpolatedBg = highlightAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.12)'],
+  })
+
+  const interpolatedBorder = highlightAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.35)'],
+  })
+
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }, { translateY: rowSlideAnim }], opacity: rowFadeAnim }]}>
-      <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
-        {/* Checkbox Circular con animación de rebote elástico */}
-        <Pressable
-          onPress={handleToggle}
-          style={styles.checkboxTouchArea}
-          hitSlop={12}
-        >
-          <Animated.View
-            style={[
-              styles.checkbox,
-              isDone && styles.checkboxDone,
-              { transform: [{ scale: checkBounceAnim }] },
-            ]}
+    <Animated.View
+      style={[
+        {
+          transform: [
+            { scale: scaleAnim },
+            { translateY: rowSlideAnim },
+            { translateY: liftAnim },
+          ],
+          opacity: rowFadeAnim,
+        },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.glowWrapper,
+          {
+            backgroundColor: interpolatedBg,
+            borderColor: interpolatedBorder,
+          },
+        ]}
+      >
+        <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
+          {/* Checkbox Circular con animación de rebote elástico */}
+          <Pressable
+            onPress={handleToggle}
+            style={styles.checkboxTouchArea}
+            hitSlop={12}
           >
-            {isDone && <Check size={11} color="#09090B" strokeWidth={3.5} />}
-          </Animated.View>
-        </Pressable>
+            <Animated.View
+              style={[
+                styles.checkbox,
+                isDone && styles.checkboxDone,
+                { transform: [{ scale: checkBounceAnim }] },
+              ]}
+            >
+              {isDone && <Check size={11} color="#09090B" strokeWidth={3.5} />}
+            </Animated.View>
+          </Pressable>
 
-        {/* Contenido de la Tarea con micro-scale reactivo */}
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light')
-            onOpenDetail(task)
-          }}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={styles.contentArea}
-        >
-          <Text
-            style={[styles.title, isDone && styles.titleDone]}
-            numberOfLines={2}
+          {/* Contenido de la Tarea con micro-scale reactivo */}
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light')
+              onOpenDetail(task)
+            }}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={styles.contentArea}
           >
-            {task.title}
-          </Text>
+            <Text
+              style={[styles.title, isDone && styles.titleDone]}
+              numberOfLines={2}
+            >
+              {task.title}
+            </Text>
 
-          <View style={styles.metaRow}>
-            {task.subject && (
-              <View style={styles.subjectTag}>
-                <View
-                  style={[
-                    styles.dot,
-                    { backgroundColor: task.subject.color || '#FFFFFF' },
-                    isWhite && styles.whiteDotBorder,
-                  ]}
-                />
-                <Text style={styles.subjectName}>{task.subject.name}</Text>
-              </View>
-            )}
-
-            {task.subject && dueInfo && <Text style={styles.metaDot}>•</Text>}
-
-            {dueInfo && (
-              <Text
-                style={[
-                  styles.dueText,
-                  dueInfo.isPast && styles.dueTextPast,
-                  dueInfo.isToday && styles.dueTextToday,
-                  isDone && styles.dueTextDone,
-                ]}
-              >
-                {dueInfo.text}
-              </Text>
-            )}
-
-            {Boolean(task.type) && task.type !== 'individual' && (
-              <>
-                <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.typeText}>{task.type}</Text>
-              </>
-            )}
-
-            {attachCount > 0 && (
-              <>
-                <Text style={styles.metaDot}>•</Text>
-                <View style={styles.attachTag}>
-                  <Paperclip size={10} color="#71717A" />
-                  <Text style={styles.attachText}>{attachCount}</Text>
+            <View style={styles.metaRow}>
+              {task.subject && (
+                <View style={styles.subjectTag}>
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: task.subject.color || '#FFFFFF' },
+                      isWhite && styles.whiteDotBorder,
+                    ]}
+                  />
+                  <Text style={styles.subjectName}>{task.subject.name}</Text>
                 </View>
-              </>
-            )}
-          </View>
-        </Pressable>
-      </View>
+              )}
+
+              {task.subject && dueInfo && <Text style={styles.metaDot}>•</Text>}
+
+              {dueInfo && (
+                <Text
+                  style={[
+                    styles.dueText,
+                    dueInfo.isPast && styles.dueTextPast,
+                    dueInfo.isToday && styles.dueTextToday,
+                    isDone && styles.dueTextDone,
+                  ]}
+                >
+                  {dueInfo.text}
+                </Text>
+              )}
+
+              {Boolean(task.type) && task.type !== 'individual' && (
+                <>
+                  <Text style={styles.metaDot}>•</Text>
+                  <Text style={styles.typeText}>{task.type}</Text>
+                </>
+              )}
+
+              {attachCount > 0 && (
+                <>
+                  <Text style={styles.metaDot}>•</Text>
+                  <View style={styles.attachTag}>
+                    <Paperclip size={10} color="#71717A" />
+                    <Text style={styles.attachText}>{attachCount}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          </Pressable>
+        </View>
+      </Animated.View>
     </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
+  glowWrapper: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    marginHorizontal: -8,
+  },
   rowContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -264,19 +344,19 @@ const styles = StyleSheet.create({
   },
   metaDot: {
     color: '#3F3F46',
-    fontSize: 11,
+    fontSize: 10,
   },
   dueText: {
     color: '#71717A',
     fontSize: 12,
     fontWeight: '500',
   },
-  dueTextPast: {
-    color: '#EF4444',
+  dueTextToday: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  dueTextToday: {
-    color: '#818CF8',
+  dueTextPast: {
+    color: '#EF4444',
     fontWeight: '600',
   },
   dueTextDone: {
@@ -285,16 +365,15 @@ const styles = StyleSheet.create({
   typeText: {
     color: '#71717A',
     fontSize: 11.5,
-    fontWeight: '500',
     textTransform: 'capitalize',
   },
   attachTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   attachText: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 11.5,
   },
 })

@@ -371,6 +371,7 @@ export function MinimalistTaskModal({
 
   const handleSwitchToEdit = () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     if (task) {
       setTitle(task.title || '')
       setDescription(task.description || '')
@@ -380,9 +381,6 @@ export function MinimalistTaskModal({
       setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
     }
     setCurrentView('form')
-    requestAnimationFrame(() => {
-      titleInputRef.current?.focus()
-    })
   }
 
   const handleSave = async () => {

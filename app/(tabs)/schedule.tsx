@@ -277,23 +277,16 @@ export default function ScheduleScreen() {
         </View>
 
         {/* Segmented Control iOS con Animación Fluida */}
-        <View
-          style={styles.segmentedContainer}
-          onLayout={(e: LayoutChangeEvent) => {
-            setSegmentContainerWidth(e.nativeEvent.layout.width)
-          }}
-        >
-          {segmentWidth > 0 && (
-            <Animated.View
-              style={[
-                styles.activeSegmentPill,
-                {
-                  width: segmentWidth,
-                  transform: [{ translateX: slideAnim }],
-                },
-              ]}
-            />
-          )}
+        <View style={styles.segmentedContainer}>
+          <Animated.View
+            style={[
+              styles.activeSegmentPill,
+              {
+                width: segmentWidth,
+                transform: [{ translateX: viewModeAnim }],
+              },
+            ]}
+          />
 
           <Pressable
             onPress={() => handleViewModeChange('day')}

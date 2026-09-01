@@ -476,20 +476,32 @@ export function MinimalistTaskModal({
         const fullTask: Task = {
           ...task,
           ...payload,
-          subject: selectedSubj,
+          subject: selectedSubj || null,
         }
         await personalStorage.saveTask(fullTask)
-        supabase.from('tasks').update(payload).eq('id', task.id).then(() => {})
+        if (userId) {
+          try {
+            await supabase.from('tasks').update(payload).eq('id', task.id)
+          } catch (e) {
+            console.log('Supabase sync update error:', e)
+          }
+        }
       } else {
         const newId = `task_${Date.now()}_${Math.random().toString(36).substring(7)}`
         const fullTask: Task = {
           id: newId,
           ...payload,
-          subject: selectedSubj,
+          subject: selectedSubj || null,
           created_at: new Date().toISOString(),
         }
         await personalStorage.saveTask(fullTask)
-        supabase.from('tasks').insert({ id: newId, ...payload }).then(() => {})
+        if (userId) {
+          try {
+            await supabase.from('tasks').insert({ id: newId, ...payload })
+          } catch (e) {
+            console.log('Supabase sync insert error:', e)
+          }
+        }
       }
 
       triggerHaptic('success')
@@ -737,25 +749,23 @@ export function MinimalistTaskModal({
                       </View>
                     )}
 
-                    {Boolean(dueInfo.text) && Boolean(task?.subject) && (
+                    {Boolean(dueInfo.text) && (
                       <Text style={styles.detailMetaDot}>•</Text>
                     )}
 
                     {/* Materia con punto de color */}
-                    {task?.subject && (
-                      <View style={styles.detailMetaItem}>
-                        <View
-                          style={[
-                            styles.detailSubjectColorDot,
-                            { backgroundColor: task.subject.color || '#FFFFFF' },
-                            task.subject.color === '#FFFFFF' && styles.whiteDotBorder,
-                          ]}
-                        />
-                        <Text style={styles.detailMetaText}>
-                          {task.subject.name}
-                        </Text>
-                      </View>
-                    )}
+                    <View style={styles.detailMetaItem}>
+                      <View
+                        style={[
+                          styles.detailSubjectColorDot,
+                          { backgroundColor: task?.subject?.color || '#71717A' },
+                          task?.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                        ]}
+                      />
+                      <Text style={styles.detailMetaText}>
+                        {task?.subject?.name || 'General'}
+                      </Text>
+                    </View>
 
                     {(Boolean(dueInfo.text) || Boolean(task?.subject)) && Boolean(task?.type) && task.type !== 'individual' && (
                       <Text style={styles.detailMetaDot}>•</Text>

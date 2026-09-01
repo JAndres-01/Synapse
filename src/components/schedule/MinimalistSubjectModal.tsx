@@ -261,7 +261,7 @@ export function MinimalistSubjectModal({
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
     Alert.alert(
       '¿Eliminar materia?',
-      `Se eliminará "${subjectName}" de tus materias y horarios.`,
+      `Se eliminará "${subjectName}" de tus materias y horarios. Las tareas vinculadas pasarán a "General".`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -276,6 +276,8 @@ export function MinimalistSubjectModal({
               await personalStorage.removeSubject(subjectId)
               onSubjectsUpdated()
               supabase.from('subjects').delete().eq('id', subjectId).then(() => {})
+              supabase.from('schedules').delete().eq('subject_id', subjectId).then(() => {})
+              supabase.from('tasks').update({ subject_id: null }).eq('subject_id', subjectId).then(() => {})
             } catch (err) {
               console.error('Error eliminando materia:', err)
             }

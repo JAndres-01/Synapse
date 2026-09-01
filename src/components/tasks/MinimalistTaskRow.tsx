@@ -220,20 +220,18 @@ export function MinimalistTaskRow({
             </Text>
 
             <View style={styles.metaRow}>
-              {task.subject && (
-                <View style={styles.subjectTag}>
-                  <View
-                    style={[
-                      styles.dot,
-                      { backgroundColor: task.subject.color || '#FFFFFF' },
-                      isWhite && styles.whiteDotBorder,
-                    ]}
-                  />
-                  <Text style={styles.subjectName}>{task.subject.name}</Text>
-                </View>
-              )}
+              <View style={styles.subjectTag}>
+                <View
+                  style={[
+                    styles.dot,
+                    { backgroundColor: task.subject?.color || '#71717A' },
+                    task.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                  ]}
+                />
+                <Text style={styles.subjectName}>{task.subject?.name || 'General'}</Text>
+              </View>
 
-              {task.subject && dueInfo && <Text style={styles.metaDot}>•</Text>}
+              {dueInfo && <Text style={styles.metaDot}>•</Text>}
 
               {dueInfo && (
                 <Text

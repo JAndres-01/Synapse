@@ -49,6 +49,20 @@ export const personalStorage = {
     const updatedScheds = scheds.filter((s) => s.subject_id !== subjectId)
     await this.setSchedules(updatedScheds)
 
+    // Desvincular de las tareas (pasan a ser "General" / sin materia)
+    const tasks = await this.getTasks()
+    const updatedTasks = tasks.map((t) => {
+      if (t.subject_id === subjectId) {
+        return {
+          ...t,
+          subject_id: null,
+          subject: null,
+        }
+      }
+      return t
+    })
+    await this.setTasks(updatedTasks)
+
     return updated
   },
 

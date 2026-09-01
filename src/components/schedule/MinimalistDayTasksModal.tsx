@@ -290,20 +290,18 @@ export function MinimalistDayTasksModal({
                         </Text>
 
                         <View style={styles.taskItemMetaRow}>
-                          {t.subject && (
-                            <View style={styles.taskSubjTag}>
-                              <View
-                                style={[
-                                  styles.subjDot,
-                                  { backgroundColor: t.subject.color || '#FFFFFF' },
-                                  isWhite && styles.whiteDotBorder,
-                                ]}
-                              />
-                              <Text style={styles.taskSubjName}>{t.subject.name}</Text>
-                            </View>
-                          )}
+                          <View style={styles.taskSubjTag}>
+                            <View
+                              style={[
+                                styles.subjDot,
+                                { backgroundColor: t.subject?.color || '#71717A' },
+                                t.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                              ]}
+                            />
+                            <Text style={styles.taskSubjName}>{t.subject?.name || 'General'}</Text>
+                          </View>
 
-                          {t.subject && Boolean(timeLabel) && <Text style={styles.metaDot}>•</Text>}
+                          {Boolean(timeLabel) && <Text style={styles.metaDot}>•</Text>}
 
                           {Boolean(timeLabel) && (
                             <View style={styles.metaDueTag}>

@@ -524,35 +524,31 @@ export function MinimalistTaskModal({
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header con Drag Handle y Botones de Acción Superiores */}
+              {/* Header con Drag Handle y Botones de Acción Agrupados en Forma de Iconos */}
               <View style={styles.detailHeaderBar}>
                 <View style={styles.dragHandle} />
-                <View style={styles.detailHeaderRow}>
-                  {/* Botón Eliminar reubicado arriba */}
+                <View style={styles.detailHeaderActions}>
+                  {/* Botón Eliminar como Icono */}
                   <Pressable
                     onPress={handleDelete}
                     disabled={deleteLoading}
                     hitSlop={12}
-                    style={styles.detailHeaderDeleteBtn}
+                    style={styles.detailHeaderDeleteIconBtn}
                   >
                     {deleteLoading ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
-                      <>
-                        <Trash2 size={13} color="#EF4444" />
-                        <Text style={styles.detailHeaderDeleteText}>Eliminar</Text>
-                      </>
+                      <Trash2 size={15} color="#EF4444" />
                     )}
                   </Pressable>
 
-                  {/* Botón Editar */}
+                  {/* Botón Editar como Icono */}
                   <Pressable
                     onPress={handleSwitchToEdit}
                     hitSlop={12}
-                    style={styles.detailHeaderEditBtn}
+                    style={styles.detailHeaderEditIconBtn}
                   >
-                    <Edit2 size={12} color="#FFFFFF" />
-                    <Text style={styles.detailHeaderEditText}>Editar</Text>
+                    <Edit2 size={15} color="#FFFFFF" />
                   </Pressable>
                 </View>
               </View>
@@ -1035,24 +1031,20 @@ export function MinimalistTaskModal({
           )}
         </Animated.View>
 
-        {/* Visor Lightbox para Fotos en Pantalla Completa */}
+        {/* Visor Lightbox para Fotos en Pantalla Completa (Tocar en cualquier parte cierra sin X) */}
         {selectedLightboxImage && (
           <Modal visible={true} transparent={true} animationType="fade" onRequestClose={() => setSelectedLightboxImage(null)}>
-            <View style={styles.lightboxBackdrop}>
-              <Pressable
-                style={styles.lightboxCloseButton}
-                onPress={() => setSelectedLightboxImage(null)}
-                hitSlop={12}
-              >
-                <X size={20} color="#FFFFFF" />
-              </Pressable>
+            <Pressable
+              style={styles.lightboxBackdrop}
+              onPress={() => setSelectedLightboxImage(null)}
+            >
               <Image
                 source={{ uri: selectedLightboxImage }}
                 style={styles.lightboxImage}
                 resizeMode="contain"
               />
-              <Text style={styles.lightboxTip}>Toca la X para cerrar</Text>
-            </View>
+              <Text style={styles.lightboxTip}>Toca en cualquier lugar para cerrar</Text>
+            </Pressable>
           </Modal>
         )}
       </View>
@@ -1090,47 +1082,35 @@ const styles = StyleSheet.create({
   },
   detailHeaderBar: {
     paddingTop: 10,
-    paddingBottom: 6,
+    paddingBottom: 4,
     position: 'relative',
   },
-  detailHeaderRow: {
+  detailHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
-    paddingTop: 2,
+    gap: 8,
   },
-  detailHeaderDeleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+  detailHeaderDeleteIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    paddingHorizontal: 11,
-    paddingVertical: 5.5,
-    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-  },
-  detailHeaderDeleteText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  detailHeaderEditBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
+  },
+  detailHeaderEditIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 5.5,
-    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  detailHeaderEditText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   detailScroll: {
     paddingHorizontal: 22,
@@ -1502,23 +1482,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    position: 'relative',
-  },
-  lightboxCloseButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   lightboxImage: {
     width: '100%',
-    height: '80%',
+    height: '82%',
   },
   lightboxTip: {
     color: '#71717A',

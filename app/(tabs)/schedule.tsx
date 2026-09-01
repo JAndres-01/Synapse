@@ -12,11 +12,13 @@ import {
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
-import type { Schedule, Subject } from '@/types/personal'
+import type { Schedule, Subject, Task } from '@/types/personal'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
 import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMatrix'
 import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectModal'
 import { MinimalistAssignSlotModal } from '@/components/schedule/MinimalistAssignSlotModal'
+import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTasksModal'
+import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -27,6 +29,7 @@ export default function ScheduleScreen() {
 
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
@@ -46,6 +49,19 @@ export default function ScheduleScreen() {
     day: 1,
     block: 1,
   })
+
+  // Modal de Tareas del Día (activado desde la Matriz Semanal)
+  const [dayTasksModalData, setDayTasksModalData] = useState<{
+    visible: boolean
+    day: number
+  }>({
+    visible: false,
+    day: 1,
+  })
+
+  // Modal de Detalle de Tarea
+  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   // Animación del Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(0)
@@ -68,17 +84,19 @@ export default function ScheduleScreen() {
   }
 
   const loadData = useCallback(async () => {
-    const [cachedScheds, cachedSubjs] = await Promise.all([
+    const [cachedScheds, cachedSubjs, cachedTasks] = await Promise.all([
       personalStorage.getSchedules(),
       personalStorage.getSubjects(),
+      personalStorage.getTasks(),
     ])
     setSchedules(cachedScheds)
     setSubjects(cachedSubjs)
+    setTasks(cachedTasks)
 
     if (!user) return
 
     try {
-      const [schedRes, subjRes] = await Promise.all([
+      const [schedRes, subjRes, taskRes] = await Promise.all([
         supabase
           .from('schedules')
           .select('*, subject:subjects(*)')
@@ -89,6 +107,11 @@ export default function ScheduleScreen() {
           .select('*')
           .eq('user_id', user.id)
           .order('name', { ascending: true }),
+        supabase
+          .from('tasks')
+          .select('*, subject:subjects(*)')
+          .eq('user_id', user.id)
+          .order('due_date', { ascending: true }),
       ])
 
       if (schedRes.data && schedRes.data.length > 0) {
@@ -101,6 +124,12 @@ export default function ScheduleScreen() {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
+      }
+
+      if (taskRes.data && taskRes.data.length > 0) {
+        const allTasks = taskRes.data as Task[]
+        await personalStorage.setTasks(allTasks)
+        setTasks(allTasks)
       }
     } catch (err) {
       console.log('Sync info:', err)
@@ -121,6 +150,46 @@ export default function ScheduleScreen() {
       block,
       existingSchedule: existingSchedule || null,
     })
+  }
+
+  const handleOpenDayTasks = (day: number) => {
+    triggerHaptic('light')
+    setDayTasksModalData({
+      visible: true,
+      day,
+    })
+  }
+
+  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
+    )
+
+    try {
+      const task = tasks.find((t) => t.id === taskId)
+      if (task) {
+        const updatedTask = { ...task, status: nextStatus }
+        await personalStorage.saveTask(updatedTask)
+        supabase
+          .from('tasks')
+          .update({ status: nextStatus, updated_at: new Date().toISOString() })
+          .eq('id', taskId)
+          .then(() => {})
+      }
+    } catch (err) {
+      console.error('Error toggling status:', err)
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await personalStorage.deleteTask(taskId)
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+      supabase.from('tasks').delete().eq('id', taskId).then(() => {})
+    } catch (err) {
+      console.error('Error eliminando tarea:', err)
+    }
   }
 
   const onRefresh = () => {
@@ -231,12 +300,42 @@ export default function ScheduleScreen() {
           <MinimalistWeeklyMatrix
             schedules={schedules}
             subjects={subjects}
-            onSlotPress={handleOpenAssign}
+            tasks={tasks}
+            onDayPress={handleOpenDayTasks}
           />
         )}
       </ScrollView>
 
-      {/* Modal de Asignar Bloque */}
+      {/* Modal de Tareas del Día (Activado desde la Matriz Semanal) */}
+      <MinimalistDayTasksModal
+        visible={dayTasksModalData.visible}
+        day={dayTasksModalData.day}
+        schedules={schedules}
+        tasks={tasks}
+        onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false }))}
+        onToggleTaskStatus={handleToggleTaskStatus}
+        onOpenTaskDetail={(t) => {
+          setActiveTask(t)
+          setTaskModalMode('detail')
+        }}
+      />
+
+      {/* Modal Unificado de Detalle / Edición de Tarea */}
+      <MinimalistTaskModal
+        mode={taskModalMode}
+        task={activeTask}
+        userId={user?.id || ''}
+        subjects={subjects}
+        onClose={() => {
+          setTaskModalMode('none')
+          setActiveTask(null)
+        }}
+        onToggleStatus={handleToggleTaskStatus}
+        onDeleteTask={handleDeleteTask}
+        onTaskSaved={loadData}
+      />
+
+      {/* Modal de Asignar Bloque (Desde Vista Diaria) */}
       {user && (
         <MinimalistAssignSlotModal
           visible={assignModalData.visible}

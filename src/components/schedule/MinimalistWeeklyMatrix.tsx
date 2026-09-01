@@ -7,15 +7,16 @@ import {
   ScrollView,
   Animated,
 } from 'react-native'
-import type { Schedule, Subject } from '@/types/personal'
+import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { Plus, Clock, MapPin, User } from 'lucide-react-native'
+import { Clock, MapPin, User, CheckSquare } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
   subjects: Subject[]
-  onSlotPress: (day: number, block: number, existing?: Schedule) => void
+  tasks?: Task[]
+  onDayPress: (day: number) => void
 }
 
 const DAYS = [
@@ -30,11 +31,13 @@ function MatrixSlotCard({
   dayNum,
   blockNum,
   schedule,
+  pendingTaskCount = 0,
   onPress,
 }: {
   dayNum: number
   blockNum: number
   schedule?: Schedule | null
+  pendingTaskCount?: number
   onPress: () => void
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current
@@ -76,27 +79,39 @@ function MatrixSlotCard({
       >
         {hasSubj ? (
           <View style={styles.slotFilledContent}>
+            {/* Cabecera de la celda: Punto de color + Indicador sutil de tareas + Bloque */}
             <View style={styles.slotHeaderRow}>
-              {/* Punto discreto de color de la materia */}
-              <View
-                style={[
-                  styles.subjDot,
-                  { backgroundColor: subjColor },
-                  isWhite && styles.whiteDotBorder,
-                ]}
-              />
-              <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+              <View style={styles.slotHeaderLeft}>
+                <View
+                  style={[
+                    styles.subjDot,
+                    { backgroundColor: subjColor },
+                    isWhite && styles.whiteDotBorder,
+                  ]}
+                />
+                <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+              </View>
+
+              {/* Indicador Minimalista de Tareas Pendientes */}
+              {pendingTaskCount > 0 && (
+                <View style={styles.taskBadge}>
+                  <CheckSquare size={8.5} color="#FFFFFF" />
+                  <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
+                </View>
+              )}
             </View>
 
+            {/* Nombre de la Materia */}
             <Text style={styles.slotSubjectName} numberOfLines={2}>
               {schedule!.subject!.name}
             </Text>
 
+            {/* Aula o Profesor */}
             {(Boolean(schedule?.classroom_room) || Boolean(schedule?.subject?.teacher_name)) && (
               <View style={styles.slotMetaRow}>
                 {Boolean(schedule?.classroom_room) && (
                   <View style={styles.slotMetaItem}>
-                    <MapPin size={9} color="#71717A" />
+                    <MapPin size={8.5} color="#71717A" />
                     <Text style={styles.slotMetaText} numberOfLines={1}>
                       {schedule!.classroom_room}
                     </Text>
@@ -104,7 +119,7 @@ function MatrixSlotCard({
                 )}
                 {Boolean(schedule?.subject?.teacher_name) && !schedule?.classroom_room && (
                   <View style={styles.slotMetaItem}>
-                    <User size={9} color="#71717A" />
+                    <User size={8.5} color="#71717A" />
                     <Text style={styles.slotMetaText} numberOfLines={1}>
                       {schedule!.subject!.teacher_name}
                     </Text>
@@ -115,8 +130,7 @@ function MatrixSlotCard({
           </View>
         ) : (
           <View style={styles.slotEmptyContent}>
-            <Plus size={13} color="#3F3F46" />
-            <Text style={styles.slotEmptyText}>Asignar</Text>
+            <Text style={styles.slotEmptyText}>Libre</Text>
           </View>
         )}
       </Pressable>
@@ -127,9 +141,18 @@ function MatrixSlotCard({
 export function MinimalistWeeklyMatrix({
   schedules = [],
   subjects = [],
-  onSlotPress,
+  tasks = [],
+  onDayPress,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
+
+  // Mapear conteo de tareas pendientes por materia
+  const pendingTasksBySubject: Record<string, number> = {}
+  tasks.forEach((t) => {
+    if (t.status === 'pending' && t.subject_id) {
+      pendingTasksBySubject[t.subject_id] = (pendingTasksBySubject[t.subject_id] || 0) + 1
+    }
+  })
 
   return (
     <View style={styles.wrapper}>
@@ -162,7 +185,13 @@ export function MinimalistWeeklyMatrix({
             return (
               <View key={d.num} style={styles.dayColumn}>
                 {/* Cabecera del Día */}
-                <View style={[styles.dayHeaderCell, isToday && styles.dayHeaderCellToday]}>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('light')
+                    onDayPress(d.num)
+                  }}
+                  style={[styles.dayHeaderCell, isToday && styles.dayHeaderCellToday]}
+                >
                   <Text style={[styles.dayHeaderText, isToday && styles.dayHeaderTextToday]}>
                     {d.short}
                   </Text>
@@ -171,7 +200,7 @@ export function MinimalistWeeklyMatrix({
                       <Text style={styles.todayIndicatorText}>Hoy</Text>
                     </View>
                   )}
-                </View>
+                </Pressable>
 
                 {/* 4 Celdas correspondientes a los 4 bloques */}
                 <View style={styles.daySlotsColumn}>
@@ -179,13 +208,18 @@ export function MinimalistWeeklyMatrix({
                     const item = schedules.find(
                       (s) => s.day_of_week === d.num && s.block_number === blockDef.block
                     )
+                    const pendingCount = item?.subject_id
+                      ? pendingTasksBySubject[item.subject_id] || 0
+                      : 0
+
                     return (
                       <MatrixSlotCard
                         key={blockDef.block}
                         dayNum={d.num}
                         blockNum={blockDef.block}
                         schedule={item}
-                        onPress={() => onSlotPress(d.num, blockDef.block, item)}
+                        pendingTaskCount={pendingCount}
+                        onPress={() => onDayPress(d.num)}
                       />
                     )
                   })}
@@ -323,8 +357,7 @@ const styles = StyleSheet.create({
   slotCardEmpty: {
     backgroundColor: 'rgba(255, 255, 255, 0.015)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -336,6 +369,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  slotHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4.5,
   },
   subjDot: {
     width: 6,
@@ -350,6 +388,20 @@ const styles = StyleSheet.create({
     color: '#52525B',
     fontSize: 9.5,
     fontWeight: '600',
+  },
+  taskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 4.5,
+    paddingVertical: 1,
+    borderRadius: 5,
+    gap: 2.5,
+  },
+  taskBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   slotSubjectName: {
     color: '#FFFFFF',
@@ -371,18 +423,17 @@ const styles = StyleSheet.create({
   },
   slotMetaText: {
     color: '#71717A',
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '500',
     maxWidth: 95,
   },
   slotEmptyContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
   },
   slotEmptyText: {
     color: '#3F3F46',
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '600',
   },
 })

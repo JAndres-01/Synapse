@@ -21,16 +21,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
   LogOut,
-  ShieldCheck,
-  BookOpen,
-  CheckSquare,
   Sparkles,
   Smartphone,
   RefreshCw,
   Edit3,
-  Moon,
   X,
   Check,
+  ChevronRight,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import { useRouter, useFocusEffect } from 'expo-router'
@@ -40,13 +37,7 @@ export default function SettingsScreen() {
   const router = useRouter()
   const { user, profile, signOut, refreshProfile } = usePersonalAuth()
 
-  const [subjectsCount, setSubjectsCount] = useState(0)
-  const [tasksCount, setTasksCount] = useState(0)
-  const [completedTasksCount, setCompletedTasksCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
-  const [lastSyncTime, setLastSyncTime] = useState<string>('Ahora mismo')
-
-  // Preferencias
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [confettiEnabled, setConfettiEnabled] = useState(true)
 
@@ -58,14 +49,7 @@ export default function SettingsScreen() {
   const slideAnim = useRef(new Animated.Value(300)).current
 
   const loadData = useCallback(async () => {
-    const [s, t, prefs] = await Promise.all([
-      personalStorage.getSubjects(),
-      personalStorage.getTasks(),
-      personalStorage.getPreferences(),
-    ])
-    setSubjectsCount(s.length)
-    setTasksCount(t.length)
-    setCompletedTasksCount(t.filter((task) => task.status === 'completed').length)
+    const prefs = await personalStorage.getPreferences()
     setHapticsEnabled(prefs.haptics_enabled)
     setConfettiEnabled(prefs.confetti_enabled)
     setGlobalHapticsEnabled(prefs.haptics_enabled)
@@ -96,16 +80,11 @@ export default function SettingsScreen() {
         if (schedRes.data) await personalStorage.setSchedules(schedRes.data)
         if (taskRes.data) await personalStorage.setTasks(taskRes.data)
       }
-      await loadData()
-      const now = new Date()
-      const hours = now.getHours().toString().padStart(2, '0')
-      const mins = now.getMinutes().toString().padStart(2, '0')
-      setLastSyncTime(`${hours}:${mins}`)
       triggerHaptic('success')
-      Alert.alert('Sincronización Exitosa', 'Tus datos locales y remotos están completamente sincronizados.')
+      Alert.alert('Sincronizado', 'Tus datos están actualizados con la nube.')
     } catch (err: any) {
       triggerHaptic('error')
-      Alert.alert('Error de Sincronización', err.message || 'No se pudo sincronizar con la nube.')
+      Alert.alert('Error', err.message || 'No se pudo sincronizar.')
     } finally {
       setSyncing(false)
     }
@@ -134,7 +113,7 @@ export default function SettingsScreen() {
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
       triggerHaptic('error')
-      Alert.alert('Nombre Requerido', 'Por favor ingresa un nombre válido.')
+      Alert.alert('Requerido', 'Ingresa un nombre válido.')
       return
     }
 
@@ -183,7 +162,7 @@ export default function SettingsScreen() {
     triggerHaptic('warning')
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro de que deseas salir de tu cuenta en este dispositivo?',
+      '¿Deseas salir de tu cuenta?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -199,8 +178,6 @@ export default function SettingsScreen() {
     )
   }
 
-  const completionRate = tasksCount > 0 ? Math.round((completedTasksCount / tasksCount) * 100) : 100
-
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
@@ -211,96 +188,46 @@ export default function SettingsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Principal */}
+        {/* Header Limpio */}
         <View style={styles.header}>
           <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>Preferencias, cuenta y estado de sincronización</Text>
         </View>
 
-        {/* Tarjeta de Perfil */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileTopRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(profile?.full_name || 'E').slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
-
-            <View style={styles.profileInfo}>
-              <View style={styles.profileNameRow}>
-                <Text style={styles.userName} numberOfLines={1}>
-                  {profile?.full_name || 'Estudiante'}
-                </Text>
-                <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>Cuenta Activa</Text>
-                </View>
-              </View>
-              <Text style={styles.userEmail} numberOfLines={1}>
-                {profile?.email || user?.email || 'Sin correo asignado'}
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={handleOpenEditProfile}
-              style={styles.editProfileBtn}
-              hitSlop={8}
-            >
-              <Edit3 size={15} color="#FFFFFF" />
-            </Pressable>
+        {/* Perfil Integrado */}
+        <Pressable
+          onPress={handleOpenEditProfile}
+          style={styles.profileRow}
+        >
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {(profile?.full_name || 'E').slice(0, 1).toUpperCase()}
+            </Text>
           </View>
-        </View>
 
-        {/* Resumen y Métricas Académicas */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeaderTitle}>MÉTRICAS ACADÉMICAS</Text>
-
-          <View style={styles.statsCard}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <BookOpen size={16} color="#FFFFFF" />
-                <Text style={styles.statNumber}>{subjectsCount}</Text>
-                <Text style={styles.statLabel}>Materias</Text>
-              </View>
-
-              <View style={styles.statDivider} />
-
-              <View style={styles.statItem}>
-                <CheckSquare size={16} color="#FFFFFF" />
-                <Text style={styles.statNumber}>
-                  {completedTasksCount}/{tasksCount}
-                </Text>
-                <Text style={styles.statLabel}>Entregadas</Text>
-              </View>
-
-              <View style={styles.statDivider} />
-
-              <View style={styles.statItem}>
-                <ShieldCheck size={16} color="#FFFFFF" />
-                <Text style={styles.statNumber}>{completionRate}%</Text>
-                <Text style={styles.statLabel}>Efectividad</Text>
-              </View>
-            </View>
-
-            {/* Barra de progreso de entregas */}
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
-            </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {profile?.full_name || 'Estudiante'}
+            </Text>
+            <Text style={styles.userEmail} numberOfLines={1}>
+              {profile?.email || user?.email || 'Sin correo asignado'}
+            </Text>
           </View>
-        </View>
 
-        {/* Preferencias de Experiencia */}
+          <View style={styles.editIconBadge}>
+            <Edit3 size={14} color="#A1A1AA" />
+          </View>
+        </Pressable>
+
+        {/* ÚNICA Tarjeta Agrupada de Preferencias y Acciones */}
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeaderTitle}>PREFERENCIAS DE LA APP</Text>
+          <Text style={styles.sectionHeaderTitle}>PREFERENCIAS</Text>
 
           <View style={styles.groupCard}>
             {/* Vibración Háptica */}
             <View style={styles.groupItem}>
               <View style={styles.groupItemLeft}>
                 <Smartphone size={16} color="#A1A1AA" />
-                <View>
-                  <Text style={styles.itemTitle}>Respuesta Háptica</Text>
-                  <Text style={styles.itemSubtitle}>Vibración táctil al interactuar</Text>
-                </View>
+                <Text style={styles.itemTitle}>Respuesta Háptica</Text>
               </View>
               <Switch
                 value={hapticsEnabled}
@@ -316,10 +243,7 @@ export default function SettingsScreen() {
             <View style={styles.groupItem}>
               <View style={styles.groupItemLeft}>
                 <Sparkles size={16} color="#A1A1AA" />
-                <View>
-                  <Text style={styles.itemTitle}>Celebración al Completar</Text>
-                  <Text style={styles.itemSubtitle}>Lluvia de partículas al finalizar tareas</Text>
-                </View>
+                <Text style={styles.itemTitle}>Celebración con Confetti</Text>
               </View>
               <Switch
                 value={confettiEnabled}
@@ -331,62 +255,23 @@ export default function SettingsScreen() {
 
             <View style={styles.itemDivider} />
 
-            {/* Modo Oscuro */}
-            <View style={styles.groupItem}>
+            {/* Sincronización Manual */}
+            <Pressable
+              onPress={handleManualSync}
+              disabled={syncing}
+              style={styles.groupItem}
+            >
               <View style={styles.groupItemLeft}>
-                <Moon size={16} color="#A1A1AA" />
-                <View>
-                  <Text style={styles.itemTitle}>Tema Visual</Text>
-                  <Text style={styles.itemSubtitle}>Dark OLED puro de alto contraste</Text>
-                </View>
-              </View>
-              <View style={styles.themeTag}>
-                <Text style={styles.themeTagText}>OLED</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Nube y Sincronización */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeaderTitle}>ALMACENAMIENTO Y NUBE</Text>
-
-          <View style={styles.groupCard}>
-            <View style={styles.syncCardContent}>
-              <View style={styles.syncTop}>
-                <View style={styles.syncBadge}>
-                  <View style={styles.syncDot} />
-                  <Text style={styles.syncBadgeText}>Sincronización Offline-First</Text>
-                </View>
-                <Text style={styles.syncTimeText}>Última: {lastSyncTime}</Text>
-              </View>
-
-              <Text style={styles.syncDescription}>
-                Tus materias, horarios y tareas se guardan de forma instantánea en tu dispositivo y se respaldan de forma segura en la base de datos de Supabase.
-              </Text>
-
-              <Pressable
-                onPress={handleManualSync}
-                disabled={syncing}
-                style={[styles.manualSyncBtn, syncing && styles.manualSyncBtnDisabled]}
-              >
                 {syncing ? (
-                  <ActivityIndicator size="small" color="#09090B" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
-                    <RefreshCw size={13} color="#09090B" />
-                    <Text style={styles.manualSyncBtnText}>Sincronizar Ahora</Text>
-                  </>
+                  <RefreshCw size={16} color="#A1A1AA" />
                 )}
-              </Pressable>
-            </View>
+                <Text style={styles.itemTitle}>Sincronizar con la Nube</Text>
+              </View>
+              <ChevronRight size={16} color="#52525B" />
+            </Pressable>
           </View>
-        </View>
-
-        {/* Información y Versión */}
-        <View style={styles.appInfoCard}>
-          <Text style={styles.appInfoName}>Synapse Personal</Text>
-          <Text style={styles.appInfoVersion}>Versión 2.0.0 • Entorno Expo & React Native</Text>
         </View>
 
         {/* Botón de Cerrar Sesión */}
@@ -394,6 +279,9 @@ export default function SettingsScreen() {
           <LogOut size={15} color="#EF4444" />
           <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
         </Pressable>
+
+        {/* Versión */}
+        <Text style={styles.versionText}>Synapse Personal v2.0.0</Text>
       </ScrollView>
 
       {/* Modal de Editar Perfil con KeyboardAvoidingView */}
@@ -470,7 +358,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 2,
-    gap: 2,
   },
   title: {
     color: '#FFFFFF',
@@ -478,141 +365,71 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  subtitle: {
-    color: '#71717A',
-    fontSize: 12.5,
-    fontWeight: '500',
-  },
-  profileCard: {
-    backgroundColor: '#101014',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 16,
-  },
-  profileTopRow: {
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#101014',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    padding: 14,
     gap: 12,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: '#09090B',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   profileInfo: {
     flex: 1,
     gap: 2,
   },
-  profileNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   userName: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  activeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-  },
-  activeBadgeText: {
-    color: '#A1A1AA',
-    fontSize: 9.5,
-    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   userEmail: {
     color: '#71717A',
     fontSize: 12,
     fontWeight: '500',
   },
-  editProfileBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    padding: 8.5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  editIconBadge: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   sectionBlock: {
-    gap: 8,
+    gap: 6,
   },
   sectionHeaderTitle: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 0.6,
-    paddingHorizontal: 2,
-  },
-  statsCard: {
-    backgroundColor: '#101014',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 16,
-    gap: 14,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  statNumber: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  statLabel: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  progressTrack: {
-    height: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 1.5,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 1.5,
+    paddingHorizontal: 4,
   },
   groupCard: {
     backgroundColor: '#101014',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     paddingHorizontal: 16,
   },
   groupItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   groupItemLeft: {
     flexDirection: 'row',
@@ -626,112 +443,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.2,
   },
-  itemSubtitle: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 1,
-  },
   itemDivider: {
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  themeTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  themeTagText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  syncCardContent: {
-    paddingVertical: 16,
-    gap: 10,
-  },
-  syncTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  syncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  syncDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.25,
-    backgroundColor: '#10B981',
-  },
-  syncBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  syncTimeText: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  syncDescription: {
-    color: '#71717A',
-    fontSize: 11.5,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
-  manualSyncBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  manualSyncBtnDisabled: {
-    opacity: 0.6,
-  },
-  manualSyncBtnText: {
-    color: '#09090B',
-    fontSize: 12.5,
-    fontWeight: '800',
-  },
-  appInfoCard: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 2,
-  },
-  appInfoName: {
-    color: '#52525B',
-    fontSize: 11.5,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  appInfoVersion: {
-    color: '#3F3F46',
-    fontSize: 10.5,
-    fontWeight: '500',
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: 'rgba(239, 68, 68, 0.18)',
     borderRadius: 14,
-    paddingVertical: 12.5,
+    paddingVertical: 12,
+    marginTop: 4,
   },
   logoutBtnText: {
     color: '#EF4444',
     fontSize: 13,
     fontWeight: '700',
+  },
+  versionText: {
+    color: '#3F3F46',
+    fontSize: 11,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 8,
   },
   modalRoot: {
     flex: 1,

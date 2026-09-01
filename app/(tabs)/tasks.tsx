@@ -326,6 +326,13 @@ export default function TasksScreen() {
       if (statusFilter === 'completed' && task.status !== 'completed') return false
 
       return true
+    }).sort((a, b) => {
+      if (a.due_date && b.due_date) {
+        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      }
+      if (a.due_date && !b.due_date) return -1
+      if (!a.due_date && b.due_date) return 1
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
   }, [tasks, selectedSubjectId, searchQuery, statusFilter, transitioningTaskIds])
 

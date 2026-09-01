@@ -19,6 +19,17 @@ export function MinimalistTodayTasks({
 }: MinimalistTodayTasksProps) {
   const pendingTasks = tasks.filter((t) => t.status === 'pending')
 
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.status === 'pending' && b.status === 'completed') return -1
+    if (a.status === 'completed' && b.status === 'pending') return 1
+    if (a.due_date && b.due_date) {
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    }
+    if (a.due_date && !b.due_date) return -1
+    if (!a.due_date && b.due_date) return 1
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  })
+
   if (tasks.length === 0) {
     return (
       <View style={styles.container}>
@@ -47,7 +58,7 @@ export function MinimalistTodayTasks({
 
       {/* Lista Plana (Sin Cajas Envolventes Repetitivas) */}
       <View style={styles.flatList}>
-        {tasks.slice(0, 4).map((task, idx) => {
+        {sortedTasks.slice(0, 4).map((task, idx) => {
           const isDone = task.status === 'completed'
           return (
             <View

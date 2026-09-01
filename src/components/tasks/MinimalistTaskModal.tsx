@@ -1042,7 +1042,7 @@ export function MinimalistTaskModal({
                             datePickerTab === 'manual' && styles.dateSegmentTextActive,
                           ]}
                         >
-                          Manual (Nativo)
+                          Manual
                         </Text>
                       </Pressable>
                     </View>

@@ -10,6 +10,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  PanResponder,
 } from 'react-native'
 import type { Subject, Schedule } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
@@ -57,11 +58,13 @@ export function MinimalistAssignSlotModal({
   // Animaciones independientes para evitar arrastre de fondo negro
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const panY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(visible)
 
   useEffect(() => {
     if (visible) {
       setModalVisible(true)
+      panY.setValue(0)
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -86,6 +89,11 @@ export function MinimalistAssignSlotModal({
         Animated.timing(slideAnim, {
           toValue: SCREEN_HEIGHT,
           duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(panY, {
+          toValue: 0,
+          duration: 180,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -118,10 +126,41 @@ export function MinimalistAssignSlotModal({
         duration: 220,
         useNativeDriver: true,
       }),
+      Animated.timing(panY, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       onClose()
     })
   }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
+          handleSmoothClose()
+        } else {
+          Animated.spring(panY, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 400,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
 
   const blockDef =
     PERSONAL_SCHEDULE_BLOCKS.find((b) => b.block === blockNumber) ||
@@ -213,9 +252,9 @@ export function MinimalistAssignSlotModal({
         </Animated.View>
 
         {/* Hoja Inferior Deslizante */}
-        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
+        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }, { translateY: panY }] }]}>
           {/* Header */}
-          <View style={styles.sheetHeader}>
+          <View style={styles.sheetHeader} {...panResponder.panHandlers}>
             <View style={styles.dragHandle} />
             <Text style={styles.sheetTitle}>
               {existingSchedule ? 'Editar Clase del Horario' : 'Asignar Clase'}

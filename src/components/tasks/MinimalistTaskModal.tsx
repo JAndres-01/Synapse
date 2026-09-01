@@ -15,6 +15,7 @@ import {
   Dimensions,
   Keyboard,
   Easing,
+  PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Subject, TaskType, TaskAttachment, Schedule } from '@/types/personal'
@@ -155,9 +156,10 @@ export function MinimalistTaskModal({
   const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
   const [linkUrl, setLinkUrl] = useState('')
 
-  // Animaciones del Modal y Teclado 100% en GPU Driver Nativo (translateY)
+  // Animaciones del Modal, Teclado y Gesto PanResponder
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const panY = useRef(new Animated.Value(0)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
 
@@ -233,6 +235,7 @@ export function MinimalistTaskModal({
       setActivePicker(null)
       setShowNativeDatePicker(false)
       setShowNativeTimePicker(false)
+      panY.setValue(0)
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -272,6 +275,11 @@ export function MinimalistTaskModal({
           duration: 180,
           useNativeDriver: true,
         }),
+        Animated.timing(panY, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
       ]).start(() => {
         setModalVisible(false)
       })
@@ -298,10 +306,42 @@ export function MinimalistTaskModal({
         duration: 180,
         useNativeDriver: true,
       }),
+      Animated.timing(panY, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       onClose()
     })
   }
+
+  // PanResponder para Deslizar Hacia Abajo y Cerrar
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
+          handleSmoothClose()
+        } else {
+          Animated.spring(panY, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 400,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
 
   const isCompleted = task?.status === 'completed'
 
@@ -569,7 +609,7 @@ export function MinimalistTaskModal({
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante (useNativeDriver: true 100% GPU) */}
+        {/* Hoja Inferior Deslizante con PanResponder (useNativeDriver: true 100% GPU) */}
         <Animated.View
           style={[
             styles.sheetContainer,
@@ -577,6 +617,7 @@ export function MinimalistTaskModal({
               paddingBottom: Math.max(insets.bottom, 16) + 8,
               transform: [
                 { translateY: slideAnim },
+                { translateY: panY },
                 { translateY: keyboardTranslateY },
               ],
             },
@@ -587,8 +628,8 @@ export function MinimalistTaskModal({
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Drag Handle Superior Centrado */}
-              <View style={styles.dragHandleTopArea}>
+              {/* Drag Handle Superior con Gesto de Deslizar Hacia Abajo */}
+              <View style={styles.dragHandleTopArea} {...panResponder.panHandlers}>
                 <View style={styles.dragHandle} />
               </View>
 
@@ -769,7 +810,7 @@ export function MinimalistTaskModal({
           {/* ========================================================================= */}
           {currentView === 'form' && (
             <>
-              <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeader} {...panResponder.panHandlers}>
                 <View style={styles.dragHandle} />
                 <View style={styles.headerRow}>
                   {mode === 'detail' ? (
@@ -1395,7 +1436,7 @@ const styles = StyleSheet.create({
   },
   dragHandleTopArea: {
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 8,
     alignItems: 'center',
   },
   dragHandle: {
@@ -1403,7 +1444,7 @@ const styles = StyleSheet.create({
     height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   detailScroll: {
     paddingHorizontal: 22,
@@ -1973,6 +2014,5 @@ const styles = StyleSheet.create({
   lightboxTip: {
     color: '#71717A',
     fontSize: 12,
-    marginTop: 16,
   },
 })

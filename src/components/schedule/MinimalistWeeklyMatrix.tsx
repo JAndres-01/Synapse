@@ -71,24 +71,13 @@ function MatrixSlotCard({
         onPressOut={handlePressOut}
         style={[
           styles.slotCard,
-          hasSubj
-            ? [
-                styles.slotCardFilled,
-                {
-                  backgroundColor: isWhite
-                    ? 'rgba(255, 255, 255, 0.08)'
-                    : `${subjColor}1C`,
-                  borderColor: isWhite
-                    ? 'rgba(255, 255, 255, 0.22)'
-                    : `${subjColor}45`,
-                },
-              ]
-            : styles.slotCardEmpty,
+          hasSubj ? styles.slotCardFilled : styles.slotCardEmpty,
         ]}
       >
         {hasSubj ? (
           <View style={styles.slotFilledContent}>
             <View style={styles.slotHeaderRow}>
+              {/* Punto discreto de color de la materia */}
               <View
                 style={[
                   styles.subjDot,
@@ -107,7 +96,7 @@ function MatrixSlotCard({
               <View style={styles.slotMetaRow}>
                 {Boolean(schedule?.classroom_room) && (
                   <View style={styles.slotMetaItem}>
-                    <MapPin size={9.5} color="#A1A1AA" />
+                    <MapPin size={9} color="#71717A" />
                     <Text style={styles.slotMetaText} numberOfLines={1}>
                       {schedule!.classroom_room}
                     </Text>
@@ -115,7 +104,7 @@ function MatrixSlotCard({
                 )}
                 {Boolean(schedule?.subject?.teacher_name) && !schedule?.classroom_room && (
                   <View style={styles.slotMetaItem}>
-                    <User size={9.5} color="#A1A1AA" />
+                    <User size={9} color="#71717A" />
                     <Text style={styles.slotMetaText} numberOfLines={1}>
                       {schedule!.subject!.teacher_name}
                     </Text>
@@ -126,7 +115,7 @@ function MatrixSlotCard({
           </View>
         ) : (
           <View style={styles.slotEmptyContent}>
-            <Plus size={14} color="#52525B" />
+            <Plus size={13} color="#3F3F46" />
             <Text style={styles.slotEmptyText}>Asignar</Text>
           </View>
         )}
@@ -151,13 +140,12 @@ export function MinimalistWeeklyMatrix({
       >
         {/* Columna Lateral Fija de Horarios */}
         <View style={styles.timeColumn}>
-          {/* Espaciador alineado con la cabecera de días */}
           <View style={styles.timeColHeader}>
-            <Clock size={12} color="#71717A" />
+            <Clock size={11} color="#71717A" />
             <Text style={styles.timeColHeaderText}>HORA</Text>
           </View>
 
-          {/* 4 Bloques de Horas */}
+          {/* 4 Bloques de Horas Neutros */}
           {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => (
             <View key={blockDef.block} style={styles.timeBlockCell}>
               <Text style={styles.timeBlockNum}>C{blockDef.block}</Text>
@@ -167,7 +155,7 @@ export function MinimalistWeeklyMatrix({
           ))}
         </View>
 
-        {/* Columnas de los 5 Días de la Semana (Lunes a Viernes) */}
+        {/* Columnas de los 5 Días de la Semana */}
         <View style={styles.daysGrid}>
           {DAYS.map((d) => {
             const isToday = currentDay === d.num
@@ -213,10 +201,10 @@ export function MinimalistWeeklyMatrix({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: '#121216',
-    borderRadius: 22,
+    backgroundColor: '#101014',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     overflow: 'hidden',
   },
   scrollContent: {
@@ -224,17 +212,17 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   timeColumn: {
-    width: 60,
+    width: 58,
     marginRight: 8,
   },
   timeColHeader: {
-    height: 38,
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 10,
+    borderRadius: 9,
     marginBottom: 8,
   },
   timeColHeaderText: {
@@ -244,9 +232,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   timeBlockCell: {
-    height: 94,
+    height: 92,
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 12,
+    borderRadius: 11,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
@@ -255,14 +243,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   timeBlockNum: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
+    color: '#A1A1AA',
+    fontSize: 10.5,
+    fontWeight: '700',
     marginBottom: 2,
   },
   timeBlockStart: {
-    color: '#818CF8',
-    fontSize: 10,
+    color: '#FFFFFF',
+    fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
@@ -276,27 +264,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dayColumn: {
-    width: 128,
+    width: 126,
   },
   dayHeaderCell: {
-    height: 38,
+    height: 36,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 9,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     marginBottom: 8,
-    gap: 6,
+    gap: 5,
   },
   dayHeaderCellToday: {
-    backgroundColor: 'rgba(129, 140, 248, 0.15)',
-    borderColor: '#818CF8',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   dayHeaderText: {
-    color: '#A1A1AA',
-    fontSize: 11.5,
+    color: '#71717A',
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
@@ -305,35 +293,37 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   todayIndicatorPill: {
-    backgroundColor: '#818CF8',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 4.5,
+    paddingVertical: 1,
+    borderRadius: 5,
   },
   todayIndicatorText: {
     color: '#09090B',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '800',
   },
   daySlotsColumn: {
     gap: 8,
   },
   slotCardOuter: {
-    height: 94,
+    height: 92,
   },
   slotCard: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 13,
     padding: 9,
     justifyContent: 'space-between',
   },
   slotCardFilled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   slotCardEmpty: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: 'rgba(255, 255, 255, 0.015)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -348,18 +338,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   subjDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   whiteDotBorder: {
     borderWidth: 0.8,
     borderColor: '#71717A',
   },
   slotBlockBadge: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#52525B',
     fontSize: 9.5,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   slotSubjectName: {
     color: '#FFFFFF',
@@ -367,7 +357,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 15,
     letterSpacing: -0.2,
-    marginVertical: 3,
+    marginVertical: 2,
   },
   slotMetaRow: {
     flexDirection: 'row',
@@ -380,7 +370,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   slotMetaText: {
-    color: '#A1A1AA',
+    color: '#71717A',
     fontSize: 9.5,
     fontWeight: '500',
     maxWidth: 95,
@@ -388,11 +378,11 @@ const styles = StyleSheet.create({
   slotEmptyContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
   },
   slotEmptyText: {
-    color: '#52525B',
-    fontSize: 10,
+    color: '#3F3F46',
+    fontSize: 9.5,
     fontWeight: '600',
   },
 })

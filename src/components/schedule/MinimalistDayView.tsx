@@ -64,32 +64,9 @@ function DayClassCard({
         onPressOut={handlePressOut}
         style={[
           styles.classCard,
-          isAssigned
-            ? [
-                styles.classCardAssigned,
-                {
-                  backgroundColor: isWhite
-                    ? 'rgba(255, 255, 255, 0.05)'
-                    : `${subjColor}12`,
-                  borderColor: isWhite
-                    ? 'rgba(255, 255, 255, 0.16)'
-                    : `${subjColor}38`,
-                },
-              ]
-            : styles.classCardFree,
+          isAssigned ? styles.classCardAssigned : styles.classCardFree,
         ]}
       >
-        {/* Barra de Color Lateral */}
-        <View
-          style={[
-            styles.cardColorBar,
-            {
-              backgroundColor: isAssigned ? subjColor : 'rgba(255, 255, 255, 0.1)',
-            },
-            isAssigned && isWhite && styles.whiteBarBorder,
-          ]}
-        />
-
         <View style={styles.cardMainContent}>
           {/* Fila Superior: Bloque y Horario */}
           <View style={styles.cardHeaderRow}>
@@ -98,30 +75,41 @@ function DayClassCard({
             </View>
 
             <View style={styles.timeTag}>
-              <Clock size={11} color="#818CF8" />
+              <Clock size={11} color="#71717A" />
               <Text style={styles.timeTagText}>
                 {blockDef.startTime} - {blockDef.endTime}
               </Text>
             </View>
           </View>
 
-          {/* Nombre de la Materia */}
-          <Text
-            style={[
-              styles.cardSubjectTitle,
-              !isAssigned && styles.cardSubjectTitleFree,
-            ]}
-            numberOfLines={1}
-          >
-            {isAssigned ? schedule!.subject!.name : 'Hora Libre'}
-          </Text>
+          {/* Nombre de la Materia con Punto de Color Discreto */}
+          <View style={styles.subjectRow}>
+            {isAssigned && (
+              <View
+                style={[
+                  styles.subjDot,
+                  { backgroundColor: subjColor },
+                  isWhite && styles.whiteDotBorder,
+                ]}
+              />
+            )}
+            <Text
+              style={[
+                styles.cardSubjectTitle,
+                !isAssigned && styles.cardSubjectTitleFree,
+              ]}
+              numberOfLines={1}
+            >
+              {isAssigned ? schedule!.subject!.name : 'Hora Libre'}
+            </Text>
+          </View>
 
           {/* Fila de Metadatos: Profesor y Aula */}
           {isAssigned ? (
             <View style={styles.cardMetaRow}>
               {Boolean(schedule?.classroom_room) && (
                 <View style={styles.metaItem}>
-                  <MapPin size={12} color="#A1A1AA" />
+                  <MapPin size={11.5} color="#71717A" />
                   <Text style={styles.metaText}>{schedule!.classroom_room}</Text>
                 </View>
               )}
@@ -132,7 +120,7 @@ function DayClassCard({
 
               {Boolean(schedule?.subject?.teacher_name) && (
                 <View style={styles.metaItem}>
-                  <User size={12} color="#A1A1AA" />
+                  <User size={11.5} color="#71717A" />
                   <Text style={styles.metaText}>{schedule!.subject!.teacher_name}</Text>
                 </View>
               )}
@@ -140,7 +128,7 @@ function DayClassCard({
           ) : (
             <View style={styles.cardMetaRow}>
               <View style={styles.freePromptRow}>
-                <Plus size={12} color="#71717A" />
+                <Plus size={11.5} color="#52525B" />
                 <Text style={styles.freePromptText}>Toca para asignar materia a este bloque</Text>
               </View>
             </View>
@@ -248,7 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   dayPillToday: {
-    backgroundColor: 'rgba(129, 140, 248, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   dayPillText: {
     color: '#71717A',
@@ -260,14 +248,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dayPillTextToday: {
-    color: '#818CF8',
+    color: '#D4D4D8',
     fontWeight: '700',
   },
   todayDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#818CF8',
+    backgroundColor: '#A1A1AA',
   },
   todayDotActive: {
     backgroundColor: '#09090B',
@@ -276,29 +264,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   classCard: {
-    flexDirection: 'row',
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
     minHeight: 88,
   },
-  classCardAssigned: {},
-  classCardFree: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  classCardAssigned: {
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  classCardFree: {
+    backgroundColor: 'rgba(255, 255, 255, 0.015)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     borderStyle: 'dashed',
-  },
-  cardColorBar: {
-    width: 4.5,
-  },
-  whiteBarBorder: {
-    borderRightWidth: 1,
-    borderRightColor: '#71717A',
   },
   cardMainContent: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 14,
     justifyContent: 'center',
     gap: 6,
   },
@@ -308,13 +291,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   blockBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   blockBadgeText: {
-    color: '#A1A1AA',
+    color: '#71717A',
     fontSize: 10.5,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -323,24 +306,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4.5,
-    backgroundColor: 'rgba(129, 140, 248, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   timeTagText: {
-    color: '#818CF8',
+    color: '#A1A1AA',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  subjectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subjDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#71717A',
   },
   cardSubjectTitle: {
     color: '#FFFFFF',
     fontSize: 16.5,
     fontWeight: '700',
     letterSpacing: -0.3,
+    flex: 1,
   },
   cardSubjectTitleFree: {
-    color: '#71717A',
+    color: '#52525B',
     fontWeight: '600',
     fontSize: 15.5,
   },
@@ -355,7 +353,7 @@ const styles = StyleSheet.create({
     gap: 4.5,
   },
   metaText: {
-    color: '#A1A1AA',
+    color: '#71717A',
     fontSize: 12,
     fontWeight: '500',
   },

@@ -86,16 +86,16 @@ function TodayTaskItem({
       const ampm = hours >= 12 ? 'PM' : 'AM'
       const formattedH = hours % 12 || 12
 
-      if (isToday) return `Hoy ${formattedH}:${mins} ${ampm}`
-      if (isTomorrow) return `Mañana ${formattedH}:${mins} ${ampm}`
+      if (isToday) return { text: `Hoy ${formattedH}:${mins} ${ampm}`, isToday: true }
+      if (isTomorrow) return { text: `Mañana ${formattedH}:${mins} ${ampm}`, isToday: false }
       const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      return `${dayNames[d.getDay()]} ${formattedH}:${mins} ${ampm}`
+      return { text: `${dayNames[d.getDay()]} ${formattedH}:${mins} ${ampm}`, isToday: false }
     } catch {
       return null
     }
   }
 
-  const dueLabel = formatDue(task.due_date)
+  const dueInfo = formatDue(task.due_date)
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.taskRowOuter]}>
@@ -129,7 +129,7 @@ function TodayTaskItem({
           </Text>
 
           <View style={styles.metaRow}>
-            {/* Tag de Materia o General */}
+            {/* Tag de Materia */}
             <View style={styles.subjectTag}>
               <View
                 style={[
@@ -143,12 +143,14 @@ function TodayTaskItem({
               </Text>
             </View>
 
-            {Boolean(dueLabel) && (
+            {Boolean(dueInfo) && (
               <>
                 <Text style={styles.metaDot}>•</Text>
-                <View style={styles.dueItem}>
-                  <Clock size={10.5} color="#71717A" />
-                  <Text style={styles.dueText}>{dueLabel}</Text>
+                <View style={[styles.dueItem, dueInfo?.isToday && styles.dueItemToday]}>
+                  <Clock size={10.5} color={dueInfo?.isToday ? '#F59E0B' : '#71717A'} />
+                  <Text style={[styles.dueText, dueInfo?.isToday && styles.dueTextToday]}>
+                    {dueInfo?.text}
+                  </Text>
                 </View>
               </>
             )}
@@ -219,11 +221,11 @@ export function MinimalistTodayTasks({
 
       {sortedTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <CheckSquare size={18} color="#3F3F46" />
+          <CheckSquare size={17} color="#52525B" />
           <Text style={styles.emptyText}>¡Todo al día para los próximos 7 días!</Text>
         </View>
       ) : (
-        <View style={styles.listWrapper}>
+        <View style={styles.taskLinesGroup}>
           {sortedTasks.slice(0, 4).map((task, idx) => (
             <TodayTaskItem
               key={task.id}
@@ -242,13 +244,14 @@ export function MinimalistTodayTasks({
 const styles = StyleSheet.create({
   container: {
     gap: 4,
+    marginTop: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2,
-    paddingBottom: 4,
+    paddingBottom: 2,
   },
   sectionTitle: {
     color: '#71717A',
@@ -266,7 +269,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  listWrapper: {
+  taskLinesGroup: {
     paddingHorizontal: 2,
   },
   emptyContainer: {
@@ -287,7 +290,7 @@ const styles = StyleSheet.create({
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 11,
     gap: 12,
   },
   taskRowBorder: {
@@ -314,7 +317,7 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
@@ -355,9 +358,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 3.5,
   },
+  dueItemToday: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
   dueText: {
     color: '#71717A',
     fontSize: 10.5,
     fontWeight: '500',
+  },
+  dueTextToday: {
+    color: '#F59E0B',
+    fontWeight: '700',
   },
 })

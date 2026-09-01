@@ -31,8 +31,14 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
   const isWhite = subjColor === '#FFFFFF'
 
   return (
-    <View style={styles.container}>
-      {/* Fila Superior de Estado y Hora */}
+    <View
+      style={[
+        styles.heroContainer,
+        isLive && styles.heroContainerLive,
+        isBreak && styles.heroContainerBreak,
+      ]}
+    >
+      {/* Cabecera del Hero: Estado en Vivo + Horario */}
       <View style={styles.topRow}>
         <View style={styles.badgeRow}>
           <View
@@ -53,7 +59,7 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
 
         {activeSched && (
           <View style={styles.timeTag}>
-            <Clock size={11} color="#71717A" />
+            <Clock size={11} color="#A1A1AA" />
             <Text style={styles.timeTagText}>
               {activeSched.start_time} - {activeSched.end_time}
             </Text>
@@ -61,7 +67,7 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         )}
       </View>
 
-      {/* Nombre de la Clase / Titular */}
+      {/* Titular Principal / Nombre de Materia */}
       <View style={styles.titleRow}>
         {activeSched?.subject && (
           <View
@@ -77,18 +83,18 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         </Text>
       </View>
 
-      {/* Detalles: Aula, Docente y Subtítulo */}
+      {/* Metadatos: Aula, Docente y Subtítulo */}
       <View style={styles.detailsRow}>
         {Boolean(activeSched?.classroom_room) && (
           <View style={styles.detailItem}>
-            <MapPin size={11} color="#71717A" />
+            <MapPin size={11.5} color="#71717A" />
             <Text style={styles.detailText}>{activeSched!.classroom_room}</Text>
           </View>
         )}
 
         {Boolean(activeSched?.subject?.teacher_name) && (
           <View style={styles.detailItem}>
-            <User size={11} color="#71717A" />
+            <User size={11.5} color="#71717A" />
             <Text style={styles.detailText}>{activeSched!.subject!.teacher_name}</Text>
           </View>
         )}
@@ -113,10 +119,22 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 10,
-    paddingHorizontal: 2,
-    gap: 8,
+  heroContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    padding: 16,
+    gap: 10,
+    overflow: 'hidden',
+  },
+  heroContainerLive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.035)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  heroContainerBreak: {
+    backgroundColor: 'rgba(245, 158, 11, 0.03)',
+    borderColor: 'rgba(245, 158, 11, 0.2)',
   },
   topRow: {
     flexDirection: 'row',
@@ -126,12 +144,12 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 6.5,
   },
   pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 6.5,
+    height: 6.5,
+    borderRadius: 3.25,
   },
   pulseDotLive: {
     backgroundColor: '#10B981',
@@ -144,8 +162,8 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontWeight: '800',
+    letterSpacing: 0.7,
   },
   badgeTextLive: {
     color: '#10B981',
@@ -159,17 +177,21 @@ const styles = StyleSheet.create({
   timeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 4.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
   },
   timeTagText: {
-    color: '#71717A',
+    color: '#D4D4D8',
     fontSize: 11,
     fontWeight: '600',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 9,
   },
   subjectDot: {
     width: 9,
@@ -182,7 +204,7 @@ const styles = StyleSheet.create({
   },
   headline: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '800',
     letterSpacing: -0.4,
     flex: 1,
@@ -196,7 +218,7 @@ const styles = StyleSheet.create({
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3.5,
+    gap: 4,
   },
   detailText: {
     color: '#A1A1AA',
@@ -209,8 +231,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   progressBarBg: {
-    height: 2.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
     borderRadius: 1.5,
     overflow: 'hidden',
     marginTop: 2,

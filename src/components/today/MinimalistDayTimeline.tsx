@@ -164,7 +164,7 @@ export function MinimalistDayTimeline({
                 )}
               </View>
 
-              {/* Información de la Clase */}
+              {/* Información de la Clase con Resalte en Bloque Actual */}
               <View
                 style={[
                   styles.contentCol,
@@ -212,7 +212,7 @@ export function MinimalistDayTimeline({
                       </View>
                     )}
 
-                    {/* Tareas del día: Integradas limpiamente como líneas minimalistas */}
+                    {/* Tareas de la materia */}
                     {classTasks.length > 0 && (
                       <View style={styles.classTasksInline}>
                         {classTasks.map((t) => (
@@ -241,7 +241,7 @@ export function MinimalistDayTimeline({
 const styles = StyleSheet.create({
   container: {
     gap: 8,
-    marginTop: 4,
+    marginTop: 6,
   },
   sectionTitle: {
     color: '#71717A',
@@ -252,19 +252,19 @@ const styles = StyleSheet.create({
   },
   timelineList: {
     paddingHorizontal: 2,
-    gap: 14,
+    gap: 12,
   },
   blockRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   blockRowPast: {
-    opacity: 0.4,
+    opacity: 0.42,
   },
   timeCol: {
     width: 46,
     alignItems: 'flex-start',
-    paddingTop: 1,
+    paddingTop: 2,
   },
   timeText: {
     color: '#FFFFFF',
@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
   verticalLine: {
     position: 'absolute',
     top: 15,
-    bottom: -18,
-    width: 1,
+    bottom: -16,
+    width: 1.2,
     backgroundColor: 'rgba(255, 255, 255, 0.07)',
   },
   verticalLinePast: {
@@ -325,10 +325,12 @@ const styles = StyleSheet.create({
     paddingTop: 1,
   },
   contentColCurrent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 10,
-    padding: 8,
-    marginLeft: -2,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
+    padding: 10,
+    marginLeft: -4,
+    borderLeftWidth: 2,
+    borderLeftColor: '#FFFFFF',
   },
   subjectHeaderRow: {
     flexDirection: 'row',

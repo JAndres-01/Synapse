@@ -1,18 +1,22 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   ScrollView,
+  Animated,
 } from 'react-native'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { MapPin, CheckSquare } from 'lucide-react-native'
+import { MapPin, CheckSquare, Plus } from 'lucide-react-native'
+import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
   subjects: Subject[]
   tasks?: Task[]
+  onAssignSlot: (day: number, block: number, existing?: Schedule | null) => void
 }
 
 const DAYS = [
@@ -23,74 +27,106 @@ const DAYS = [
   { num: 5, name: 'Viernes', short: 'VIE' },
 ]
 
-function MatrixSlotView({
+function MatrixSlotCard({
+  dayNum,
   blockNum,
   schedule,
   pendingTaskCount = 0,
+  onPress,
 }: {
+  dayNum: number
   blockNum: number
   schedule?: Schedule | null
   pendingTaskCount?: number
+  onPress: () => void
 }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current
   const hasSubj = Boolean(schedule?.subject)
   const subjColor = schedule?.subject?.color || '#FFFFFF'
   const isWhite = subjColor === '#FFFFFF'
 
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      stiffness: 550,
+      damping: 24,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      stiffness: 500,
+      damping: 22,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
-    <View
-      style={[
-        styles.slotCard,
-        hasSubj ? styles.slotCardFilled : styles.slotCardEmpty,
-      ]}
-    >
-      {hasSubj ? (
-        <View style={styles.slotFilledContent}>
-          {/* Cabecera del bloque */}
-          <View style={styles.slotTopSection}>
-            <View style={styles.slotHeaderRow}>
-              <View style={styles.slotHeaderLeft}>
-                <View
-                  style={[
-                    styles.subjDot,
-                    { backgroundColor: subjColor },
-                    isWhite && styles.whiteDotBorder,
-                  ]}
-                />
-                <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.slotCardOuter]}>
+      <Pressable
+        onPress={() => {
+          triggerHaptic('light')
+          onPress()
+        }}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.slotCard,
+          hasSubj ? styles.slotCardFilled : styles.slotCardEmpty,
+        ]}
+      >
+        {hasSubj ? (
+          <View style={styles.slotFilledContent}>
+            {/* Cabecera del bloque */}
+            <View style={styles.slotTopSection}>
+              <View style={styles.slotHeaderRow}>
+                <View style={styles.slotHeaderLeft}>
+                  <View
+                    style={[
+                      styles.subjDot,
+                      { backgroundColor: subjColor },
+                      isWhite && styles.whiteDotBorder,
+                    ]}
+                  />
+                  <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
+                </View>
+
+                {/* Indicador de Tareas */}
+                {pendingTaskCount > 0 && (
+                  <View style={styles.taskBadge}>
+                    <CheckSquare size={8.5} color="#FFFFFF" />
+                    <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Indicador de Tareas */}
-              {pendingTaskCount > 0 && (
-                <View style={styles.taskBadge}>
-                  <CheckSquare size={8.5} color="#FFFFFF" />
-                  <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.slotSubjectName} numberOfLines={2}>
-              {schedule!.subject!.name}
-            </Text>
-          </View>
-
-          {/* Aula */}
-          {Boolean(schedule?.classroom_room) ? (
-            <View style={styles.slotMetaRow}>
-              <MapPin size={9.5} color="#71717A" />
-              <Text style={styles.slotMetaText} numberOfLines={1}>
-                {schedule!.classroom_room}
+              <Text style={styles.slotSubjectName} numberOfLines={2}>
+                {schedule!.subject!.name}
               </Text>
             </View>
-          ) : (
-            <View style={styles.slotMetaEmpty} />
-          )}
-        </View>
-      ) : (
-        <View style={styles.slotEmptyContent}>
-          <Text style={styles.slotEmptyText}>Libre</Text>
-        </View>
-      )}
-    </View>
+
+            {/* Aula */}
+            {Boolean(schedule?.classroom_room) ? (
+              <View style={styles.slotMetaRow}>
+                <MapPin size={9.5} color="#71717A" />
+                <Text style={styles.slotMetaText} numberOfLines={1}>
+                  {schedule!.classroom_room}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.slotMetaEmpty} />
+            )}
+          </View>
+        ) : (
+          <View style={styles.slotEmptyContent}>
+            <Plus size={12} color="#52525B" style={styles.plusIcon} />
+            <Text style={styles.slotEmptyText}>Libre</Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -98,6 +134,7 @@ export function MinimalistWeeklyMatrix({
   schedules = [],
   subjects = [],
   tasks = [],
+  onAssignSlot,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
 
@@ -174,13 +211,14 @@ export function MinimalistWeeklyMatrix({
                       const pendingTaskCount = getPendingTasksForDayAndSubject(d.num, item?.subject_id)
 
                       return (
-                        <View key={blockDef.block} style={styles.slotCardOuter}>
-                          <MatrixSlotView
-                            blockNum={blockDef.block}
-                            schedule={item}
-                            pendingTaskCount={pendingTaskCount}
-                          />
-                        </View>
+                        <MatrixSlotCard
+                          key={blockDef.block}
+                          dayNum={d.num}
+                          blockNum={blockDef.block}
+                          schedule={item}
+                          pendingTaskCount={pendingTaskCount}
+                          onPress={() => onAssignSlot(d.num, blockDef.block, item)}
+                        />
                       )
                     })}
                   </View>
@@ -350,9 +388,13 @@ const styles = StyleSheet.create({
   slotEmptyContent: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
+  },
+  plusIcon: {
+    opacity: 0.6,
   },
   slotEmptyText: {
-    color: '#3F3F46',
+    color: '#52525B',
     fontSize: 10,
     fontWeight: '600',
   },

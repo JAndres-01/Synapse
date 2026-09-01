@@ -339,7 +339,6 @@ export default function ScheduleScreen() {
             tasks={tasks}
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
-            onAssignSlot={handleOpenAssign}
             onOpenDayTasks={handleOpenDayTasks}
           />
         ) : (
@@ -347,6 +346,7 @@ export default function ScheduleScreen() {
             schedules={schedules}
             subjects={subjects}
             tasks={tasks}
+            onAssignSlot={handleOpenAssign}
           />
         )}
       </ScrollView>

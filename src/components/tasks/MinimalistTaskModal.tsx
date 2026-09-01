@@ -717,20 +717,14 @@ export function MinimalistTaskModal({
                         setCurrentView('detail')
                       }}
                       hitSlop={12}
-                      style={styles.backBtn}
+                      style={styles.backTitleBtn}
                     >
-                      <ArrowLeft size={16} color="#A1A1AA" />
-                      <Text style={styles.cancelBtnText}>Volver</Text>
+                      <ArrowLeft size={18} color="#FFFFFF" />
+                      <Text style={styles.sheetTitle}>Editar Tarea</Text>
                     </Pressable>
                   ) : (
-                    <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.cancelBtn}>
-                      <Text style={styles.cancelBtnText}>Cancelar</Text>
-                    </Pressable>
+                    <Text style={styles.sheetTitle}>Nueva Tarea</Text>
                   )}
-
-                  <Text style={styles.sheetTitle}>
-                    {task?.id ? 'Editar Tarea' : 'Nueva Tarea'}
-                  </Text>
 
                   <Pressable
                     onPress={handleSave}
@@ -773,7 +767,7 @@ export function MinimalistTaskModal({
                   style={styles.cleanDescInput}
                 />
 
-                {/* Barra de Atributos Rápidos */}
+                {/* Barra de Atributos Rápidos (Con Espaciado Amplio y Holgado) */}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1085,6 +1079,7 @@ const styles = StyleSheet.create({
     height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
+    marginBottom: 6,
   },
   detailScroll: {
     paddingHorizontal: 22,
@@ -1239,7 +1234,7 @@ const styles = StyleSheet.create({
   sheetHeader: {
     alignItems: 'center',
     paddingTop: 10,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
     position: 'relative',
@@ -1249,31 +1244,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
-  cancelBtn: {
-    paddingVertical: 4,
-  },
-  backBtn: {
+  backTitleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-  },
-  cancelBtnText: {
-    color: '#A1A1AA',
-    fontSize: 14,
-    fontWeight: '500',
+    gap: 8,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
   saveHeaderBtn: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
     borderRadius: 12,
   },
   saveHeaderBtnText: {
@@ -1296,31 +1283,33 @@ const styles = StyleSheet.create({
   },
   cleanTitleInput: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '700',
     paddingVertical: 8,
     letterSpacing: -0.4,
   },
   cleanDescInput: {
     color: '#A1A1AA',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 14.5,
+    lineHeight: 21,
     paddingVertical: 8,
-    minHeight: 60,
+    minHeight: 50,
   },
   attributeBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 14,
+    marginTop: 10,
+    marginBottom: 8,
   },
   attrPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 12,
+    gap: 7,
+    paddingHorizontal: 13,
+    paddingVertical: 8.5,
+    borderRadius: 13,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -1331,7 +1320,7 @@ const styles = StyleSheet.create({
   },
   attrPillText: {
     color: '#D4D4D8',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
@@ -1340,9 +1329,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   attrIconPill: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',

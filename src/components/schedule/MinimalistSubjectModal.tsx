@@ -14,7 +14,7 @@ import {
   PanResponder,
 } from 'react-native'
 import type { Subject } from '@/types/personal'
-import { X, Plus, Trash2, BookOpen, Check, User } from 'lucide-react-native'
+import { X, Plus, Trash2, BookOpen, Check, User, Pencil, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
@@ -32,11 +32,11 @@ interface MinimalistSubjectModalProps {
 // 8 Colores de alto contraste + Blanco Puro (#FFFFFF)
 const DISTINCT_PALETTE = [
   '#FFFFFF', // Blanco Puro
-  '#3B82F6', // Azul ElÃ©ctrico
+  '#3B82F6', // Azul Eléctrico
   '#10B981', // Verde Esmeralda
   '#EF4444', // Rojo Brillante
-  '#F59E0B', // Amarillo Ãmbar
-  '#8B5CF6', // Morado ElÃ©ctrico
+  '#F59E0B', // Amarillo Ámbar
+  '#8B5CF6', // Morado Eléctrico
   '#EC4899', // Rosa Fucsia
   '#06B6D4', // Cian / Turquesa
 ]
@@ -48,12 +48,13 @@ export function MinimalistSubjectModal({
   subjects = [],
   onSubjectsUpdated,
 }: MinimalistSubjectModalProps) {
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [name, setName] = useState('')
   const [teacher, setTeacher] = useState('')
   const [selectedColor, setSelectedColor] = useState(DISTINCT_PALETTE[0])
   const [loading, setLoading] = useState(false)
 
-  // Animaciones independientes para evitar arrastre de fondo negro
+  // Animaciones del Modal y Gesto de Deslizar
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
@@ -66,7 +67,7 @@ export function MinimalistSubjectModal({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 200,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
@@ -96,9 +97,17 @@ export function MinimalistSubjectModal({
         }),
       ]).start(() => {
         setModalVisible(false)
+        resetForm()
       })
     }
   }, [visible, fadeAnim, slideAnim])
+
+  const resetForm = () => {
+    setEditingSubject(null)
+    setName('')
+    setTeacher('')
+    setSelectedColor(DISTINCT_PALETTE[0])
+  }
 
   const handleSmoothClose = () => {
     triggerHaptic('light')
@@ -119,37 +128,65 @@ export function MinimalistSubjectModal({
         useNativeDriver: true,
       }),
     ]).start(() => {
+      resetForm()
       onClose()
     })
   }
 
+  // PanResponder Robusto para Deslizar Hacia Abajo y Cerrar
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
       },
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           panY.setValue(gestureState.dy)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
+        if (gestureState.dy > 90 || gestureState.vy > 0.4) {
           handleSmoothClose()
         } else {
           Animated.spring(panY, {
             toValue: 0,
-            damping: 24,
+            damping: 22,
             stiffness: 400,
             useNativeDriver: true,
           }).start()
         }
       },
+      onPanResponderTerminate: () => {
+        Animated.spring(panY, {
+          toValue: 0,
+          damping: 22,
+          stiffness: 400,
+          useNativeDriver: true,
+        }).start()
+      },
     })
   ).current
 
-  const handleCreateSubject = async () => {
+  const handleStartEdit = (subject: Subject) => {
+    triggerHaptic('selection')
+    setEditingSubject(subject)
+    setName(subject.name)
+    setTeacher(subject.teacher_name || '')
+    setSelectedColor(subject.color || DISTINCT_PALETTE[0])
+  }
+
+  const handleCancelEdit = () => {
+    triggerHaptic('light')
+    resetForm()
+  }
+
+  const handleSaveSubject = async () => {
     if (!name.trim()) {
       Alert.alert('Campo requerido', 'Ingresa el nombre de la materia.')
       triggerHaptic('warning')
@@ -158,34 +195,61 @@ export function MinimalistSubjectModal({
 
     setLoading(true)
 
-    const newSubject: Subject = {
-      id: 'subj_' + Math.random().toString(36).substring(2, 11),
-      user_id: userId,
-      name: name.trim(),
-      teacher_name: teacher.trim() || null,
-      color: selectedColor,
-      created_at: new Date().toISOString(),
-    }
-
     try {
-      await personalStorage.saveSubject(newSubject)
-      triggerHaptic('success')
-      setName('')
-      setTeacher('')
-      onSubjectsUpdated()
+      if (editingSubject) {
+        // MODO EDICIÓN
+        const updatedSubject: Subject = {
+          ...editingSubject,
+          name: name.trim(),
+          teacher_name: teacher.trim() || null,
+          color: selectedColor,
+        }
 
-      supabase
-        .from('subjects')
-        .insert({
-          id: newSubject.id,
+        await personalStorage.saveSubject(updatedSubject)
+        triggerHaptic('success')
+        resetForm()
+        onSubjectsUpdated()
+
+        supabase
+          .from('subjects')
+          .update({
+            name: updatedSubject.name,
+            teacher_name: updatedSubject.teacher_name,
+            color: updatedSubject.color,
+          })
+          .eq('id', editingSubject.id)
+          .then(({ error }) => {
+            if (error) console.log('Supabase update subject info:', error.message)
+          })
+      } else {
+        // MODO CREACIÓN
+        const newSubject: Subject = {
+          id: 'subj_' + Math.random().toString(36).substring(2, 11),
           user_id: userId,
-          name: newSubject.name,
-          teacher_name: newSubject.teacher_name,
-          color: newSubject.color,
-        })
-        .then(({ error }) => {
-          if (error) console.log('Supabase sync info:', error.message)
-        })
+          name: name.trim(),
+          teacher_name: teacher.trim() || null,
+          color: selectedColor,
+          created_at: new Date().toISOString(),
+        }
+
+        await personalStorage.saveSubject(newSubject)
+        triggerHaptic('success')
+        resetForm()
+        onSubjectsUpdated()
+
+        supabase
+          .from('subjects')
+          .insert({
+            id: newSubject.id,
+            user_id: userId,
+            name: newSubject.name,
+            teacher_name: newSubject.teacher_name,
+            color: newSubject.color,
+          })
+          .then(({ error }) => {
+            if (error) console.log('Supabase sync subject info:', error.message)
+          })
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudo guardar la materia.')
       triggerHaptic('error')
@@ -196,8 +260,8 @@ export function MinimalistSubjectModal({
 
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
     Alert.alert(
-      'Â¿Eliminar materia?',
-      `Se eliminarÃ¡ "${subjectName}" de tus materias y horarios.`,
+      '¿Eliminar materia?',
+      `Se eliminará "${subjectName}" de tus materias y horarios.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -206,6 +270,9 @@ export function MinimalistSubjectModal({
           onPress: async () => {
             try {
               triggerHaptic('error')
+              if (editingSubject?.id === subjectId) {
+                resetForm()
+              }
               await personalStorage.removeSubject(subjectId)
               onSubjectsUpdated()
               supabase.from('subjects').delete().eq('id', subjectId).then(() => {})
@@ -223,33 +290,58 @@ export function MinimalistSubjectModal({
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop EstÃ¡tico */}
+        {/* Backdrop Estático */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
         {/* Hoja Inferior Deslizante */}
-        <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }, { translateY: panY }] }]}>
-          {/* Header */}
+        <Animated.View
+          style={[
+            styles.sheetContainer,
+            { transform: [{ translateY: slideAnim }, { translateY: panY }] },
+          ]}
+        >
+          {/* Header con PanResponder */}
           <View style={styles.sheetHeader} {...panResponder.panHandlers}>
             <View style={styles.dragHandle} />
-            <Text style={styles.sheetTitle}>Gestionar Materias</Text>
-            <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.closeBtn}>
-              <X size={18} color="#A1A1AA" />
-            </Pressable>
+            <View style={styles.headerRow}>
+              <View>
+                <Text style={styles.sheetTitle}>Gestionar Materias</Text>
+                <Text style={styles.sheetSubtitle}>
+                  {editingSubject ? 'Editando materia existente' : `${subjects.length} materias registradas`}
+                </Text>
+              </View>
+
+              <Pressable onPress={handleSmoothClose} hitSlop={12} style={styles.closeBtn}>
+                <X size={18} color="#A1A1AA" />
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Formulario de CreaciÃ³n Simplificado (3 Campos: Nombre, Profesor, Color) */}
-            <View style={styles.createBox}>
-              <Text style={styles.sectionHeader}>NUEVA MATERIA</Text>
+            {/* Caja de Formulario (Creación o Edición) */}
+            <View style={[styles.createBox, Boolean(editingSubject) && styles.createBoxEditing]}>
+              <View style={styles.boxHeaderRow}>
+                <Text style={[styles.sectionHeader, Boolean(editingSubject) && styles.sectionHeaderEditing]}>
+                  {editingSubject ? 'EDITAR MATERIA' : 'NUEVA MATERIA'}
+                </Text>
 
+                {Boolean(editingSubject) && (
+                  <Pressable onPress={handleCancelEdit} style={styles.cancelEditBtn}>
+                    <RotateCcw size={12} color="#A1A1AA" />
+                    <Text style={styles.cancelEditBtnText}>Cancelar</Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Nombre de la Materia */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>NOMBRE DE LA MATERIA *</Text>
                 <View style={styles.inputWrapper}>
                   <BookOpen size={15} color="#71717A" style={styles.inputIcon} />
                   <TextInput
-                    placeholder="Ej. CÃ¡lculo Multivariable, FÃ­sica..."
+                    placeholder="Ej. Cálculo Multivariable, Física..."
                     placeholderTextColor="#71717A"
                     value={name}
                     onChangeText={setName}
@@ -258,6 +350,7 @@ export function MinimalistSubjectModal({
                 </View>
               </View>
 
+              {/* Profesor / Docente */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>PROFESOR / DOCENTE</Text>
                 <View style={styles.inputWrapper}>
@@ -306,18 +399,27 @@ export function MinimalistSubjectModal({
                 </View>
               </View>
 
-              {/* BotÃ³n de Agregar */}
+              {/* Botón Principal (Añadir o Guardar Cambios) */}
               <Pressable
-                onPress={handleCreateSubject}
+                onPress={handleSaveSubject}
                 disabled={loading}
-                style={styles.addBtn}
+                style={[styles.saveBtn, Boolean(editingSubject) && styles.saveBtnEditing]}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
                   <>
-                    <Plus size={16} color="#09090B" strokeWidth={2.8} />
-                    <Text style={styles.addBtnText}>AÃ±adir Materia</Text>
+                    {editingSubject ? (
+                      <>
+                        <Check size={16} color="#09090B" strokeWidth={2.8} />
+                        <Text style={styles.saveBtnText}>Guardar Cambios</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={16} color="#09090B" strokeWidth={2.8} />
+                        <Text style={styles.saveBtnText}>Añadir Materia</Text>
+                      </>
+                    )}
                   </>
                 )}
               </Pressable>
@@ -333,8 +435,17 @@ export function MinimalistSubjectModal({
                 <View style={styles.subjectsList}>
                   {subjects.map((s) => {
                     const isWhite = s.color === '#FFFFFF'
+                    const isCurrentlyEditing = editingSubject?.id === s.id
+
                     return (
-                      <View key={s.id} style={styles.subjectItem}>
+                      <Pressable
+                        key={s.id}
+                        onPress={() => handleStartEdit(s)}
+                        style={[
+                          styles.subjectItem,
+                          isCurrentlyEditing && styles.subjectItemActive,
+                        ]}
+                      >
                         <View style={styles.subjectItemLeft}>
                           <View
                             style={[
@@ -345,26 +456,36 @@ export function MinimalistSubjectModal({
                           />
                           <View style={styles.subjectItemTextCol}>
                             <Text style={styles.subjectName}>{s.name}</Text>
-                            {s.teacher_name && (
+                            {Boolean(s.teacher_name) && (
                               <Text style={styles.teacherName}>{s.teacher_name}</Text>
                             )}
                           </View>
                         </View>
 
-                        <Pressable
-                          onPress={() => handleDeleteSubject(s.id, s.name)}
-                          hitSlop={10}
-                          style={styles.deleteSubjBtn}
-                        >
-                          <Trash2 size={15} color="#EF4444" />
-                        </Pressable>
-                      </View>
+                        <View style={styles.subjectItemActions}>
+                          <Pressable
+                            onPress={() => handleStartEdit(s)}
+                            hitSlop={8}
+                            style={styles.actionBtn}
+                          >
+                            <Pencil size={14} color={isCurrentlyEditing ? '#FFFFFF' : '#A1A1AA'} />
+                          </Pressable>
+
+                          <Pressable
+                            onPress={() => handleDeleteSubject(s.id, s.name)}
+                            hitSlop={8}
+                            style={styles.deleteSubjBtn}
+                          >
+                            <Trash2 size={14} color="#EF4444" />
+                          </Pressable>
+                        </View>
+                      </Pressable>
                     )
                   })}
                 </View>
               ) : (
                 <Text style={styles.emptySubjsText}>
-                  AÃºn no tienes materias registradas. Crea una arriba para asignar a tus horarios y tareas.
+                  Aún no tienes materias registradas. Crea una arriba para asignar a tus horarios y tareas.
                 </Text>
               )}
             </View>
@@ -388,74 +509,117 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#0E0E11',
+    backgroundColor: '#0F0F13',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '85%',
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    maxHeight: '88%',
     paddingBottom: 36,
   },
   sheetHeader: {
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 10,
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   dragHandle: {
-    width: 36,
-    height: 4.5,
+    width: 52,
+    height: 5,
     borderRadius: 3,
-    backgroundColor: '#3F3F46',
-    marginBottom: 6,
+    backgroundColor: '#52525B',
+    marginBottom: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  sheetSubtitle: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
   },
   closeBtn: {
-    position: 'absolute',
-    right: 18,
-    top: 14,
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sheetScroll: {
     paddingHorizontal: 20,
     paddingTop: 14,
   },
   createBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 16,
-    padding: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 12,
   },
+  createBoxEditing: {
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  boxHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   sectionHeader: {
     color: '#71717A',
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
-  inputGroup: {
-    gap: 5,
+  sectionHeaderEditing: {
+    color: '#FFFFFF',
   },
-  label: {
+  cancelEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+  },
+  cancelEditBtnText: {
     color: '#A1A1AA',
     fontSize: 11,
     fontWeight: '600',
   },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#18181B',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
+    height: 44,
   },
   inputIcon: {
     marginRight: 8,
@@ -463,11 +627,12 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 13.5,
-    paddingVertical: 10,
+    fontSize: 14,
+    fontWeight: '500',
   },
   colorPaletteRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 4,
   },
@@ -479,46 +644,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   whiteColorBorder: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#71717A',
   },
   colorCircleSelected: {
     transform: [{ scale: 1.15 }],
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  addBtn: {
+  saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
     backgroundColor: '#FFFFFF',
+    height: 44,
     borderRadius: 12,
-    paddingVertical: 11,
+    gap: 6,
     marginTop: 4,
   },
-  addBtnText: {
+  saveBtnEditing: {
+    backgroundColor: '#FFFFFF',
+  },
+  saveBtnText: {
     color: '#09090B',
     fontSize: 13.5,
     fontWeight: '800',
   },
   listSection: {
     marginTop: 20,
+    marginBottom: 20,
     gap: 10,
   },
   subjectsList: {
-    gap: 6,
+    gap: 8,
   },
   subjectItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    borderRadius: 14,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    paddingVertical: 11,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  subjectItemActive: {
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   subjectItemLeft: {
     flexDirection: 'row',
@@ -527,34 +702,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   whiteDotBorder: {
-    borderWidth: 0.8,
+    borderWidth: 1,
     borderColor: '#71717A',
   },
   subjectItemTextCol: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   subjectName: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 14.5,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   teacherName: {
     color: '#71717A',
-    fontSize: 11.5,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  subjectItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteSubjBtn: {
-    padding: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptySubjsText: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 13,
+    textAlign: 'center',
     lineHeight: 18,
-    paddingVertical: 6,
+    paddingVertical: 14,
   },
 })

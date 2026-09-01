@@ -85,7 +85,7 @@ export default function ScheduleScreen() {
     } finally {
       setRefreshing(false)
     }
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     loadData()

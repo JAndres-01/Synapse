@@ -22,12 +22,11 @@ import {
   X,
   Clock,
   Trash2,
-  Edit3,
+  Edit2,
   Check,
   Rocket,
   FileText,
   Users,
-  User,
   Paperclip,
   ExternalLink,
   Camera,
@@ -37,9 +36,6 @@ import {
   Calendar,
   Layers,
   ArrowLeft,
-  CheckCircle2,
-  AlertCircle,
-  FileBox,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Linking from 'expo-linking'
@@ -100,8 +96,10 @@ export function MinimalistTaskModal({
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(false)
 
-  // Sincronización con el teclado de iOS
+  // Sincronización con el teclado de iOS (solo cuando el modal está activo)
   useEffect(() => {
+    if (!modalVisible) return
+
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
 
@@ -133,32 +131,28 @@ export function MinimalistTaskModal({
       showSub.remove()
       hideSub.remove()
     }
-  }, [insets.bottom, keyboardTranslateY])
+  }, [modalVisible, insets.bottom, keyboardTranslateY])
 
+  // Apertura y Cierre controlados de forma estrictamente estable
   useEffect(() => {
     if (mode !== 'none') {
       setModalVisible(true)
-      if (mode === 'detail') {
-        setCurrentView('detail')
-      } else if (mode === 'edit' || mode === 'create') {
-        setCurrentView('form')
-      }
+      setCurrentView(mode === 'detail' ? 'detail' : 'form')
 
-      // Cargar datos
-      if (task && (mode === 'detail' || mode === 'edit')) {
-        setTitle(task.title || '')
-        setDescription(task.description || '')
-        setSelectedSubjectId(task.subject_id || null)
-        setTaskType(task.type || 'individual')
-        setDueDate(task.due_date || '')
-        setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
-      } else if (mode === 'create') {
+      if (mode === 'create') {
         setTitle('')
         setDescription('')
         setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
         setTaskType('individual')
         setDueDate('')
         setAttachments([])
+      } else if (task && (mode === 'edit' || mode === 'detail')) {
+        setTitle(task.title || '')
+        setDescription(task.description || '')
+        setSelectedSubjectId(task.subject_id || null)
+        setTaskType(task.type || 'individual')
+        setDueDate(task.due_date || '')
+        setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
       }
       setActivePicker(null)
 
@@ -204,7 +198,7 @@ export function MinimalistTaskModal({
         setModalVisible(false)
       })
     }
-  }, [mode, task, subjects, fadeAnim, slideAnim, keyboardTranslateY])
+  }, [mode, task?.id])
 
   const handleSmoothClose = () => {
     triggerHaptic('light')
@@ -235,15 +229,15 @@ export function MinimalistTaskModal({
   const isWhite = task?.subject?.color === '#FFFFFF'
 
   const formatDueDate = (dateStr?: string | null) => {
-    if (!dateStr) return { text: 'Sin fecha límite', isOverdue: false, isToday: false, dateLabel: 'Sin fecha' }
+    if (!dateStr) return { text: '', isOverdue: false, isToday: false }
     try {
       const date = new Date(dateStr)
-      if (isNaN(date.getTime())) return { text: 'Sin fecha', isOverdue: false, isToday: false, dateLabel: 'Sin fecha' }
+      if (isNaN(date.getTime())) return { text: '', isOverdue: false, isToday: false }
       const now = new Date()
       const isPast = date.getTime() < now.getTime()
       const isToday = date.toDateString() === now.toDateString()
 
-      const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+      const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
       const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
       const dayName = daysOfWeek[date.getDay()]
@@ -255,18 +249,15 @@ export function MinimalistTaskModal({
       const formattedHour = hours % 12 || 12
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
-      if (isCompleted) {
-        return { text: `Completada • ${dayName} ${dayNum} de ${monthName}`, isOverdue: false, isToday: false, dateLabel: `${dayNum} ${monthName}, ${timeStr}` }
-      }
-      if (isPast) {
-        return { text: `Venció el ${dayName} ${dayNum} de ${monthName}`, isOverdue: true, isToday, dateLabel: `${dayNum} ${monthName} (Vencida)` }
-      }
       if (isToday) {
-        return { text: `Vence hoy a las ${timeStr}`, isOverdue: false, isToday: true, dateLabel: `Hoy, ${timeStr}` }
+        return { text: `Hoy ${timeStr}`, isOverdue: false, isToday: true }
       }
-      return { text: `Vence el ${dayName} ${dayNum} de ${monthName}`, isOverdue: false, isToday: false, dateLabel: `${dayName} ${dayNum} ${monthName}, ${timeStr}` }
+      if (isPast && !isCompleted) {
+        return { text: `Venció ${dayName} ${dayNum} ${monthName}`, isOverdue: true, isToday: false }
+      }
+      return { text: `${dayName} ${dayNum} ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
     } catch {
-      return { text: 'Sin fecha', isOverdue: false, isToday: false, dateLabel: 'Sin fecha' }
+      return { text: '', isOverdue: false, isToday: false }
     }
   }
 
@@ -535,69 +526,70 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE DE TAREA (DISEÑO REFINADO ESTILO APPLE REMINDERS / THINGS 3) */}
+          {/* VISTA: DETALLE ULTRA-MINIMALISTA CON ORDEN DE PRIORIDAD DE ELEMENTOS       */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header Superior con Botón Rápido de Edición */}
-              <View style={styles.detailHeader}>
+              {/* Header de Acciones de Vista */}
+              <View style={styles.minimalHeader}>
                 <View style={styles.dragHandle} />
-                <View style={styles.detailHeaderNav}>
+                <View style={styles.minimalNavRow}>
                   <Pressable
                     onPress={handleSmoothClose}
                     hitSlop={12}
-                    style={styles.detailCloseBtn}
+                    style={styles.minimalCloseBtn}
                   >
-                    <X size={17} color="#A1A1AA" />
+                    <X size={18} color="#A1A1AA" />
                   </Pressable>
-
-                  <Text style={styles.detailHeaderTitle} numberOfLines={1}>
-                    Detalle
-                  </Text>
 
                   <Pressable
                     onPress={handleSwitchToEdit}
                     hitSlop={12}
-                    style={styles.detailEditHeaderPill}
+                    style={styles.minimalEditBtn}
                   >
-                    <Edit3 size={13} color="#FFFFFF" />
-                    <Text style={styles.detailEditHeaderPillText}>Editar</Text>
+                    <Edit2 size={13} color="#FFFFFF" />
+                    <Text style={styles.minimalEditBtnText}>Editar</Text>
                   </Pressable>
                 </View>
               </View>
 
               <ScrollView
-                style={styles.detailScroll}
-                contentContainerStyle={styles.detailScrollContent}
+                style={styles.minimalScroll}
+                contentContainerStyle={styles.minimalScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* Hero Section: Checkbox + Título */}
-                <View style={styles.detailHeroRow}>
+                {/* PRIORIDAD 1: Identidad y Estado (Checkbox + Título Limpio) */}
+                <View style={styles.minimalTitleRow}>
                   <Pressable
                     onPress={handleToggle}
                     style={[
-                      styles.detailCheckCircle,
-                      isCompleted && styles.detailCheckCircleCompleted,
+                      styles.minimalCheckBtn,
+                      isCompleted && styles.minimalCheckBtnCompleted,
                     ]}
-                    hitSlop={8}
+                    hitSlop={10}
                   >
                     {isCompleted ? (
-                      <Check size={16} color="#09090B" strokeWidth={3} />
+                      <Check size={14} color="#09090B" strokeWidth={3.5} />
                     ) : null}
                   </Pressable>
 
-                  <Text style={[styles.detailTitle, isCompleted && styles.detailTitleCompleted]}>
+                  <Text
+                    style={[
+                      styles.minimalTitle,
+                      isCompleted && styles.minimalTitleCompleted,
+                    ]}
+                  >
                     {task?.title}
                   </Text>
                 </View>
 
-                {/* Cinta de Metadatos Rápidos (Píldoras Informativas) */}
-                <View style={styles.metadataRibbon}>
+                {/* PRIORIDAD 2: Metadatos Esenciales (Materia, Vencimiento, Modalidad) */}
+                <View style={styles.minimalPillsRow}>
                   {/* Materia */}
                   {task?.subject ? (
                     <View
                       style={[
-                        styles.metaBadge,
+                        styles.minimalPill,
                         {
                           backgroundColor: isWhite
                             ? 'rgba(255, 255, 255, 0.12)'
@@ -615,185 +607,110 @@ export function MinimalistTaskModal({
                           isWhite && styles.whiteDotBorder,
                         ]}
                       />
-                      <Text style={styles.metaBadgeText}>
-                        {task.subject.name}
-                      </Text>
+                      <Text style={styles.minimalPillText}>{task.subject.name}</Text>
                     </View>
                   ) : (
-                    <View style={styles.metaBadgeMuted}>
-                      <FileBox size={12} color="#A1A1AA" />
-                      <Text style={styles.metaBadgeMutedText}>General</Text>
+                    <View style={styles.minimalPillMuted}>
+                      <Text style={styles.minimalPillTextMuted}>General</Text>
                     </View>
                   )}
 
                   {/* Fecha Límite */}
-                  <View
-                    style={[
-                      styles.metaBadge,
-                      dueInfo.isOverdue && styles.metaBadgeOverdue,
-                      isCompleted && styles.metaBadgeCompleted,
-                    ]}
-                  >
-                    <Clock
-                      size={12}
-                      color={
-                        isCompleted
-                          ? '#34D399'
-                          : dueInfo.isOverdue
-                          ? '#F87171'
-                          : '#A1A1AA'
-                      }
-                    />
-                    <Text
+                  {Boolean(dueInfo.text) && (
+                    <View
                       style={[
-                        styles.metaBadgeTextMuted,
-                        dueInfo.isOverdue && styles.metaBadgeTextOverdue,
-                        isCompleted && styles.metaBadgeTextCompleted,
+                        styles.minimalPillMuted,
+                        dueInfo.isOverdue && styles.minimalPillOverdue,
+                        isCompleted && styles.minimalPillCompleted,
                       ]}
                     >
-                      {dueInfo.dateLabel}
-                    </Text>
-                  </View>
-
-                  {/* Tipo de Tarea */}
-                  <View style={styles.metaBadgeMuted}>
-                    {task?.type === 'proyecto' ? (
-                      <Rocket size={11} color="#C084FC" />
-                    ) : task?.type === 'examen' ? (
-                      <FileText size={11} color="#FB7185" />
-                    ) : task?.type === 'grupal' ? (
-                      <Users size={11} color="#38BDF8" />
-                    ) : (
-                      <User size={11} color="#A1A1AA" />
-                    )}
-                    <Text style={styles.metaBadgeMutedText}>
-                      {task?.type || 'individual'}
-                    </Text>
-                  </View>
-
-                  {/* Estado */}
-                  <View
-                    style={[
-                      styles.metaBadgeMuted,
-                      isCompleted && styles.metaBadgeCompleted,
-                    ]}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle2 size={11} color="#34D399" />
-                    ) : (
-                      <AlertCircle size={11} color="#FBBF24" />
-                    )}
-                    <Text
-                      style={[
-                        styles.metaBadgeMutedText,
-                        isCompleted && styles.metaBadgeTextCompleted,
-                        !isCompleted && styles.metaBadgeTextPending,
-                      ]}
-                    >
-                      {isCompleted ? 'Completada' : 'Pendiente'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Banner de Información Detallada de Fecha */}
-                <View
-                  style={[
-                    styles.detailDateBanner,
-                    dueInfo.isOverdue && styles.detailDateBannerOverdue,
-                    isCompleted && styles.detailDateBannerCompleted,
-                  ]}
-                >
-                  <Clock
-                    size={14}
-                    color={
-                      isCompleted
-                        ? '#34D399'
-                        : dueInfo.isOverdue
-                        ? '#F87171'
-                        : '#71717A'
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.detailDateBannerText,
-                      dueInfo.isOverdue && styles.detailDateBannerTextOverdue,
-                      isCompleted && styles.detailDateBannerTextCompleted,
-                    ]}
-                  >
-                    {dueInfo.text}
-                  </Text>
-                </View>
-
-                {/* Notas / Descripción */}
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionHeader}>NOTAS</Text>
-                  <Text style={styles.detailBodyText}>
-                    {task?.description ? task.description : 'Sin notas ni instrucciones añadidas.'}
-                  </Text>
-                </View>
-
-                {/* Fotos y Adjuntos */}
-                {detailAttachments.length > 0 && (
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionHeader}>
-                      ARCHIVOS Y FOTOS ({detailAttachments.length})
-                    </Text>
-                    <View style={styles.detailAttachmentsList}>
-                      {detailAttachments.map((att: TaskAttachment, idx: number) => {
-                        const isImg =
-                          att.file_type === 'image' ||
-                          att.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
-                        return (
-                          <Pressable
-                            key={idx}
-                            onPress={() => {
-                              if (isImg) {
-                                setSelectedLightboxImage(att.file_url)
-                              } else if (att.file_url) {
-                                Linking.openURL(att.file_url)
-                              }
-                            }}
-                            style={styles.detailAttachmentCard}
-                          >
-                            {isImg ? (
-                              <Image
-                                source={{ uri: att.file_url }}
-                                style={styles.detailAttachmentThumb}
-                              />
-                            ) : (
-                              <View style={styles.detailAttachmentDocIcon}>
-                                <Paperclip size={16} color="#FFFFFF" />
-                              </View>
-                            )}
-                            <View style={styles.detailAttachmentMeta}>
-                              <Text style={styles.detailAttachmentName} numberOfLines={1}>
-                                {att.file_name || 'Archivo adjunto'}
-                              </Text>
-                              <Text style={styles.detailAttachmentSub}>
-                                {isImg ? 'Toca para ampliar foto' : 'Toca para abrir enlace'}
-                              </Text>
-                            </View>
-                            <ExternalLink size={14} color="#71717A" />
-                          </Pressable>
-                        )
-                      })}
+                      <Clock
+                        size={11.5}
+                        color={
+                          isCompleted
+                            ? '#34D399'
+                            : dueInfo.isOverdue
+                            ? '#F87171'
+                            : '#A1A1AA'
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.minimalPillTextMuted,
+                          dueInfo.isOverdue && styles.minimalPillTextOverdue,
+                          isCompleted && styles.minimalPillTextCompleted,
+                        ]}
+                      >
+                        {dueInfo.text}
+                      </Text>
                     </View>
+                  )}
+
+                  {/* Tipo de Tarea (solo si es diferente a individual) */}
+                  {task?.type && task.type !== 'individual' && (
+                    <View style={styles.minimalPillMuted}>
+                      {task.type === 'proyecto' ? (
+                        <Rocket size={11} color="#C084FC" />
+                      ) : task.type === 'examen' ? (
+                        <FileText size={11} color="#FB7185" />
+                      ) : (
+                        <Users size={11} color="#38BDF8" />
+                      )}
+                      <Text style={styles.minimalPillTextMuted}>{task.type}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* PRIORIDAD 3: Notas / Instrucciones (Directo al fondo, lectura fluida) */}
+                {Boolean(task?.description) && (
+                  <View style={styles.minimalDescContainer}>
+                    <Text style={styles.minimalDescText}>{task?.description}</Text>
                   </View>
                 )}
 
-                {/* Botón de Eliminación Discreto al Final */}
-                <View style={styles.detailFooterAction}>
+                {/* PRIORIDAD 4: Adjuntos y Enlaces */}
+                {detailAttachments.length > 0 && (
+                  <View style={styles.minimalAttachmentsRow}>
+                    {detailAttachments.map((att: TaskAttachment, idx: number) => {
+                      const isImg =
+                        att.file_type === 'image' ||
+                        att.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
+                      return (
+                        <Pressable
+                          key={idx}
+                          onPress={() => {
+                            if (isImg) {
+                              setSelectedLightboxImage(att.file_url)
+                            } else if (att.file_url) {
+                              Linking.openURL(att.file_url)
+                            }
+                          }}
+                          style={styles.minimalAttachmentChip}
+                        >
+                          <Paperclip size={12} color="#A1A1AA" />
+                          <Text style={styles.minimalAttachmentName} numberOfLines={1}>
+                            {att.file_name || 'Archivo'}
+                          </Text>
+                          <ExternalLink size={11} color="#71717A" />
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                )}
+
+                {/* PRIORIDAD 5: Acción Destructiva Secundaria */}
+                <View style={styles.minimalFooterAction}>
                   <Pressable
                     onPress={handleDelete}
                     disabled={deleteLoading}
-                    style={styles.detailDeleteBtn}
+                    style={styles.minimalDeleteBtn}
                   >
                     {deleteLoading ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
                       <>
                         <Trash2 size={13} color="#EF4444" />
-                        <Text style={styles.detailDeleteBtnText}>Eliminar esta tarea</Text>
+                        <Text style={styles.minimalDeleteText}>Eliminar tarea</Text>
                       </>
                     )}
                   </Pressable>
@@ -1174,7 +1091,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '90%',
+    maxHeight: '92%',
   },
   dragHandle: {
     width: 36,
@@ -1184,93 +1101,81 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignSelf: 'center',
   },
-  detailHeader: {
+  minimalHeader: {
     paddingTop: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 6,
   },
-  detailHeaderNav: {
+  minimalNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
-  detailCloseBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  minimalCloseBtn: {
+    padding: 6,
   },
-  detailHeaderTitle: {
-    color: '#A1A1AA',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  detailEditHeaderPill: {
+  minimalEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  detailEditHeaderPillText: {
+  minimalEditBtnText: {
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '700',
   },
-  detailScroll: {
-    paddingHorizontal: 20,
+  minimalScroll: {
+    paddingHorizontal: 22,
   },
-  detailScrollContent: {
-    paddingTop: 16,
+  minimalScrollContent: {
+    paddingTop: 10,
     paddingBottom: 24,
-    gap: 16,
-  },
-  detailHeroRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: 14,
   },
-  detailCheckCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
+  minimalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  minimalCheckBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.8,
     borderColor: '#52525B',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    marginTop: 3,
   },
-  detailCheckCircleCompleted: {
+  minimalCheckBtnCompleted: {
     backgroundColor: '#FFFFFF',
     borderColor: '#FFFFFF',
   },
-  detailTitle: {
+  minimalTitle: {
     color: '#FFFFFF',
     fontSize: 21,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    letterSpacing: -0.4,
     flex: 1,
-    lineHeight: 27,
+    lineHeight: 28,
   },
-  detailTitleCompleted: {
+  minimalTitleCompleted: {
     textDecorationLine: 'line-through',
     color: '#71717A',
   },
-  metadataRibbon: {
+  minimalPillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
-  metaBadge: {
+  minimalPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1279,149 +1184,81 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  metaBadgeMuted: {
+  minimalPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  minimalPillMuted: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 10,
   },
-  metaBadgeOverdue: {
+  minimalPillOverdue: {
     backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
-  metaBadgeCompleted: {
+  minimalPillCompleted: {
     backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
-  metaBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  metaBadgeMutedText: {
-    color: '#D4D4D8',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  metaBadgeTextMuted: {
+  minimalPillTextMuted: {
     color: '#A1A1AA',
     fontSize: 12,
     fontWeight: '600',
   },
-  metaBadgeTextOverdue: {
+  minimalPillTextOverdue: {
     color: '#F87171',
     fontWeight: '700',
   },
-  metaBadgeTextCompleted: {
+  minimalPillTextCompleted: {
     color: '#34D399',
     fontWeight: '700',
   },
-  metaBadgeTextPending: {
-    color: '#FDE68A',
+  minimalDescContainer: {
+    paddingTop: 4,
   },
-  detailDateBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  detailDateBannerOverdue: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderColor: 'rgba(239, 68, 68, 0.25)',
-  },
-  detailDateBannerCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-  },
-  detailDateBannerText: {
-    color: '#A1A1AA',
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  detailDateBannerTextOverdue: {
-    color: '#F87171',
-  },
-  detailDateBannerTextCompleted: {
-    color: '#34D399',
-  },
-  detailSection: {
-    gap: 6,
-  },
-  detailSectionHeader: {
-    color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  detailBodyText: {
+  minimalDescText: {
     color: '#D4D4D8',
     fontSize: 14.5,
     lineHeight: 22,
-    fontWeight: '400',
   },
-  detailAttachmentsList: {
-    gap: 8,
-  },
-  detailAttachmentCard: {
+  minimalAttachmentsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 4,
   },
-  detailAttachmentThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#27272A',
-  },
-  detailAttachmentDocIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailAttachmentMeta: {
-    flex: 1,
-    gap: 2,
-  },
-  detailAttachmentName: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  detailAttachmentSub: {
-    color: '#71717A',
-    fontSize: 11,
-  },
-  detailFooterAction: {
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  detailDeleteBtn: {
+  minimalAttachmentChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    maxWidth: '100%',
   },
-  detailDeleteBtnText: {
+  minimalAttachmentName: {
+    color: '#D4D4D8',
+    fontSize: 12,
+    maxWidth: 160,
+  },
+  minimalFooterAction: {
+    paddingTop: 12,
+    alignItems: 'flex-start',
+  },
+  minimalDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  minimalDeleteText: {
     color: '#EF4444',
     fontSize: 12.5,
     fontWeight: '600',

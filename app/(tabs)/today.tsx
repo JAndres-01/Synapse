@@ -14,8 +14,7 @@ import type { Schedule, Task, Subject } from '@/types/personal'
 import { MinimalistLiveHero } from '@/components/today/MinimalistLiveHero'
 import { MinimalistTodayTasks } from '@/components/today/MinimalistTodayTasks'
 import { MinimalistDayTimeline } from '@/components/today/MinimalistDayTimeline'
-import { MinimalistTaskDetailModal } from '@/components/tasks/MinimalistTaskDetailModal'
-import { MinimalistCreateTaskModal } from '@/components/tasks/MinimalistCreateTaskModal'
+import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Plus } from 'lucide-react-native'
@@ -31,10 +30,9 @@ export default function TodayScreen() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [refreshing, setRefreshing] = useState(false)
 
-  // Modales
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+  // Modal Unificado de Tareas
+  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const getTodayDayOfWeek = () => {
     const day = new Date().getDay()
@@ -53,85 +51,66 @@ export default function TodayScreen() {
     setTasks(cachedTasks)
     setSubjects(cachedSubjs)
 
-    if (!user) return
+    if (!user?.id) return
 
-    // Intentar sincronizar con Supabase sin pisar el almacenamiento local
     try {
       const [schedRes, tasksRes, subjRes] = await Promise.all([
-        supabase
-          .from('schedules')
-          .select('*, subject:subjects(*)')
-          .eq('user_id', user.id)
-          .order('block_number', { ascending: true }),
-        supabase
-          .from('tasks')
-          .select('*, subject:subjects(*)')
-          .eq('user_id', user.id)
-          .order('due_date', { ascending: true }),
-        supabase
-          .from('subjects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true }),
+        supabase.from('schedules').select('*, subject:subjects(*)').eq('user_id', user.id),
+        supabase.from('tasks').select('*, subject:subjects(*)').eq('user_id', user.id),
+        supabase.from('subjects').select('*').eq('user_id', user.id),
       ])
 
-      if (schedRes.data && schedRes.data.length > 0) {
-        const allScheds = schedRes.data as Schedule[]
-        await personalStorage.setSchedules(allScheds)
-        setSchedulesToday(allScheds.filter((s) => s.day_of_week === todayNum))
+      if (schedRes.data) {
+        setSchedulesToday(schedRes.data.filter((s) => s.day_of_week === todayNum))
+        personalStorage.saveSchedules(schedRes.data)
       }
-
-      if (tasksRes.data && tasksRes.data.length > 0) {
-        const allTasks = tasksRes.data as Task[]
-        await personalStorage.setTasks(allTasks)
-        setTasks(allTasks)
+      if (tasksRes.data) {
+        setTasks(tasksRes.data)
+        personalStorage.saveTasks(tasksRes.data)
       }
-
-      if (subjRes.data && subjRes.data.length > 0) {
-        const allSubjs = subjRes.data as Subject[]
-        await personalStorage.setSubjects(allSubjs)
-        setSubjects(allSubjs)
+      if (subjRes.data) {
+        setSubjects(subjRes.data)
+        personalStorage.saveSubjects(subjRes.data)
       }
     } catch (err) {
-      console.log('Sync info:', err)
-    } finally {
-      setRefreshing(false)
+      console.warn('Sync background offline:', err)
     }
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     loadData()
   }, [loadData])
 
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await loadData()
+    setRefreshing(false)
+  }
+
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: newStatus as 'pending' | 'completed' } : t
+    )
+    setTasks(updatedTasks)
+    await personalStorage.saveTasks(updatedTasks)
 
-    const updated = tasks.map((t) => {
-      if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-      return t
-    })
-    setTasks(updated)
-    await personalStorage.setTasks(updated)
+    if (activeTask && activeTask.id === taskId) {
+      setActiveTask({ ...activeTask, status: newStatus as 'pending' | 'completed' })
+    }
 
-    try {
-      await supabase
-        .from('tasks')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .eq('id', taskId)
-    } catch {
-      // Offline fallback
+    if (user?.id) {
+      supabase.from('tasks').update({ status: newStatus }).eq('id', taskId).then(() => {})
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    const updated = await personalStorage.removeTask(taskId)
-    setTasks(updated)
-    supabase.from('tasks').delete().eq('id', taskId).then(() => {})
-  }
-
-  const onRefresh = () => {
-    setRefreshing(true)
-    loadData()
+    const updatedTasks = tasks.filter((t) => t.id !== taskId)
+    setTasks(updatedTasks)
+    await personalStorage.saveTasks(updatedTasks)
+    if (user?.id) {
+      supabase.from('tasks').delete().eq('id', taskId).then(() => {})
+    }
   }
 
   return (
@@ -140,45 +119,52 @@ export default function TodayScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
+          { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 90 },
         ]}
-        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#FFFFFF"
+            colors={['#818CF8']}
+          />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Cabecera / Saludo */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>BUENOS DÍAS</Text>
-              <Text style={styles.userName}>
-                {profile?.full_name || 'Mi Día'}
-              </Text>
+              <Text style={styles.greeting}>HOLA DE NUEVO</Text>
+              <Text style={styles.userName}>{profile?.full_name || 'Estudiante'}</Text>
             </View>
 
             <Pressable
               onPress={() => {
-                triggerHaptic('light')
-                setTaskToEdit(null)
-                setShowCreateModal(true)
+                triggerHaptic('medium')
+                setActiveTask(null)
+                setTaskModalMode('create')
               }}
               style={styles.headerAddBtn}
             >
-              <Plus size={15} color="#09090B" strokeWidth={2.5} />
-              <Text style={styles.headerAddBtnText}>Nueva Tarea</Text>
+              <Plus size={15} color="#09090B" strokeWidth={2.8} />
+              <Text style={styles.headerAddBtnText}>Tarea</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Tarjeta En Vivo (Único Contenedor Delimitado) */}
-        <MinimalistLiveHero schedulesToday={schedulesToday} />
+        {/* Hero Card Dinámica: Clase en Vivo / Próxima */}
+        <MinimalistLiveHero schedules={schedulesToday} />
 
-        {/* Lista Plana de Tareas Próximas */}
+        {/* Bloque de Tareas Próximas */}
         <MinimalistTodayTasks
           tasks={tasks}
           onToggleTask={handleToggleTaskStatus}
-          onOpenTaskDetail={(t) => setSelectedTask(t)}
+          onOpenTaskDetail={(t) => {
+            triggerHaptic('light')
+            setActiveTask(t)
+            setTaskModalMode('detail')
+          }}
           onNavigateToTasks={() => router.replace('/(tabs)/tasks')}
         />
 
@@ -186,31 +172,19 @@ export default function TodayScreen() {
         <MinimalistDayTimeline schedulesToday={schedulesToday} />
       </ScrollView>
 
-      {/* Modal de Detalle */}
-      <MinimalistTaskDetailModal
-        task={selectedTask}
-        visible={Boolean(selectedTask)}
-        onClose={() => setSelectedTask(null)}
-        onToggleStatus={handleToggleTaskStatus}
-        onDeleteTask={handleDeleteTask}
-        onEditTask={(t) => {
-          setSelectedTask(null)
-          setTaskToEdit(t)
-          setShowCreateModal(true)
-        }}
-      />
-
-      {/* Modal de Creación / Edición */}
+      {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
       {user && (
-        <MinimalistCreateTaskModal
-          visible={showCreateModal}
-          onClose={() => {
-            setShowCreateModal(false)
-            setTaskToEdit(null)
-          }}
+        <MinimalistTaskModal
+          mode={taskModalMode}
+          task={activeTask}
           userId={user.id}
           subjects={subjects}
-          initialTask={taskToEdit}
+          onClose={() => {
+            setTaskModalMode('none')
+            setActiveTask(null)
+          }}
+          onToggleStatus={handleToggleTaskStatus}
+          onDeleteTask={handleDeleteTask}
           onTaskSaved={loadData}
         />
       )}

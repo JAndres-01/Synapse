@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
@@ -36,8 +36,8 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       }
       await personalStorage.setProfile(saved)
     }
-    setProfile(saved)
-    setUser({ id: saved.id, email: saved.email })
+    setProfile((prev) => (prev?.id === saved?.id && prev?.full_name === saved?.full_name ? prev : saved))
+    setUser((prev: any) => (prev?.id === saved?.id ? prev : { id: saved.id, email: saved.email }))
   }
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
             theme: 'dark',
             created_at: data.session.user.created_at,
           }
-          setProfile(profileData)
+          setProfile((prev) => (prev?.id === profileData.id ? prev : profileData))
           await personalStorage.setProfile(profileData)
         } else {
           await loadLocalProfile()
@@ -82,7 +82,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
           theme: 'dark',
           created_at: newSession.user.created_at,
         }
-        setProfile(profileData)
+        setProfile((prev) => (prev?.id === profileData.id ? prev : profileData))
         await personalStorage.setProfile(profileData)
       } else {
         await loadLocalProfile()
@@ -98,18 +98,18 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
   const signInWithEmail = async (email: string, pass: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
     if (error) throw error
-    if (data.user) {
-      setUser(data.user)
+    if (data.session) {
       setSession(data.session)
-      const p: PersonalProfile = {
-        id: data.user.id,
-        full_name: data.user.user_metadata?.full_name || email.split('@')[0],
-        email: data.user.email || '',
+      setUser(data.session.user)
+      const profileData: PersonalProfile = {
+        id: data.session.user.id,
+        full_name: data.session.user.user_metadata?.full_name || 'Estudiante',
+        email: data.session.user.email || '',
         theme: 'dark',
-        created_at: data.user.created_at,
+        created_at: data.session.user.created_at,
       }
-      setProfile(p)
-      await personalStorage.setProfile(p)
+      setProfile(profileData)
+      await personalStorage.setProfile(profileData)
     }
   }
 
@@ -120,46 +120,53 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       options: { data: { full_name: name } },
     })
     if (error) throw error
-    if (data.user) {
-      setUser(data.user)
+    if (data.session) {
       setSession(data.session)
-      const p: PersonalProfile = {
-        id: data.user.id,
+      setUser(data.session.user)
+      const profileData: PersonalProfile = {
+        id: data.session.user.id,
         full_name: name,
-        email: data.user.email || '',
+        email: data.session.user.email || '',
         theme: 'dark',
-        created_at: data.user.created_at,
+        created_at: data.session.user.created_at,
       }
-      setProfile(p)
-      await personalStorage.setProfile(p)
+      setProfile(profileData)
+      await personalStorage.setProfile(profileData)
     }
   }
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    setUser(null)
     setSession(null)
     await loadLocalProfile()
   }
 
   const refreshProfile = async () => {
-    const saved = await personalStorage.getProfile()
-    if (saved) setProfile(saved)
+    if (user?.id) {
+      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (data) {
+        setProfile(data)
+        await personalStorage.setProfile(data)
+      }
+    }
   }
 
+  const value = useMemo(
+    () => ({
+      user,
+      session,
+      profile,
+      loading,
+      signInWithEmail,
+      signUpWithEmail,
+      signOut,
+      refreshProfile,
+    }),
+    [user, session, profile, loading]
+  )
+
   return (
-    <PersonalAuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        signInWithEmail,
-        signUpWithEmail,
-        signOut,
-        refreshProfile,
-      }}
-    >
+    <PersonalAuthContext.Provider value={value}>
       {children}
     </PersonalAuthContext.Provider>
   )
@@ -168,7 +175,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
 export function usePersonalAuth() {
   const context = useContext(PersonalAuthContext)
   if (!context) {
-    throw new Error('usePersonalAuth must be used within PersonalAuthProvider')
+    throw new Error('usePersonalAuth must be used within a PersonalAuthProvider')
   }
   return context
 }

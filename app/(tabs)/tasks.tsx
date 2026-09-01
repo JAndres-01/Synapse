@@ -126,7 +126,7 @@ export default function TasksScreen() {
     } finally {
       setRefreshing(false)
     }
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     loadData()
@@ -168,16 +168,18 @@ export default function TasksScreen() {
   }, [showSubjectMenu, menuFadeAnim, menuSlideAnim])
 
   useEffect(() => {
+    if (!isSearchActive) return
+
     const hideListener = Keyboard.addListener('keyboardDidHide', () => {
       if (searchQuery.trim() === '') {
-        handleCloseSearch()
+        setIsSearchActive(false)
       }
     })
 
     return () => {
       hideListener.remove()
     }
-  }, [searchQuery])
+  }, [isSearchActive, searchQuery])
 
   useEffect(() => {
     Animated.spring(slideAnim, {

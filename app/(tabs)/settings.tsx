@@ -10,9 +10,10 @@ import {
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Settings, LogOut, ShieldCheck, BookOpen, CheckSquare, Cloud } from 'lucide-react-native'
+import { Settings, LogOut, ShieldCheck, BookOpen, CheckSquare, Cloud, Smartphone } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { useRouter } from 'expo-router'
+import { APP_BUILD, APP_BUILD_NAME } from '@/constants/appVersion'
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
@@ -122,6 +123,22 @@ export default function SettingsScreen() {
             <Text style={styles.syncSub}>
               Tus datos se guardan en tu iPhone y se respaldan en Supabase
             </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Versión y Build de la App */}
+      <View style={styles.card}>
+        <View style={styles.versionRow}>
+          <View style={styles.versionIconBox}>
+            <Smartphone size={18} color="#818CF8" />
+          </View>
+          <View style={styles.versionInfo}>
+            <Text style={styles.versionTitle}>Synapse Mobile</Text>
+            <Text style={styles.versionSub}>{APP_BUILD_NAME}</Text>
+          </View>
+          <View style={styles.buildBadge}>
+            <Text style={styles.buildBadgeText}>BUILD {APP_BUILD}</Text>
           </View>
         </View>
       </View>
@@ -247,6 +264,46 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 11,
     lineHeight: 15,
+  },
+  versionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  versionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(129, 140, 248, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  versionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  versionTitle: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  versionSub: {
+    color: '#71717A',
+    fontSize: 11,
+  },
+  buildBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  buildBadgeText: {
+    color: '#818CF8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   logoutBtn: {
     flexDirection: 'row',

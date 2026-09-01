@@ -166,4 +166,21 @@ export const personalStorage = {
     }
   },
 
+  // Preferencias
+  async getPreferences(): Promise<{ haptics_enabled: boolean; confetti_enabled: boolean }> {
+    try {
+      const data = await AsyncStorage.getItem('synapse_personal_prefs_v2')
+      return data ? JSON.parse(data) : { haptics_enabled: true, confetti_enabled: true }
+    } catch {
+      return { haptics_enabled: true, confetti_enabled: true }
+    }
+  },
+
+  async setPreferences(prefs: { haptics_enabled: boolean; confetti_enabled: boolean }): Promise<void> {
+    try {
+      await AsyncStorage.setItem('synapse_personal_prefs_v2', JSON.stringify(prefs))
+    } catch (err) {
+      console.error('Error guardando preferencias en storage:', err)
+    }
+  },
 }

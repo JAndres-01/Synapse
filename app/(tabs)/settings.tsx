@@ -11,6 +11,8 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
@@ -22,17 +24,15 @@ import {
   ShieldCheck,
   BookOpen,
   CheckSquare,
-  Cloud,
   Sparkles,
   Smartphone,
   RefreshCw,
   Edit3,
   Moon,
-  ChevronRight,
   X,
   Check,
 } from 'lucide-react-native'
-import { triggerHaptic } from '@/lib/personalHaptics'
+import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import { useRouter, useFocusEffect } from 'expo-router'
 
 export default function SettingsScreen() {
@@ -58,13 +58,17 @@ export default function SettingsScreen() {
   const slideAnim = useRef(new Animated.Value(300)).current
 
   const loadData = useCallback(async () => {
-    const [s, t] = await Promise.all([
+    const [s, t, prefs] = await Promise.all([
       personalStorage.getSubjects(),
       personalStorage.getTasks(),
+      personalStorage.getPreferences(),
     ])
     setSubjectsCount(s.length)
     setTasksCount(t.length)
     setCompletedTasksCount(t.filter((task) => task.status === 'completed').length)
+    setHapticsEnabled(prefs.haptics_enabled)
+    setConfettiEnabled(prefs.confetti_enabled)
+    setGlobalHapticsEnabled(prefs.haptics_enabled)
   }, [])
 
   useFocusEffect(
@@ -154,6 +158,25 @@ export default function SettingsScreen() {
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  const handleToggleHaptics = async (val: boolean) => {
+    setHapticsEnabled(val)
+    setGlobalHapticsEnabled(val)
+    if (val) triggerHaptic('selection')
+    await personalStorage.setPreferences({
+      haptics_enabled: val,
+      confetti_enabled: confettiEnabled,
+    })
+  }
+
+  const handleToggleConfetti = async (val: boolean) => {
+    setConfettiEnabled(val)
+    triggerHaptic('selection')
+    await personalStorage.setPreferences({
+      haptics_enabled: hapticsEnabled,
+      confetti_enabled: val,
+    })
   }
 
   const handleSignOut = () => {
@@ -281,10 +304,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={hapticsEnabled}
-                onValueChange={(val) => {
-                  triggerHaptic('selection')
-                  setHapticsEnabled(val)
-                }}
+                onValueChange={handleToggleHaptics}
                 trackColor={{ false: '#27272A', true: '#FFFFFF' }}
                 thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
               />
@@ -303,10 +323,7 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={confettiEnabled}
-                onValueChange={(val) => {
-                  triggerHaptic('selection')
-                  setConfettiEnabled(val)
-                }}
+                onValueChange={handleToggleConfetti}
                 trackColor={{ false: '#27272A', true: '#FFFFFF' }}
                 thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
               />
@@ -379,14 +396,18 @@ export default function SettingsScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* Modal de Editar Perfil */}
+      {/* Modal de Editar Perfil con KeyboardAvoidingView */}
       <Modal
         visible={showEditProfileModal}
         transparent={true}
         animationType="none"
         onRequestClose={handleCloseEditProfile}
       >
-        <View style={styles.modalRoot}>
+        <KeyboardAvoidingView
+          style={styles.modalRoot}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        >
           <Animated.View style={[styles.modalBackdrop, { opacity: fadeAnim }]}>
             <Pressable style={styles.modalBackdropTouch} onPress={handleCloseEditProfile} />
           </Animated.View>
@@ -429,7 +450,7 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
           </Animated.View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   )

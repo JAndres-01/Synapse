@@ -138,7 +138,10 @@ export default function TodayScreen() {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (newStatus === 'completed') {
-      setConfettiBurstTrigger((prev) => prev + 1)
+      const prefs = await personalStorage.getPreferences()
+      if (prefs.confetti_enabled) {
+        setConfettiBurstTrigger((prev) => prev + 1)
+      }
     }
 
     const updatedTasks = tasks.map((t) =>

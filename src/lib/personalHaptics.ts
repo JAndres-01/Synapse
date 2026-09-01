@@ -10,8 +10,14 @@ export type HapticType =
   | 'error'
   | 'selection'
 
+let isHapticsEnabled = true
+
+export function setGlobalHapticsEnabled(enabled: boolean) {
+  isHapticsEnabled = enabled
+}
+
 export function triggerHaptic(type: HapticType = 'light') {
-  if (Platform.OS === 'web') return
+  if (Platform.OS === 'web' || !isHapticsEnabled) return
 
   try {
     switch (type) {

@@ -312,7 +312,10 @@ export default function TasksScreen() {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (nextStatus === 'completed') {
-      setConfettiBurstTrigger((prev) => prev + 1)
+      const prefs = await personalStorage.getPreferences()
+      if (prefs.confetti_enabled) {
+        setConfettiBurstTrigger((prev) => prev + 1)
+      }
     }
 
     if (statusFilter === 'pending' && nextStatus === 'completed') {

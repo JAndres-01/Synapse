@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   RefreshControl,
   Pressable,
   StyleSheet,
+  Animated,
+  LayoutChangeEvent,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
@@ -44,6 +46,26 @@ export default function ScheduleScreen() {
     day: 1,
     block: 1,
   })
+
+  // Animación del Segmented Control
+  const [segmentContainerWidth, setSegmentContainerWidth] = useState(0)
+  const segmentWidth = segmentContainerWidth > 0 ? (segmentContainerWidth - 6) / 2 : 0
+  const slideAnim = useRef(new Animated.Value(0)).current
+
+  const handleViewModeChange = (mode: 'day' | 'week') => {
+    if (mode === viewMode) return
+    triggerHaptic('selection')
+    setViewMode(mode)
+
+    const targetX = mode === 'day' ? 0 : segmentWidth
+    Animated.spring(slideAnim, {
+      toValue: targetX,
+      stiffness: 500,
+      damping: 32,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start()
+  }
 
   const loadData = useCallback(async () => {
     const [cachedScheds, cachedSubjs] = await Promise.all([
@@ -119,14 +141,11 @@ export default function ScheduleScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
         }
       >
-        {/* Header */}
+        {/* Header Coherente con Tareas y Hoy */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <View style={styles.headerTitleRow}>
-                <Calendar size={18} color="#FFFFFF" />
-                <Text style={styles.title}>Horario de Clases</Text>
-              </View>
+              <Text style={styles.title}>Horario</Text>
               <Text style={styles.subtitle}>4 bloques diarios • 7:00 AM - 1:00 PM</Text>
             </View>
 
@@ -143,30 +162,57 @@ export default function ScheduleScreen() {
           </View>
         </View>
 
-        {/* Selector de Modo: Vista Diaria vs Matriz Semanal */}
-        <View style={styles.viewModeSelector}>
+        {/* Segmented Control iOS con Animación Fluida */}
+        <View
+          style={styles.segmentedContainer}
+          onLayout={(e: LayoutChangeEvent) => {
+            setSegmentContainerWidth(e.nativeEvent.layout.width)
+          }}
+        >
+          {segmentWidth > 0 && (
+            <Animated.View
+              style={[
+                styles.activeSegmentPill,
+                {
+                  width: segmentWidth,
+                  transform: [{ translateX: slideAnim }],
+                },
+              ]}
+            />
+          )}
+
           <Pressable
-            onPress={() => {
-              triggerHaptic('light')
-              setViewMode('day')
-            }}
-            style={[styles.viewModeBtn, viewMode === 'day' && styles.viewModeBtnActive]}
+            onPress={() => handleViewModeChange('day')}
+            style={styles.segmentButton}
           >
-            <CalendarDays size={13} color={viewMode === 'day' ? '#09090B' : '#71717A'} />
-            <Text style={[styles.viewModeBtnText, viewMode === 'day' && styles.viewModeBtnTextActive]}>
+            <CalendarDays
+              size={13.5}
+              color={viewMode === 'day' ? '#09090B' : '#71717A'}
+            />
+            <Text
+              style={[
+                styles.segmentButtonText,
+                viewMode === 'day' && styles.segmentButtonTextActive,
+              ]}
+            >
               Vista Diaria
             </Text>
           </Pressable>
 
           <Pressable
-            onPress={() => {
-              triggerHaptic('light')
-              setViewMode('week')
-            }}
-            style={[styles.viewModeBtn, viewMode === 'week' && styles.viewModeBtnActive]}
+            onPress={() => handleViewModeChange('week')}
+            style={styles.segmentButton}
           >
-            <LayoutGrid size={13} color={viewMode === 'week' ? '#09090B' : '#71717A'} />
-            <Text style={[styles.viewModeBtnText, viewMode === 'week' && styles.viewModeBtnTextActive]}>
+            <LayoutGrid
+              size={13.5}
+              color={viewMode === 'week' ? '#09090B' : '#71717A'}
+            />
+            <Text
+              style={[
+                styles.segmentButtonText,
+                viewMode === 'week' && styles.segmentButtonTextActive,
+              ]}
+            >
               Matriz Semanal
             </Text>
           </Pressable>
@@ -228,7 +274,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 14,
+    gap: 16,
   },
   header: {
     paddingHorizontal: 2,
@@ -238,63 +284,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   title: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
   subtitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 12.5,
     marginTop: 2,
+    fontWeight: '500',
   },
   manageSubjBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 5.5,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 13,
+    paddingVertical: 7.5,
+    borderRadius: 14,
   },
   manageSubjBtnText: {
     color: '#09090B',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 12.5,
+    fontWeight: '800',
   },
-  viewModeSelector: {
+  segmentedContainer: {
     flexDirection: 'row',
     backgroundColor: '#18181B',
     padding: 3,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    position: 'relative',
+    height: 40,
+    alignItems: 'center',
   },
-  viewModeBtn: {
+  activeSegmentPill: {
+    position: 'absolute',
+    left: 3,
+    top: 3,
+    bottom: 3,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+  },
+  segmentButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 7,
-    borderRadius: 11,
+    height: '100%',
+    zIndex: 1,
   },
-  viewModeBtnActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  viewModeBtnText: {
+  segmentButtonText: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
   },
-  viewModeBtnTextActive: {
+  segmentButtonTextActive: {
     color: '#09090B',
-    fontWeight: '700',
+    fontWeight: '800',
   },
 })

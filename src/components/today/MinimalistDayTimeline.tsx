@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { MapPin, User, Check, CheckSquare } from 'lucide-react-native'
+import { MapPin, User, Check } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistDayTimelineProps {
@@ -20,7 +20,6 @@ export function MinimalistDayTimeline({
 }: MinimalistDayTimelineProps) {
   const now = new Date()
   const currentMins = now.getHours() * 60 + now.getMinutes()
-  const todayDayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
 
   return (
     <View style={styles.container}>
@@ -55,8 +54,6 @@ export function MinimalistDayTimeline({
               return false
             }
           })
-
-          const pendingTasksInClass = classTasks.filter((t) => t.status === 'pending').length
 
           return (
             <View
@@ -120,19 +117,11 @@ export function MinimalistDayTimeline({
                       >
                         {sched.subject.name}
                       </Text>
-                      <View style={styles.badgesRightRow}>
-                        {pendingTasksInClass > 0 && (
-                          <View style={styles.taskBadge}>
-                            <CheckSquare size={9} color="#FFFFFF" />
-                            <Text style={styles.taskBadgeText}>{pendingTasksInClass}</Text>
-                          </View>
-                        )}
-                        {isCurrent && (
-                          <View style={styles.nowBadge}>
-                            <Text style={styles.nowBadgeText}>En curso</Text>
-                          </View>
-                        )}
-                      </View>
+                      {isCurrent && (
+                        <View style={styles.nowBadge}>
+                          <Text style={styles.nowBadgeText}>En curso</Text>
+                        </View>
+                      )}
                     </View>
 
                     {(Boolean(sched.classroom_room) || Boolean(sched.subject.teacher_name)) && (
@@ -157,49 +146,43 @@ export function MinimalistDayTimeline({
                       </View>
                     )}
 
-                    {/* Lista de Tareas a Entregar en esta Clase */}
+                    {/* Tareas del día: Integradas limpiamente como líneas minimalistas */}
                     {classTasks.length > 0 && (
-                      <View style={styles.classTasksBox}>
-                        <View style={styles.classTasksHeaderRow}>
-                          <Text style={styles.classTasksLabel}>ENTREGAS DE ESTA CLASE</Text>
-                        </View>
-
-                        <View style={styles.classTasksList}>
-                          {classTasks.map((t) => {
-                            const isDone = t.status === 'completed'
-                            return (
+                      <View style={styles.classTasksInline}>
+                        {classTasks.map((t) => {
+                          const isDone = t.status === 'completed'
+                          return (
+                            <Pressable
+                              key={t.id}
+                              onPress={() => {
+                                triggerHaptic('light')
+                                onOpenTaskDetail?.(t)
+                              }}
+                              style={styles.taskLine}
+                            >
                               <Pressable
-                                key={t.id}
                                 onPress={() => {
-                                  triggerHaptic('light')
-                                  onOpenTaskDetail?.(t)
+                                  triggerHaptic(isDone ? 'light' : 'success')
+                                  onToggleTask?.(t.id, t.status)
                                 }}
-                                style={[styles.classTaskRow, isDone && styles.classTaskRowDone]}
+                                hitSlop={8}
+                                style={[styles.microCheckbox, isDone && styles.microCheckboxDone]}
                               >
-                                <Pressable
-                                  onPress={() => {
-                                    triggerHaptic(isDone ? 'light' : 'success')
-                                    onToggleTask?.(t.id, t.status)
-                                  }}
-                                  hitSlop={8}
-                                  style={[styles.miniCheckbox, isDone && styles.miniCheckboxDone]}
-                                >
-                                  {isDone && <Check size={9} color="#09090B" strokeWidth={3.5} />}
-                                </Pressable>
-
-                                <Text
-                                  style={[
-                                    styles.classTaskTitle,
-                                    isDone && styles.classTaskTitleDone,
-                                  ]}
-                                  numberOfLines={1}
-                                >
-                                  {t.title}
-                                </Text>
+                                {isDone && <Check size={8} color="#09090B" strokeWidth={3.8} />}
                               </Pressable>
-                            )
-                          })}
-                        </View>
+
+                              <Text
+                                style={[
+                                  styles.taskLineText,
+                                  isDone && styles.taskLineTextDone,
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {t.title}
+                              </Text>
+                            </Pressable>
+                          )
+                        })}
                       </View>
                     )}
                   </>
@@ -301,7 +284,7 @@ const styles = StyleSheet.create({
   contentCol: {
     flex: 1,
     paddingLeft: 8,
-    gap: 4,
+    gap: 3,
     paddingTop: 1,
   },
   contentColCurrent: {
@@ -325,25 +308,6 @@ const styles = StyleSheet.create({
   },
   subjectTitlePast: {
     color: '#A1A1AA',
-  },
-  badgesRightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  taskBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 5,
-    gap: 3,
-  },
-  taskBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
   },
   nowBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -371,67 +335,44 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 10.5,
     fontWeight: '500',
-    maxWidth: 130,
+    maxWidth: 140,
   },
   freeText: {
     color: '#3F3F46',
     fontSize: 12.5,
     fontWeight: '600',
   },
-  classTasksBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 8,
-    marginTop: 4,
-    gap: 6,
-  },
-  classTasksHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  classTasksLabel: {
-    color: '#71717A',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-  classTasksList: {
+  classTasksInline: {
+    marginTop: 6,
     gap: 5,
   },
-  classTaskRow: {
+  taskLine: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: 7,
+    paddingVertical: 2,
   },
-  classTaskRowDone: {
-    opacity: 0.6,
-  },
-  miniCheckbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  microCheckbox: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 1.2,
     borderColor: '#52525B',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  miniCheckboxDone: {
+  microCheckboxDone: {
     backgroundColor: '#FFFFFF',
     borderColor: '#FFFFFF',
   },
-  classTaskTitle: {
-    color: '#FFFFFF',
+  taskLineText: {
+    color: '#D4D4D8',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
+    letterSpacing: -0.1,
     flex: 1,
   },
-  classTaskTitleDone: {
+  taskLineTextDone: {
     color: '#71717A',
     textDecorationLine: 'line-through',
   },

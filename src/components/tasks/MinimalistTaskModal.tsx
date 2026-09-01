@@ -511,7 +511,7 @@ export function MinimalistTaskModal({
           style={[
             styles.sheetContainer,
             {
-              paddingBottom: Math.max(insets.bottom, 16) + 16,
+              paddingBottom: Math.max(insets.bottom, 16) + 8,
               transform: [
                 { translateY: slideAnim },
                 { translateY: keyboardTranslateY },
@@ -520,37 +520,13 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE 100% SIMÉTRICO Y ALINEADO AL MARGEN IZQUIERDO              */}
+          {/* VISTA: DETALLE 100% SIMÉTRICO Y SIN ESPACIOS VACÍOS                       */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header con Drag Handle y Botones de Acción Agrupados en Forma de Iconos */}
-              <View style={styles.detailHeaderBar}>
+              {/* Drag Handle Superior Centrado */}
+              <View style={styles.dragHandleTopArea}>
                 <View style={styles.dragHandle} />
-                <View style={styles.detailHeaderActions}>
-                  {/* Botón Eliminar como Icono */}
-                  <Pressable
-                    onPress={handleDelete}
-                    disabled={deleteLoading}
-                    hitSlop={12}
-                    style={styles.detailHeaderDeleteIconBtn}
-                  >
-                    {deleteLoading ? (
-                      <ActivityIndicator size="small" color="#EF4444" />
-                    ) : (
-                      <Trash2 size={15} color="#EF4444" />
-                    )}
-                  </Pressable>
-
-                  {/* Botón Editar como Icono */}
-                  <Pressable
-                    onPress={handleSwitchToEdit}
-                    hitSlop={12}
-                    style={styles.detailHeaderEditIconBtn}
-                  >
-                    <Edit2 size={15} color="#FFFFFF" />
-                  </Pressable>
-                </View>
               </View>
 
               <ScrollView
@@ -558,10 +534,37 @@ export function MinimalistTaskModal({
                 contentContainerStyle={styles.detailScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* 1. TÍTULO DE LA TAREA (ALINEADO AL MARGEN IZQUIERDO) */}
-                <Text style={styles.detailHeroTitle}>
-                  {task?.title}
-                </Text>
+                {/* 1. TÍTULO DE LA TAREA + BOTONES DE ACCIÓN EN LA MISMA FILA (CERO ESPACIO VACÍO) */}
+                <View style={styles.detailTitleInlineRow}>
+                  <Text style={styles.detailHeroTitle} numberOfLines={2}>
+                    {task?.title}
+                  </Text>
+
+                  <View style={styles.detailInlineActions}>
+                    {/* Botón Eliminar como Icono */}
+                    <Pressable
+                      onPress={handleDelete}
+                      disabled={deleteLoading}
+                      hitSlop={10}
+                      style={styles.detailHeaderDeleteIconBtn}
+                    >
+                      {deleteLoading ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <Trash2 size={15} color="#EF4444" />
+                      )}
+                    </Pressable>
+
+                    {/* Botón Editar como Icono */}
+                    <Pressable
+                      onPress={handleSwitchToEdit}
+                      hitSlop={10}
+                      style={styles.detailHeaderEditIconBtn}
+                    >
+                      <Edit2 size={15} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                </View>
 
                 {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL MARGEN IZQUIERDO) */}
                 {Boolean(task?.description) && (
@@ -1072,30 +1075,51 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.09)',
     maxHeight: '92%',
   },
+  dragHandleTopArea: {
+    paddingTop: 10,
+    paddingBottom: 4,
+    alignItems: 'center',
+  },
   dragHandle: {
     width: 36,
     height: 4.5,
     borderRadius: 3,
     backgroundColor: '#3F3F46',
-    marginBottom: 8,
-    alignSelf: 'center',
   },
-  detailHeaderBar: {
-    paddingTop: 10,
-    paddingBottom: 4,
-    position: 'relative',
+  detailScroll: {
+    paddingHorizontal: 22,
   },
-  detailHeaderActions: {
+  detailScrollContent: {
+    paddingTop: 8,
+    paddingBottom: 16,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  detailTitleInlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  detailHeroTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 30,
+    flex: 1,
+  },
+  detailInlineActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
     gap: 8,
+    paddingTop: 2,
   },
   detailHeaderDeleteIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
@@ -1103,31 +1127,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailHeaderEditIconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  detailScroll: {
-    paddingHorizontal: 22,
-  },
-  detailScrollContent: {
-    paddingTop: 10,
-    paddingBottom: 32,
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  detailHeroTitle: {
-    color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-    lineHeight: 32,
-    alignSelf: 'stretch',
   },
   detailDescriptionText: {
     color: '#D4D4D8',

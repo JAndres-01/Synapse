@@ -15,6 +15,7 @@ import { MinimalistLiveHero } from '@/components/today/MinimalistLiveHero'
 import { MinimalistTodayTasks } from '@/components/today/MinimalistTodayTasks'
 import { MinimalistDayTimeline } from '@/components/today/MinimalistDayTimeline'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
+import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Plus } from 'lucide-react-native'
@@ -29,6 +30,7 @@ export default function TodayScreen() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [refreshing, setRefreshing] = useState(false)
+  const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modal Unificado de Tareas
   const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
@@ -134,6 +136,11 @@ export default function TodayScreen() {
 
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+
+    if (newStatus === 'completed') {
+      setConfettiBurstTrigger((prev) => prev + 1)
+    }
+
     const updatedTasks = tasks.map((t) =>
       t.id === taskId ? { ...t, status: newStatus as 'pending' | 'completed' } : t
     )
@@ -168,6 +175,9 @@ export default function TodayScreen() {
 
   return (
     <View style={styles.screenWrapper}>
+      {/* Confetti Festivo al Completar Tareas */}
+      <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={[
@@ -208,7 +218,7 @@ export default function TodayScreen() {
         {/* Hero Card Dinámica: Clase en Vivo / Próxima */}
         <MinimalistLiveHero schedules={schedulesToday} />
 
-        {/* Bloque de Tareas Próximas */}
+        {/* Bloque de Tareas Próximas (Sólo Pendientes de los Próximos 7 Días) */}
         <MinimalistTodayTasks
           tasks={tasks}
           onToggleTask={handleToggleTaskStatus}

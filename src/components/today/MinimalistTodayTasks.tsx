@@ -23,6 +23,7 @@ function TodayTaskItem({
   onOpenDetail: () => void
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current
+  const checkBounceAnim = useRef(new Animated.Value(1)).current
   const isDone = task.status === 'completed'
   const subjColor = task.subject?.color || '#71717A'
   const isWhite = task.subject?.color === '#FFFFFF'
@@ -31,7 +32,7 @@ function TodayTaskItem({
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
       toValue: 0.98,
-      stiffness: 500,
+      stiffness: 600,
       damping: 24,
       useNativeDriver: true,
     }).start()
@@ -40,10 +41,35 @@ function TodayTaskItem({
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      stiffness: 450,
+      stiffness: 500,
       damping: 22,
       useNativeDriver: true,
     }).start()
+  }
+
+  const handleCheckboxToggle = () => {
+    // Animación de rebote elástica rápida (snappy)
+    Animated.sequence([
+      Animated.timing(checkBounceAnim, {
+        toValue: 1.45,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkBounceAnim, {
+        toValue: 0.82,
+        duration: 45,
+        useNativeDriver: true,
+      }),
+      Animated.spring(checkBounceAnim, {
+        toValue: 1,
+        stiffness: 900,
+        damping: 14,
+        useNativeDriver: true,
+      }),
+    ]).start()
+
+    triggerHaptic(isDone ? 'light' : 'success')
+    onToggle()
   }
 
   // Formato limpio de hora de entrega
@@ -54,12 +80,16 @@ function TodayTaskItem({
       if (isNaN(d.getTime())) return null
       const now = new Date()
       const isToday = d.toDateString() === now.toDateString()
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      const isTomorrow = d.toDateString() === tomorrow.toDateString()
+
       const hours = d.getHours()
       const mins = d.getMinutes().toString().padStart(2, '0')
       const ampm = hours >= 12 ? 'PM' : 'AM'
       const formattedH = hours % 12 || 12
 
       if (isToday) return `Hoy ${formattedH}:${mins} ${ampm}`
+      if (isTomorrow) return `Mañana ${formattedH}:${mins} ${ampm}`
       const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
       return `${dayNames[d.getDay()]} ${formattedH}:${mins} ${ampm}`
     } catch {
@@ -72,17 +102,16 @@ function TodayTaskItem({
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.taskRowOuter]}>
       <View style={[styles.taskRow, !isLast && styles.taskRowBorder]}>
-        {/* Checkbox Circular */}
-        <Pressable
-          onPress={() => {
-            triggerHaptic(isDone ? 'light' : 'success')
-            onToggle()
-          }}
-          style={[styles.checkbox, isDone && styles.checkboxDone]}
-          hitSlop={8}
-        >
-          {isDone && <Check size={11} color="#09090B" strokeWidth={3.2} />}
-        </Pressable>
+        {/* Checkbox Circular con Rebote Rápido */}
+        <Animated.View style={{ transform: [{ scale: checkBounceAnim }] }}>
+          <Pressable
+            onPress={handleCheckboxToggle}
+            style={[styles.checkbox, isDone && styles.checkboxDone]}
+            hitSlop={8}
+          >
+            {isDone && <Check size={11} color="#09090B" strokeWidth={3.5} />}
+          </Pressable>
+        </Animated.View>
 
         {/* Contenido de la Tarea */}
         <Pressable
@@ -148,11 +177,22 @@ export function MinimalistTodayTasks({
   onOpenTaskDetail,
   onNavigateToTasks,
 }: MinimalistTodayTasksProps) {
-  const pendingTasks = tasks.filter((t) => t.status === 'pending')
+  // Filtrar ÚNICAMENTE pendientes de los próximos 7 días
+  const now = new Date()
+  const endOf7Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 23, 59, 59, 999).getTime()
 
-  const sortedTasks = [...tasks].sort((a, b) => {
-    if (a.status === 'pending' && b.status === 'completed') return -1
-    if (a.status === 'completed' && b.status === 'pending') return 1
+  const pendingNext7DaysTasks = tasks.filter((t) => {
+    if (t.status !== 'pending') return false
+    if (!t.due_date) return true
+    try {
+      const dueTime = new Date(t.due_date).getTime()
+      return dueTime <= endOf7Days
+    } catch {
+      return true
+    }
+  })
+
+  const sortedTasks = [...pendingNext7DaysTasks].sort((a, b) => {
     if (a.due_date && b.due_date) {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     }
@@ -165,7 +205,7 @@ export function MinimalistTodayTasks({
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>
-          PENDIENTES PRÓXIMOS ({pendingTasks.length})
+          PENDIENTES PRÓXIMOS ({sortedTasks.length})
         </Text>
         <Pressable
           onPress={() => {
@@ -183,7 +223,7 @@ export function MinimalistTodayTasks({
       {sortedTasks.length === 0 ? (
         <View style={styles.emptyCard}>
           <CheckSquare size={22} color="#3F3F46" />
-          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas pendientes.</Text>
+          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas para los próximos 7 días.</Text>
         </View>
       ) : (
         <View style={styles.cardContainer}>

@@ -1,5 +1,5 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import React, { useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, User, Check } from 'lucide-react-native'
@@ -10,6 +10,73 @@ interface MinimalistDayTimelineProps {
   tasks?: Task[]
   onToggleTask?: (taskId: string, currentStatus: string) => void
   onOpenTaskDetail?: (task: Task) => void
+}
+
+function TimelineTaskLine({
+  task,
+  onToggle,
+  onOpenDetail,
+}: {
+  task: Task
+  onToggle?: () => void
+  onOpenDetail?: () => void
+}) {
+  const isDone = task.status === 'completed'
+  const checkBounceAnim = useRef(new Animated.Value(1)).current
+
+  const handleToggle = () => {
+    Animated.sequence([
+      Animated.timing(checkBounceAnim, {
+        toValue: 1.45,
+        duration: 60,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkBounceAnim, {
+        toValue: 0.82,
+        duration: 45,
+        useNativeDriver: true,
+      }),
+      Animated.spring(checkBounceAnim, {
+        toValue: 1,
+        stiffness: 900,
+        damping: 14,
+        useNativeDriver: true,
+      }),
+    ]).start()
+
+    triggerHaptic(isDone ? 'light' : 'success')
+    onToggle?.()
+  }
+
+  return (
+    <Pressable
+      onPress={() => {
+        triggerHaptic('light')
+        onOpenDetail?.()
+      }}
+      style={styles.taskLine}
+    >
+      <Animated.View style={{ transform: [{ scale: checkBounceAnim }] }}>
+        <Pressable
+          onPress={handleToggle}
+          hitSlop={8}
+          style={[styles.microCheckbox, isDone && styles.microCheckboxDone]}
+        >
+          {isDone && <Check size={8} color="#09090B" strokeWidth={3.8} />}
+        </Pressable>
+      </Animated.View>
+
+      <Text
+        style={[
+          styles.taskLineText,
+          isDone && styles.taskLineTextDone,
+        ]}
+        numberOfLines={1}
+      >
+        {task.title}
+      </Text>
+    </Pressable>
+  )
 }
 
 export function MinimalistDayTimeline({
@@ -149,40 +216,14 @@ export function MinimalistDayTimeline({
                     {/* Tareas del día: Integradas limpiamente como líneas minimalistas */}
                     {classTasks.length > 0 && (
                       <View style={styles.classTasksInline}>
-                        {classTasks.map((t) => {
-                          const isDone = t.status === 'completed'
-                          return (
-                            <Pressable
-                              key={t.id}
-                              onPress={() => {
-                                triggerHaptic('light')
-                                onOpenTaskDetail?.(t)
-                              }}
-                              style={styles.taskLine}
-                            >
-                              <Pressable
-                                onPress={() => {
-                                  triggerHaptic(isDone ? 'light' : 'success')
-                                  onToggleTask?.(t.id, t.status)
-                                }}
-                                hitSlop={8}
-                                style={[styles.microCheckbox, isDone && styles.microCheckboxDone]}
-                              >
-                                {isDone && <Check size={8} color="#09090B" strokeWidth={3.8} />}
-                              </Pressable>
-
-                              <Text
-                                style={[
-                                  styles.taskLineText,
-                                  isDone && styles.taskLineTextDone,
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {t.title}
-                              </Text>
-                            </Pressable>
-                          )
-                        })}
+                        {classTasks.map((t) => (
+                          <TimelineTaskLine
+                            key={t.id}
+                            task={t}
+                            onToggle={() => onToggleTask?.(t.id, t.status)}
+                            onOpenDetail={() => onOpenTaskDetail?.(t)}
+                          />
+                        ))}
                       </View>
                     )}
                   </>

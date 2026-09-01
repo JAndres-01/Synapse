@@ -34,6 +34,9 @@ import {
   Layers,
   ArrowLeft,
   Maximize2,
+  Rocket,
+  FileText,
+  Users,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Linking from 'expo-linking'
@@ -247,7 +250,7 @@ export function MinimalistTaskModal({
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isToday) {
-        return { text: `Hoy, ${timeStr}`, isOverdue: false, isToday: true }
+        return { text: `Hoy a las ${timeStr}`, isOverdue: false, isToday: true }
       }
       if (isPast && !isCompleted) {
         return { text: `Venció el ${dayName} ${dayNum} de ${monthName}`, isOverdue: true, isToday: false }
@@ -517,11 +520,11 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE PRECISO (TÍTULO > DETALLES > FECHA > MATERIA/TIPO SUTILES) */}
+          {/* VISTA: DETALLE ESTILIZADO CON ORDEN DE PRIORIDAD EXACTO                   */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header Minimalista: Sin botón X, solo handle y botón Editar */}
+              {/* Header con Drag Handle y Botón de Editar Estilizado */}
               <View style={styles.detailHeaderBar}>
                 <View style={styles.dragHandle} />
                 <View style={styles.detailHeaderActions}>
@@ -530,7 +533,7 @@ export function MinimalistTaskModal({
                     hitSlop={12}
                     style={styles.detailEditBtn}
                   >
-                    <Edit2 size={12.5} color="#FFFFFF" />
+                    <Edit2 size={12} color="#FFFFFF" />
                     <Text style={styles.detailEditBtnText}>Editar</Text>
                   </Pressable>
                 </View>
@@ -541,30 +544,48 @@ export function MinimalistTaskModal({
                 contentContainerStyle={styles.detailScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* 1. TÍTULO DE LA TAREA (ELEMENTO MÁS IMPORTANTE - SIN CHECKBOX) */}
+                {/* 1. TÍTULO DE LA TAREA (ELEMENTO PRINCIPAL PROTAGONISTA) */}
                 <Text style={styles.detailHeroTitle}>
                   {task?.title}
                 </Text>
 
-                {/* 2. DETALLES / NOTAS (SEGUNDA POSICIÓN EN PRIORIDAD) */}
+                {/* 2. NOTAS / DETALLES (EN SEGUNDA POSICIÓN, DENTRO DE UN LIENZO DE LECTURA) */}
                 {Boolean(task?.description) && (
-                  <Text style={styles.detailDescriptionText}>
-                    {task?.description}
-                  </Text>
+                  <View style={styles.detailNotesCard}>
+                    <Text style={styles.detailDescriptionText}>
+                      {task?.description}
+                    </Text>
+                  </View>
                 )}
 
-                {/* 3. FECHA DE ENTREGA (UNA POSICIÓN ARRIBA DE MATERIA Y TIPO) */}
+                {/* 3. FECHA DE ENTREGA (POSICIÓN ARRIBA DE MATERIA Y TIPO) */}
                 {Boolean(dueInfo.text) && (
-                  <View style={styles.detailDateRow}>
+                  <View
+                    style={[
+                      styles.detailDatePill,
+                      dueInfo.isToday && styles.detailDatePillToday,
+                      dueInfo.isOverdue && styles.detailDatePillOverdue,
+                      isCompleted && styles.detailDatePillCompleted,
+                    ]}
+                  >
                     <Clock
                       size={13}
-                      color={dueInfo.isOverdue ? '#F87171' : isCompleted ? '#34D399' : '#A1A1AA'}
+                      color={
+                        isCompleted
+                          ? '#34D399'
+                          : dueInfo.isOverdue
+                          ? '#F87171'
+                          : dueInfo.isToday
+                          ? '#818CF8'
+                          : '#A1A1AA'
+                      }
                     />
                     <Text
                       style={[
-                        styles.detailDateText,
-                        dueInfo.isOverdue && styles.detailDateTextOverdue,
-                        isCompleted && styles.detailDateTextCompleted,
+                        styles.detailDatePillText,
+                        dueInfo.isToday && styles.detailDatePillTextToday,
+                        dueInfo.isOverdue && styles.detailDatePillTextOverdue,
+                        isCompleted && styles.detailDatePillTextCompleted,
                       ]}
                     >
                       {dueInfo.text}
@@ -572,7 +593,7 @@ export function MinimalistTaskModal({
                   </View>
                 )}
 
-                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (LO MENOS VISTOSO / SUTILES) */}
+                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (SUTILES / DISCRETOS) */}
                 <View style={styles.detailMutedMetaRow}>
                   {task?.subject && (
                     <View style={styles.detailSubjectWrapper}>
@@ -592,9 +613,18 @@ export function MinimalistTaskModal({
                     <Text style={styles.detailMutedMetaDot}>•</Text>
                   )}
                   {task?.type && task.type !== 'individual' && (
-                    <Text style={styles.detailMutedMetaText}>
-                      {task.type}
-                    </Text>
+                    <View style={styles.detailTypeWrapper}>
+                      {task.type === 'proyecto' ? (
+                        <Rocket size={11} color="#C084FC" />
+                      ) : task.type === 'examen' ? (
+                        <FileText size={11} color="#FB7185" />
+                      ) : (
+                        <Users size={11} color="#38BDF8" />
+                      )}
+                      <Text style={styles.detailMutedMetaText}>
+                        {task.type}
+                      </Text>
+                    </View>
                   )}
                 </View>
 
@@ -624,7 +654,7 @@ export function MinimalistTaskModal({
                               </Text>
                               <Text style={styles.detailPreviewSubtitle}>Toca para ampliar</Text>
                             </View>
-                            <Maximize2 size={15} color="#71717A" />
+                            <Maximize2 size={14} color="#71717A" />
                           </Pressable>
                         )
                       }
@@ -660,7 +690,10 @@ export function MinimalistTaskModal({
                     {deleteLoading ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
-                      <Text style={styles.detailDeleteActionText}>Eliminar tarea</Text>
+                      <>
+                        <Trash2 size={12} color="#EF4444" />
+                        <Text style={styles.detailDeleteActionText}>Eliminar tarea</Text>
+                      </>
                     )}
                   </Pressable>
                 </View>
@@ -1039,11 +1072,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#0E0E11',
+    backgroundColor: '#0F0F13',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.09)',
     maxHeight: '92%',
   },
   dragHandle: {
@@ -1069,54 +1102,84 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 12,
     paddingVertical: 5.5,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   detailEditBtnText: {
     color: '#FFFFFF',
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
   },
   detailScroll: {
     paddingHorizontal: 22,
   },
   detailScrollContent: {
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 28,
     gap: 14,
   },
   detailHeroTitle: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 31,
+    letterSpacing: -0.6,
+    lineHeight: 32,
+  },
+  detailNotesCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   detailDescriptionText: {
-    color: '#D4D4D8',
-    fontSize: 15,
+    color: '#E4E4E7',
+    fontSize: 14.5,
     lineHeight: 22,
   },
-  detailDateRow: {
+  detailDatePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 6,
-    paddingTop: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  detailDateText: {
-    color: '#A1A1AA',
-    fontSize: 13,
+  detailDatePillToday: {
+    backgroundColor: 'rgba(129, 140, 248, 0.12)',
+    borderColor: 'rgba(129, 140, 248, 0.28)',
+  },
+  detailDatePillOverdue: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(239, 68, 68, 0.28)',
+  },
+  detailDatePillCompleted: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+  },
+  detailDatePillText: {
+    color: '#D4D4D8',
+    fontSize: 12.5,
     fontWeight: '600',
   },
-  detailDateTextOverdue: {
+  detailDatePillTextToday: {
+    color: '#818CF8',
+    fontWeight: '700',
+  },
+  detailDatePillTextOverdue: {
     color: '#F87171',
     fontWeight: '700',
   },
-  detailDateTextCompleted: {
+  detailDatePillTextCompleted: {
     color: '#34D399',
     fontWeight: '700',
   },
@@ -1135,6 +1198,11 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
+  },
+  detailTypeWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   detailMutedMetaText: {
     color: '#71717A',
@@ -1176,8 +1244,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   detailPreviewSubtitle: {
-    color: '#71717A',
+    color: '#818CF8',
     fontSize: 11,
+    fontWeight: '500',
   },
   detailLinkCard: {
     flexDirection: 'row',
@@ -1198,10 +1267,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   detailFooterSection: {
-    paddingTop: 12,
+    paddingTop: 10,
     alignItems: 'flex-start',
   },
   detailDeleteAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingVertical: 4,
   },
   detailDeleteActionText: {

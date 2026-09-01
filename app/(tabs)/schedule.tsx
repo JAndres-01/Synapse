@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated,
   LayoutChangeEvent,
+  Dimensions,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'

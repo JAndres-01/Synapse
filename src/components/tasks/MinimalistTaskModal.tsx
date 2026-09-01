@@ -520,7 +520,7 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE ESTILIZADO CON ORDEN DE PRIORIDAD EXACTO                   */}
+          {/* VISTA: DETALLE ESTILIZADO CON SIMETRÍA Y ALINEACIÓN PERFECTA              */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
@@ -544,30 +544,21 @@ export function MinimalistTaskModal({
                 contentContainerStyle={styles.detailScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* 1. TÍTULO DE LA TAREA (ELEMENTO PRINCIPAL PROTAGONISTA) */}
+                {/* 1. TÍTULO DE LA TAREA (PROTAGONISTA Y ALINEADO AL BORDE IZQUIERDO) */}
                 <Text style={styles.detailHeroTitle}>
                   {task?.title}
                 </Text>
 
-                {/* 2. NOTAS / DETALLES (EN SEGUNDA POSICIÓN, DENTRO DE UN LIENZO DE LECTURA) */}
+                {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL BORDE IZQUIERDO) */}
                 {Boolean(task?.description) && (
-                  <View style={styles.detailNotesCard}>
-                    <Text style={styles.detailDescriptionText}>
-                      {task?.description}
-                    </Text>
-                  </View>
+                  <Text style={styles.detailDescriptionText}>
+                    {task?.description}
+                  </Text>
                 )}
 
-                {/* 3. FECHA DE ENTREGA (POSICIÓN ARRIBA DE MATERIA Y TIPO) */}
+                {/* 3. FECHA DE ENTREGA (DIRECTA, SIN CARD, ALINEADA AL BORDE IZQUIERDO) */}
                 {Boolean(dueInfo.text) && (
-                  <View
-                    style={[
-                      styles.detailDatePill,
-                      dueInfo.isToday && styles.detailDatePillToday,
-                      dueInfo.isOverdue && styles.detailDatePillOverdue,
-                      isCompleted && styles.detailDatePillCompleted,
-                    ]}
-                  >
+                  <View style={styles.detailDateRow}>
                     <Clock
                       size={13}
                       color={
@@ -582,10 +573,10 @@ export function MinimalistTaskModal({
                     />
                     <Text
                       style={[
-                        styles.detailDatePillText,
-                        dueInfo.isToday && styles.detailDatePillTextToday,
-                        dueInfo.isOverdue && styles.detailDatePillTextOverdue,
-                        isCompleted && styles.detailDatePillTextCompleted,
+                        styles.detailDateText,
+                        dueInfo.isToday && styles.detailDateTextToday,
+                        dueInfo.isOverdue && styles.detailDateTextOverdue,
+                        isCompleted && styles.detailDateTextCompleted,
                       ]}
                     >
                       {dueInfo.text}
@@ -593,7 +584,7 @@ export function MinimalistTaskModal({
                   </View>
                 )}
 
-                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (SUTILES / DISCRETOS) */}
+                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (SUTILES Y ALINEADOS) */}
                 <View style={styles.detailMutedMetaRow}>
                   {task?.subject && (
                     <View style={styles.detailSubjectWrapper}>
@@ -1120,7 +1111,8 @@ const styles = StyleSheet.create({
   detailScrollContent: {
     paddingTop: 8,
     paddingBottom: 28,
-    gap: 14,
+    gap: 13,
+    alignItems: 'flex-start',
   },
   detailHeroTitle: {
     color: '#FFFFFF',
@@ -1128,58 +1120,34 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.6,
     lineHeight: 32,
-  },
-  detailNotesCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    alignSelf: 'stretch',
   },
   detailDescriptionText: {
-    color: '#E4E4E7',
+    color: '#D4D4D8',
     fontSize: 14.5,
     lineHeight: 22,
+    alignSelf: 'stretch',
   },
-  detailDatePill: {
+  detailDateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    alignSelf: 'flex-start',
   },
-  detailDatePillToday: {
-    backgroundColor: 'rgba(129, 140, 248, 0.12)',
-    borderColor: 'rgba(129, 140, 248, 0.28)',
-  },
-  detailDatePillOverdue: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.28)',
-  },
-  detailDatePillCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.28)',
-  },
-  detailDatePillText: {
+  detailDateText: {
     color: '#D4D4D8',
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
   },
-  detailDatePillTextToday: {
+  detailDateTextToday: {
     color: '#818CF8',
     fontWeight: '700',
   },
-  detailDatePillTextOverdue: {
+  detailDateTextOverdue: {
     color: '#F87171',
     fontWeight: '700',
   },
-  detailDatePillTextCompleted: {
+  detailDateTextCompleted: {
     color: '#34D399',
     fontWeight: '700',
   },
@@ -1187,7 +1155,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingTop: 0,
+    alignSelf: 'flex-start',
   },
   detailSubjectWrapper: {
     flexDirection: 'row',
@@ -1217,6 +1185,7 @@ const styles = StyleSheet.create({
   detailAttachmentsSection: {
     gap: 8,
     paddingTop: 4,
+    alignSelf: 'stretch',
   },
   detailImagePreviewCard: {
     flexDirection: 'row',
@@ -1227,6 +1196,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 8,
     gap: 12,
+    alignSelf: 'stretch',
   },
   detailPreviewThumbnail: {
     width: 56,
@@ -1257,6 +1227,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 11,
     gap: 10,
+    alignSelf: 'stretch',
   },
   detailLinkInfo: {
     flex: 1,
@@ -1269,6 +1240,7 @@ const styles = StyleSheet.create({
   detailFooterSection: {
     paddingTop: 10,
     alignItems: 'flex-start',
+    alignSelf: 'flex-start',
   },
   detailDeleteAction: {
     flexDirection: 'row',

@@ -1,22 +1,18 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import {
   View,
   Text,
-  Pressable,
   StyleSheet,
   ScrollView,
-  Animated,
 } from 'react-native'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { Clock, MapPin, User, CheckSquare } from 'lucide-react-native'
-import { triggerHaptic } from '@/lib/personalHaptics'
+import { MapPin, CheckSquare } from 'lucide-react-native'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
   subjects: Subject[]
   tasks?: Task[]
-  onDayPress: (day: number) => void
 }
 
 const DAYS = [
@@ -27,118 +23,74 @@ const DAYS = [
   { num: 5, name: 'Viernes', short: 'VIE' },
 ]
 
-function MatrixSlotCard({
-  dayNum,
+function MatrixSlotView({
   blockNum,
   schedule,
   pendingTaskCount = 0,
-  onPress,
 }: {
-  dayNum: number
   blockNum: number
   schedule?: Schedule | null
   pendingTaskCount?: number
-  onPress: () => void
 }) {
-  const scaleAnim = useRef(new Animated.Value(1)).current
   const hasSubj = Boolean(schedule?.subject)
   const subjColor = schedule?.subject?.color || '#FFFFFF'
   const isWhite = subjColor === '#FFFFFF'
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      stiffness: 500,
-      damping: 24,
-      useNativeDriver: true,
-    }).start()
-  }
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      stiffness: 450,
-      damping: 22,
-      useNativeDriver: true,
-    }).start()
-  }
-
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.slotCardOuter]}>
-      <Pressable
-        onPress={() => {
-          triggerHaptic('light')
-          onPress()
-        }}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          styles.slotCard,
-          hasSubj ? styles.slotCardFilled : styles.slotCardEmpty,
-        ]}
-      >
-        {hasSubj ? (
-          <View style={styles.slotFilledContent}>
-            {/* Sección Superior: Cabecera y Nombre de la Materia siempre fijos arriba */}
-            <View style={styles.slotTopSection}>
-              <View style={styles.slotHeaderRow}>
-                <View style={styles.slotHeaderLeft}>
-                  <View
-                    style={[
-                      styles.subjDot,
-                      { backgroundColor: subjColor },
-                      isWhite && styles.whiteDotBorder,
-                    ]}
-                  />
-                  <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
-                </View>
-
-                {/* Indicador Minimalista de Tareas Pendientes para este día y materia */}
-                {pendingTaskCount > 0 && (
-                  <View style={styles.taskBadge}>
-                    <CheckSquare size={8.5} color="#FFFFFF" />
-                    <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
-                  </View>
-                )}
+    <View
+      style={[
+        styles.slotCard,
+        hasSubj ? styles.slotCardFilled : styles.slotCardEmpty,
+      ]}
+    >
+      {hasSubj ? (
+        <View style={styles.slotFilledContent}>
+          {/* Cabecera del bloque */}
+          <View style={styles.slotTopSection}>
+            <View style={styles.slotHeaderRow}>
+              <View style={styles.slotHeaderLeft}>
+                <View
+                  style={[
+                    styles.subjDot,
+                    { backgroundColor: subjColor },
+                    isWhite && styles.whiteDotBorder,
+                  ]}
+                />
+                <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
               </View>
 
-              {/* Nombre de la Materia SIEMPRE alineado en la parte superior */}
-              <Text style={styles.slotSubjectName} numberOfLines={2}>
-                {schedule!.subject!.name}
-              </Text>
+              {/* Indicador de Tareas */}
+              {pendingTaskCount > 0 && (
+                <View style={styles.taskBadge}>
+                  <CheckSquare size={8.5} color="#FFFFFF" />
+                  <Text style={styles.taskBadgeText}>{pendingTaskCount}</Text>
+                </View>
+              )}
             </View>
 
-            {/* Sección Inferior: Aula o Profesor anclados abajo */}
-            {(Boolean(schedule?.classroom_room) || Boolean(schedule?.subject?.teacher_name)) ? (
-              <View style={styles.slotMetaRow}>
-                {Boolean(schedule?.classroom_room) && (
-                  <View style={styles.slotMetaItem}>
-                    <MapPin size={8.5} color="#71717A" />
-                    <Text style={styles.slotMetaText} numberOfLines={1}>
-                      {schedule!.classroom_room}
-                    </Text>
-                  </View>
-                )}
-                {Boolean(schedule?.subject?.teacher_name) && !schedule?.classroom_room && (
-                  <View style={styles.slotMetaItem}>
-                    <User size={8.5} color="#71717A" />
-                    <Text style={styles.slotMetaText} numberOfLines={1}>
-                      {schedule!.subject!.teacher_name}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.slotMetaEmpty} />
-            )}
+            <Text style={styles.slotSubjectName} numberOfLines={2}>
+              {schedule!.subject!.name}
+            </Text>
           </View>
-        ) : (
-          <View style={styles.slotEmptyContent}>
-            <Text style={styles.slotEmptyText}>Libre</Text>
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
+
+          {/* Aula */}
+          {Boolean(schedule?.classroom_room) ? (
+            <View style={styles.slotMetaRow}>
+              <MapPin size={9.5} color="#71717A" />
+              <Text style={styles.slotMetaText} numberOfLines={1}>
+                {schedule!.classroom_room}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.slotMetaEmpty} />
+          )}
+        </View>
+      ) : (
+        <View style={styles.slotEmptyContent}>
+          <Text style={styles.slotEmptyText}>Libre</Text>
+        </View>
+      )}
+    </View>
   )
 }
 
@@ -146,95 +98,96 @@ export function MinimalistWeeklyMatrix({
   schedules = [],
   subjects = [],
   tasks = [],
-  onDayPress,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
 
+  const getPendingTasksForDayAndSubject = (day: number, subjectId?: string | null) => {
+    if (!subjectId) return 0
+    return tasks.filter((t) => {
+      if (t.status !== 'pending' || t.subject_id !== subjectId) return false
+      if (!t.due_date) return true
+      try {
+        const taskDate = new Date(t.due_date)
+        const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
+        return dayNum === day
+      } catch {
+        return true
+      }
+    }).length
+  }
+
   return (
-    <View style={styles.wrapper}>
+    <View style={styles.container}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Columna Lateral Fija de Horarios */}
-        <View style={styles.timeColumn}>
-          <View style={styles.timeColHeader}>
-            <Clock size={11} color="#71717A" />
-            <Text style={styles.timeColHeaderText}>HORA</Text>
-          </View>
-
-          {/* 4 Bloques de Horas Neutros */}
-          {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => (
-            <View key={blockDef.block} style={styles.timeBlockCell}>
-              <Text style={styles.timeBlockNum}>C{blockDef.block}</Text>
-              <Text style={styles.timeBlockStart}>{blockDef.startTime}</Text>
-              <Text style={styles.timeBlockEnd}>{blockDef.endTime}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Columnas de los 5 Días de la Semana */}
-        <View style={styles.daysGrid}>
-          {DAYS.map((d) => {
-            const isToday = currentDay === d.num
-            return (
-              <View key={d.num} style={styles.dayColumn}>
-                {/* Cabecera del Día */}
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('light')
-                    onDayPress(d.num)
-                  }}
-                  style={[styles.dayHeaderCell, isToday && styles.dayHeaderCellToday]}
+        <View style={styles.matrixGrid}>
+          {/* Fila de Encabezados de Días */}
+          <View style={styles.headerRow}>
+            {DAYS.map((d) => {
+              const isToday = currentDay === d.num
+              return (
+                <View
+                  key={d.num}
+                  style={[
+                    styles.dayHeaderCell,
+                    isToday && styles.dayHeaderCellToday,
+                  ]}
                 >
-                  <Text style={[styles.dayHeaderText, isToday && styles.dayHeaderTextToday]}>
+                  <Text
+                    style={[
+                      styles.dayHeaderText,
+                      isToday && styles.dayHeaderTextToday,
+                    ]}
+                  >
                     {d.short}
                   </Text>
                   {isToday && (
-                    <View style={styles.todayIndicatorPill}>
-                      <Text style={styles.todayIndicatorText}>Hoy</Text>
+                    <View style={styles.todayIndicator}>
+                      <Text style={styles.todayIndicatorText}>HOY</Text>
                     </View>
                   )}
-                </Pressable>
-
-                {/* 4 Celdas correspondientes a los 4 bloques */}
-                <View style={styles.daySlotsColumn}>
-                  {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => {
-                    const item = schedules.find(
-                      (s) => s.day_of_week === d.num && s.block_number === blockDef.block
-                    )
-
-                    // Filtrado estricto: contar tareas pendientes cuya fecha de entrega caiga exactamente en este día de la semana
-                    const pendingCount = tasks.filter((t) => {
-                      if (t.status !== 'pending' || !t.due_date) return false
-                      try {
-                        const taskDate = new Date(t.due_date)
-                        if (isNaN(taskDate.getTime()) || taskDate.getDay() !== d.num) return false
-                        if (item?.subject_id) {
-                          return t.subject_id === item.subject_id
-                        }
-                        return true
-                      } catch {
-                        return false
-                      }
-                    }).length
-
-                    return (
-                      <MatrixSlotCard
-                        key={blockDef.block}
-                        dayNum={d.num}
-                        blockNum={blockDef.block}
-                        schedule={item}
-                        pendingTaskCount={pendingCount}
-                        onPress={() => onDayPress(d.num)}
-                      />
-                    )
-                  })}
                 </View>
-              </View>
-            )
-          })}
+              )
+            })}
+          </View>
+
+          {/* Cuerpo de la Matriz (4 Bloques por Día) */}
+          <View style={styles.bodyRow}>
+            {DAYS.map((d) => {
+              const daySchedules = schedules.filter((s) => s.day_of_week === d.num)
+              const isToday = currentDay === d.num
+
+              return (
+                <View
+                  key={d.num}
+                  style={[
+                    styles.dayColumn,
+                    isToday && styles.dayColumnToday,
+                  ]}
+                >
+                  <View style={styles.daySlotsColumn}>
+                    {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => {
+                      const item = daySchedules.find((s) => s.block_number === blockDef.block)
+                      const pendingTaskCount = getPendingTasksForDayAndSubject(d.num, item?.subject_id)
+
+                      return (
+                        <View key={blockDef.block} style={styles.slotCardOuter}>
+                          <MatrixSlotView
+                            blockNum={blockDef.block}
+                            schedule={item}
+                            pendingTaskCount={pendingTaskCount}
+                          />
+                        </View>
+                      )
+                    })}
+                  </View>
+                </View>
+              )
+            })}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -242,114 +195,73 @@ export function MinimalistWeeklyMatrix({
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    backgroundColor: '#101014',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    overflow: 'hidden',
+  container: {
+    marginTop: 4,
   },
   scrollContent: {
-    flexDirection: 'row',
-    padding: 10,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
   },
-  timeColumn: {
-    width: 58,
-    marginRight: 8,
+  matrixGrid: {
+    gap: 8,
   },
-  timeColHeader: {
-    height: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 9,
-    marginBottom: 8,
-  },
-  timeColHeaderText: {
-    color: '#71717A',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  timeBlockCell: {
-    height: 92,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  timeBlockNum: {
-    color: '#A1A1AA',
-    fontSize: 10.5,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  timeBlockStart: {
-    color: '#FFFFFF',
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  timeBlockEnd: {
-    color: '#71717A',
-    fontSize: 9.5,
-    fontWeight: '500',
-  },
-  daysGrid: {
+  headerRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  dayColumn: {
-    width: 126,
-  },
   dayHeaderCell: {
-    height: 36,
-    flexDirection: 'row',
+    width: 120,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 9,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 8,
-    gap: 5,
+    flexDirection: 'row',
+    gap: 6,
   },
   dayHeaderCellToday: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   dayHeaderText: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   dayHeaderTextToday: {
-    color: '#FFFFFF',
+    color: '#09090B',
     fontWeight: '800',
   },
-  todayIndicatorPill: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 4.5,
+  todayIndicator: {
+    backgroundColor: '#09090B',
+    paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 5,
   },
   todayIndicatorText: {
-    color: '#09090B',
+    color: '#FFFFFF',
     fontSize: 8.5,
     fontWeight: '800',
+  },
+  bodyRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  dayColumn: {
+    width: 120,
+  },
+  dayColumnToday: {
+    borderRadius: 14,
   },
   daySlotsColumn: {
     gap: 8,
   },
   slotCardOuter: {
-    height: 92,
+    height: 90,
   },
   slotCard: {
     flex: 1,
@@ -358,9 +270,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   slotCardFilled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
   },
   slotCardEmpty: {
     backgroundColor: 'rgba(255, 255, 255, 0.015)',
@@ -374,7 +286,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   slotTopSection: {
-    gap: 4,
+    gap: 3.5,
   },
   slotHeaderRow: {
     flexDirection: 'row',
@@ -424,12 +336,7 @@ const styles = StyleSheet.create({
   slotMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  slotMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+    gap: 3.5,
   },
   slotMetaText: {
     color: '#71717A',
@@ -438,7 +345,7 @@ const styles = StyleSheet.create({
     maxWidth: 95,
   },
   slotMetaEmpty: {
-    height: 10,
+    height: 8,
   },
   slotEmptyContent: {
     alignItems: 'center',

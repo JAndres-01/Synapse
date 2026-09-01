@@ -1,17 +1,19 @@
 import React, { useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native'
 import { BlurView } from 'expo-blur'
-import type { Schedule, Subject } from '@/types/personal'
+import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { User, MapPin, Plus, Clock } from 'lucide-react-native'
+import { User, MapPin, Plus, Clock, CheckSquare, Pencil, Check } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistDayViewProps {
   schedules: Schedule[]
   subjects: Subject[]
+  tasks?: Task[]
   selectedDay: number // 1: Lun ... 5: Vie
   onSelectDay: (day: number) => void
   onAssignSlot: (day: number, block: number, existing?: Schedule) => void
+  onOpenDayTasks: (day: number) => void
 }
 
 const DAYS = [
@@ -25,18 +27,23 @@ const DAYS = [
 function DayClassRow({
   blockDef,
   schedule,
+  classTasks = [],
   isLast,
-  onPress,
+  onPressClass,
+  onEditSlot,
 }: {
   blockDef: { block: number; startTime: string; endTime: string; label: string }
   schedule?: Schedule | null
+  classTasks?: Task[]
   isLast: boolean
-  onPress: () => void
+  onPressClass: () => void
+  onEditSlot: () => void
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current
   const isAssigned = Boolean(schedule?.subject)
   const subjColor = schedule?.subject?.color || '#FFFFFF'
   const isWhite = subjColor === '#FFFFFF'
+  const pendingTasks = classTasks.filter((t) => t.status === 'pending')
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -61,7 +68,11 @@ function DayClassRow({
       <Pressable
         onPress={() => {
           triggerHaptic('light')
-          onPress()
+          if (isAssigned) {
+            onPressClass()
+          } else {
+            onEditSlot()
+          }
         }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -76,27 +87,53 @@ function DayClassRow({
           </View>
         </View>
 
-        {/* Columna Derecha: Información de la Materia */}
+        {/* Columna Derecha: Información de la Materia y Tareas */}
         <View style={styles.contentCol}>
           {isAssigned ? (
             <>
-              <View style={styles.subjectRow}>
-                <View
-                  style={[
-                    styles.subjDot,
-                    { backgroundColor: subjColor },
-                    isWhite && styles.whiteDotBorder,
-                  ]}
-                />
-                <Text style={styles.subjectTitle} numberOfLines={1}>
-                  {schedule!.subject!.name}
-                </Text>
+              <View style={styles.subjectHeaderRow}>
+                <View style={styles.subjectRow}>
+                  <View
+                    style={[
+                      styles.subjDot,
+                      { backgroundColor: subjColor },
+                      isWhite && styles.whiteDotBorder,
+                    ]}
+                  />
+                  <Text style={styles.subjectTitle} numberOfLines={1}>
+                    {schedule!.subject!.name}
+                  </Text>
+                </View>
+
+                <View style={styles.headerRightActions}>
+                  {/* Badge de Tareas Pendientes */}
+                  {pendingTasks.length > 0 && (
+                    <View style={styles.taskBadge}>
+                      <CheckSquare size={10} color="#FFFFFF" />
+                      <Text style={styles.taskBadgeText}>{pendingTasks.length}</Text>
+                    </View>
+                  )}
+
+                  {/* Botón de Editar Bloque / Reasignar */}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation?.()
+                      triggerHaptic('light')
+                      onEditSlot()
+                    }}
+                    hitSlop={8}
+                    style={styles.editSlotBtn}
+                  >
+                    <Pencil size={12} color="#71717A" />
+                  </Pressable>
+                </View>
               </View>
 
+              {/* Metadatos: Aula y Docente */}
               <View style={styles.metaRow}>
                 {Boolean(schedule?.classroom_room) && (
                   <View style={styles.metaItem}>
-                    <MapPin size={11.5} color="#71717A" />
+                    <MapPin size={11} color="#71717A" />
                     <Text style={styles.metaText}>{schedule!.classroom_room}</Text>
                   </View>
                 )}
@@ -107,11 +144,36 @@ function DayClassRow({
 
                 {Boolean(schedule?.subject?.teacher_name) && (
                   <View style={styles.metaItem}>
-                    <User size={11.5} color="#71717A" />
+                    <User size={11} color="#71717A" />
                     <Text style={styles.metaText}>{schedule!.subject!.teacher_name}</Text>
                   </View>
                 )}
               </View>
+
+              {/* Tareas Correspondientes a esta Clase */}
+              {classTasks.length > 0 && (
+                <View style={styles.classTasksList}>
+                  {classTasks.slice(0, 3).map((t) => {
+                    const isDone = t.status === 'completed'
+                    return (
+                      <View key={t.id} style={styles.taskLine}>
+                        <View style={[styles.microDot, isDone && styles.microDotDone]} />
+                        <Text
+                          style={[styles.taskLineTitle, isDone && styles.taskLineTitleDone]}
+                          numberOfLines={1}
+                        >
+                          {t.title}
+                        </Text>
+                      </View>
+                    )
+                  })}
+                  {classTasks.length > 3 && (
+                    <Text style={styles.moreTasksText}>
+                      +{classTasks.length - 3} tareas más...
+                    </Text>
+                  )}
+                </View>
+              )}
             </>
           ) : (
             <View style={styles.freeSlotWrapper}>
@@ -131,9 +193,11 @@ function DayClassRow({
 export function MinimalistDayView({
   schedules = [],
   subjects = [],
+  tasks = [],
   selectedDay,
   onSelectDay,
   onAssignSlot,
+  onOpenDayTasks,
 }: MinimalistDayViewProps) {
   const currentDay = new Date().getDay()
   const daySchedules = schedules.filter((s) => s.day_of_week === selectedDay)
@@ -185,17 +249,34 @@ export function MinimalistDayView({
         })}
       </BlurView>
 
-      {/* Lista Abierta y Continua de 4 Bloques Diarios (Sin Cards Pesadas) */}
+      {/* Lista Abierta y Continua de 4 Bloques Diarios */}
       <View style={styles.blocksList}>
         {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, idx) => {
           const item = daySchedules.find((s) => s.block_number === blockDef.block)
+
+          // Filtrar las tareas correspondientes a la materia de este bloque
+          const classTasks = tasks.filter((t) => {
+            if (!item?.subject_id) return false
+            if (t.subject_id !== item.subject_id) return false
+            if (t.due_date) {
+              try {
+                const taskDate = new Date(t.due_date)
+                const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
+                if (dayNum === selectedDay) return true
+              } catch {}
+            }
+            return t.status === 'pending'
+          })
+
           return (
             <DayClassRow
               key={blockDef.block}
               blockDef={blockDef}
               schedule={item}
+              classTasks={classTasks}
               isLast={idx === PERSONAL_SCHEDULE_BLOCKS.length - 1}
-              onPress={() => onAssignSlot(selectedDay, blockDef.block, item)}
+              onPressClass={() => onOpenDayTasks(selectedDay)}
+              onEditSlot={() => onAssignSlot(selectedDay, blockDef.block, item)}
             />
           )
         })}
@@ -268,22 +349,23 @@ const styles = StyleSheet.create({
   },
   rowContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 16,
+    alignItems: 'flex-start',
+    paddingVertical: 13,
+    gap: 14,
   },
   rowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   timeCol: {
-    width: 58,
+    width: 54,
     alignItems: 'flex-start',
     gap: 2,
+    paddingTop: 1,
   },
   timeStartText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -308,10 +390,17 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  subjectHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   subjectRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7.5,
+    gap: 7,
+    flex: 1,
   },
   subjDot: {
     width: 7,
@@ -324,10 +413,32 @@ const styles = StyleSheet.create({
   },
   subjectTitle: {
     color: '#FFFFFF',
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
     flex: 1,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  taskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  taskBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  editSlotBtn: {
+    padding: 3,
   },
   metaRow: {
     flexDirection: 'row',
@@ -341,12 +452,46 @@ const styles = StyleSheet.create({
   },
   metaText: {
     color: '#71717A',
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '500',
   },
   metaDot: {
     color: '#3F3F46',
     fontSize: 11,
+  },
+  classTasksList: {
+    marginTop: 6,
+    gap: 4,
+  },
+  taskLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  microDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#A1A1AA',
+  },
+  microDotDone: {
+    backgroundColor: '#3F3F46',
+  },
+  taskLineTitle: {
+    color: '#D4D4D8',
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
+  taskLineTitleDone: {
+    color: '#71717A',
+    textDecorationLine: 'line-through',
+  },
+  moreTasksText: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginTop: 1,
   },
   freeSlotWrapper: {
     gap: 2,

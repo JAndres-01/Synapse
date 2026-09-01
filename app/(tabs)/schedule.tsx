@@ -336,16 +336,17 @@ export default function ScheduleScreen() {
           <MinimalistDayView
             schedules={schedules}
             subjects={subjects}
+            tasks={tasks}
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
             onAssignSlot={handleOpenAssign}
+            onOpenDayTasks={handleOpenDayTasks}
           />
         ) : (
           <MinimalistWeeklyMatrix
             schedules={schedules}
             subjects={subjects}
             tasks={tasks}
-            onDayPress={handleOpenDayTasks}
           />
         )}
       </ScrollView>

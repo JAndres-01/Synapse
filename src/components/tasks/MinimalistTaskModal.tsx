@@ -572,12 +572,21 @@ export function MinimalistTaskModal({
                   </View>
                 )}
 
-                {/* 4. MATERIA Y TIPO DE ACTIVIDAD (LO MENOS VISTOSO / SUTILES) */}
+                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (LO MENOS VISTOSO / SUTILES) */}
                 <View style={styles.detailMutedMetaRow}>
                   {task?.subject && (
-                    <Text style={styles.detailMutedMetaText}>
-                      {task.subject.name}
-                    </Text>
+                    <View style={styles.detailSubjectWrapper}>
+                      <View
+                        style={[
+                          styles.detailSubjectColorDot,
+                          { backgroundColor: task.subject.color || '#FFFFFF' },
+                          task.subject.color === '#FFFFFF' && styles.whiteDotBorder,
+                        ]}
+                      />
+                      <Text style={styles.detailMutedMetaText}>
+                        {task.subject.name}
+                      </Text>
+                    </View>
                   )}
                   {task?.subject && task?.type && task.type !== 'individual' && (
                     <Text style={styles.detailMutedMetaDot}>•</Text>
@@ -589,7 +598,7 @@ export function MinimalistTaskModal({
                   )}
                 </View>
 
-                {/* 5. PREVIEW VISUAL DE ADJUNTOS / FOTOS */}
+                {/* 5. PREVIEW COMPACTO DE ADJUNTOS / FOTOS */}
                 {detailAttachments.length > 0 && (
                   <View style={styles.detailAttachmentsSection}>
                     {detailAttachments.map((att: TaskAttachment, idx: number) => {
@@ -606,15 +615,16 @@ export function MinimalistTaskModal({
                           >
                             <Image
                               source={{ uri: att.file_url }}
-                              style={styles.detailPreviewImage}
+                              style={styles.detailPreviewThumbnail}
                               resizeMode="cover"
                             />
-                            <View style={styles.detailPreviewBadge}>
-                              <Maximize2 size={12} color="#FFFFFF" />
-                              <Text style={styles.detailPreviewBadgeText}>
-                                {att.file_name || 'Ver foto'}
+                            <View style={styles.detailPreviewInfo}>
+                              <Text style={styles.detailPreviewTitle} numberOfLines={1}>
+                                {att.file_name || 'Foto adjunta'}
                               </Text>
+                              <Text style={styles.detailPreviewSubtitle}>Toca para ampliar</Text>
                             </View>
+                            <Maximize2 size={15} color="#71717A" />
                           </Pressable>
                         )
                       }
@@ -1113,8 +1123,18 @@ const styles = StyleSheet.create({
   detailMutedMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     paddingTop: 0,
+  },
+  detailSubjectWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  detailSubjectColorDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   detailMutedMetaText: {
     color: '#71717A',
@@ -1127,40 +1147,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   detailAttachmentsSection: {
-    gap: 10,
-    paddingTop: 6,
+    gap: 8,
+    paddingTop: 4,
   },
   detailImagePreviewCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    backgroundColor: '#18181B',
-    height: 180,
-    position: 'relative',
-  },
-  detailPreviewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  detailPreviewBadge: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.16)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    padding: 8,
+    gap: 12,
   },
-  detailPreviewBadgeText: {
+  detailPreviewThumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#27272A',
+  },
+  detailPreviewInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  detailPreviewTitle: {
     color: '#FFFFFF',
-    fontSize: 11.5,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  detailPreviewSubtitle: {
+    color: '#71717A',
+    fontSize: 11,
   },
   detailLinkCard: {
     flexDirection: 'row',

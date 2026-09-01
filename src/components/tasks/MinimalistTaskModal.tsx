@@ -31,6 +31,8 @@ import {
   Link2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
+  ChevronUp,
   Calendar,
   Layers,
   ArrowLeft,
@@ -51,6 +53,12 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+]
+const WEEKDAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
   const now = new Date()
@@ -116,6 +124,13 @@ export function MinimalistTaskModal({
     return currentDay >= 1 && currentDay <= 5 ? currentDay : 1
   })
 
+  // Estado de Fecha y Hora Manual
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth())
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear())
+  const [manualHour, setManualHour] = useState<number>(11)
+  const [manualMinute, setManualMinute] = useState<number>(59)
+  const [manualAmpm, setManualAmpm] = useState<'AM' | 'PM'>('PM')
+
   const titleInputRef = useRef<TextInput>(null)
 
   // Menús desplegables en formulario
@@ -138,6 +153,23 @@ export function MinimalistTaskModal({
       })
     }
   }, [modalVisible])
+
+  // Sincronizar estado del calendario cuando cambie dueDate
+  useEffect(() => {
+    if (dueDate) {
+      try {
+        const d = new Date(dueDate)
+        if (!isNaN(d.getTime())) {
+          setCalendarMonth(d.getMonth())
+          setCalendarYear(d.getFullYear())
+          const h24 = d.getHours()
+          setManualAmpm(h24 >= 12 ? 'PM' : 'AM')
+          setManualHour(h24 % 12 || 12)
+          setManualMinute(d.getMinutes())
+        }
+      } catch {}
+    }
+  }, [dueDate])
 
   // Sincronización con el teclado de iOS (solo cuando el modal está activo)
   useEffect(() => {
@@ -450,11 +482,94 @@ export function MinimalistTaskModal({
     setActivePicker(null)
   }
 
-  const setCustomHour = (hours: number, minutes: number) => {
+  // Métodos para Manipulación Manual de Fecha y Hora
+  const applyManualDateTime = (
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+    ampm: 'AM' | 'PM'
+  ) => {
     triggerHaptic('selection')
-    const base = dueDate ? new Date(dueDate) : new Date()
-    base.setHours(hours, minutes, 0, 0)
-    setDueDate(base.toISOString())
+    const h24 = ampm === 'PM' ? (hour % 12) + 12 : hour % 12
+    const newDate = new Date(year, month, day, h24, minute, 0, 0)
+    setDueDate(newDate.toISOString())
+  }
+
+  const handleSelectCalendarDay = (dayNum: number) => {
+    applyManualDateTime(calendarYear, calendarMonth, dayNum, manualHour, manualMinute, manualAmpm)
+  }
+
+  const handlePrevMonth = () => {
+    triggerHaptic('light')
+    if (calendarMonth === 0) {
+      setCalendarMonth(11)
+      setCalendarYear((y) => y - 1)
+    } else {
+      setCalendarMonth((m) => m - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    triggerHaptic('light')
+    if (calendarMonth === 11) {
+      setCalendarMonth(0)
+      setCalendarYear((y) => y + 1)
+    } else {
+      setCalendarMonth((m) => m + 1)
+    }
+  }
+
+  const handleHourStep = (delta: number) => {
+    triggerHaptic('selection')
+    let nextH = manualHour + delta
+    if (nextH > 12) nextH = 1
+    if (nextH < 1) nextH = 12
+    setManualHour(nextH)
+
+    const currentD = dueDate ? new Date(dueDate) : new Date()
+    applyManualDateTime(
+      calendarYear,
+      calendarMonth,
+      currentD.getDate(),
+      nextH,
+      manualMinute,
+      manualAmpm
+    )
+  }
+
+  const handleMinuteStep = (delta: number) => {
+    triggerHaptic('selection')
+    let nextM = manualMinute + delta
+    if (nextM >= 60) nextM = 0
+    if (nextM < 0) nextM = 55
+    setManualMinute(nextM)
+
+    const currentD = dueDate ? new Date(dueDate) : new Date()
+    applyManualDateTime(
+      calendarYear,
+      calendarMonth,
+      currentD.getDate(),
+      manualHour,
+      nextM,
+      manualAmpm
+    )
+  }
+
+  const handleToggleAmpm = (newAmpm: 'AM' | 'PM') => {
+    triggerHaptic('selection')
+    setManualAmpm(newAmpm)
+
+    const currentD = dueDate ? new Date(dueDate) : new Date()
+    applyManualDateTime(
+      calendarYear,
+      calendarMonth,
+      currentD.getDate(),
+      manualHour,
+      manualMinute,
+      newAmpm
+    )
   }
 
   const handlePickImage = async () => {
@@ -566,6 +681,22 @@ export function MinimalistTaskModal({
   const filteredDaySchedules = schedules
     .filter((s) => s.day_of_week === selectedClassDay)
     .sort((a, b) => (a.block_number || 0) - (b.block_number || 0))
+
+  // Cálculos para el calendario mensual interactivo
+  const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay()
+  const totalDaysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate()
+
+  const currentSelectedDate = dueDate ? new Date(dueDate) : null
+  const isCurrentYearMonth =
+    currentSelectedDate &&
+    currentSelectedDate.getFullYear() === calendarYear &&
+    currentSelectedDate.getMonth() === calendarMonth
+  const selectedDayNumber = isCurrentYearMonth ? currentSelectedDate.getDate() : null
+
+  const today = new Date()
+  const isTodayMonth =
+    today.getFullYear() === calendarYear && today.getMonth() === calendarMonth
+  const todayDayNumber = isTodayMonth ? today.getDate() : null
 
   if (!modalVisible) return null
 
@@ -997,10 +1128,10 @@ export function MinimalistTaskModal({
                   </View>
                 )}
 
-                {/* SELECTOR DE FECHA CON MODO POR CLASE Y MODO MANUAL */}
+                {/* SELECTOR DE FECHA CON MODO PARA CLASE Y MODO MANUAL (CALENDARIO Y HORA EXACTA) */}
                 {activePicker === 'date' && (
                   <View style={styles.inlineDateMenu}>
-                    {/* Selector de Modo: Por Clase vs Manual */}
+                    {/* Selector de Modo: Para Clase vs Manual */}
                     <View style={styles.dateSegmentedRow}>
                       <Pressable
                         onPress={() => {
@@ -1149,49 +1280,155 @@ export function MinimalistTaskModal({
                       </View>
                     )}
 
-                    {/* MODO 2: PRESETS MANUALES Y HORA */}
+                    {/* MODO 2: CALENDARIO MENSUAL MANUAL Y SELECTOR DE HORA Y MINUTOS EXACTOS */}
                     {datePickerTab === 'manual' && (
-                      <View style={styles.manualPickerContainer}>
-                        <Text style={styles.miniSectionTitle}>DÍAS RÁPIDOS</Text>
-                        <View style={styles.dateOptionsRow}>
-                          <Pressable onPress={() => setPresetDate('today')} style={styles.dateOptionBtn}>
-                            <Text style={styles.dateOptionText}>Hoy (23:59)</Text>
+                      <View style={styles.manualCalendarContainer}>
+                        {/* Cabecera del Calendario con Navegación de Mes */}
+                        <View style={styles.calendarNavRow}>
+                          <Pressable onPress={handlePrevMonth} hitSlop={12} style={styles.calendarNavBtn}>
+                            <ChevronLeft size={16} color="#FFFFFF" />
                           </Pressable>
-                          <Pressable onPress={() => setPresetDate('tomorrow')} style={styles.dateOptionBtn}>
-                            <Text style={styles.dateOptionText}>Mañana</Text>
-                          </Pressable>
-                          <Pressable onPress={() => setPresetDate('friday')} style={styles.dateOptionBtn}>
-                            <Text style={styles.dateOptionText}>Viernes</Text>
-                          </Pressable>
-                          <Pressable onPress={() => setPresetDate('next_week')} style={styles.dateOptionBtn}>
-                            <Text style={styles.dateOptionText}>7 días</Text>
+
+                          <Text style={styles.calendarMonthTitle}>
+                            {MONTH_NAMES[calendarMonth]} {calendarYear}
+                          </Text>
+
+                          <Pressable onPress={handleNextMonth} hitSlop={12} style={styles.calendarNavBtn}>
+                            <ChevronRight size={16} color="#FFFFFF" />
                           </Pressable>
                         </View>
 
-                        <Text style={[styles.miniSectionTitle, { marginTop: 10 }]}>HORA</Text>
-                        <View style={styles.dateOptionsRow}>
-                          <Pressable onPress={() => setCustomHour(7, 0)} style={styles.hourOptionBtn}>
-                            <Text style={styles.hourOptionText}>07:00 AM</Text>
-                          </Pressable>
-                          <Pressable onPress={() => setCustomHour(13, 0)} style={styles.hourOptionBtn}>
-                            <Text style={styles.hourOptionText}>01:00 PM</Text>
-                          </Pressable>
-                          <Pressable onPress={() => setCustomHour(18, 0)} style={styles.hourOptionBtn}>
-                            <Text style={styles.hourOptionText}>06:00 PM</Text>
-                          </Pressable>
-                          <Pressable onPress={() => setCustomHour(23, 59)} style={styles.hourOptionBtn}>
-                            <Text style={styles.hourOptionText}>11:59 PM</Text>
-                          </Pressable>
+                        {/* Encabezados de Días de la Semana */}
+                        <View style={styles.calendarWeekDaysRow}>
+                          {WEEKDAY_SHORT.map((wd, idx) => (
+                            <View key={idx} style={styles.calendarCell}>
+                              <Text style={styles.calendarWeekDayText}>{wd}</Text>
+                            </View>
+                          ))}
                         </View>
 
-                        {Boolean(dueDate) && (
+                        {/* Cuadrícula de Días del Mes */}
+                        <View style={styles.calendarGrid}>
+                          {Array.from({ length: firstDayIndex }).map((_, idx) => (
+                            <View key={`empty_${idx}`} style={styles.calendarCell} />
+                          ))}
+
+                          {Array.from({ length: totalDaysInMonth }).map((_, idx) => {
+                            const dayNum = idx + 1
+                            const isSelected = selectedDayNumber === dayNum
+                            const isTodayDay = todayDayNumber === dayNum
+
+                            return (
+                              <Pressable
+                                key={`day_${dayNum}`}
+                                onPress={() => handleSelectCalendarDay(dayNum)}
+                                style={styles.calendarCell}
+                              >
+                                <View
+                                  style={[
+                                    styles.calendarDayCircle,
+                                    isSelected && styles.calendarDayCircleSelected,
+                                    isTodayDay && !isSelected && styles.calendarDayCircleToday,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.calendarDayText,
+                                      isSelected && styles.calendarDayTextSelected,
+                                      isTodayDay && !isSelected && styles.calendarDayTextToday,
+                                    ]}
+                                  >
+                                    {dayNum}
+                                  </Text>
+                                </View>
+                              </Pressable>
+                            )
+                          })}
+                        </View>
+
+                        {/* Selector Manual de Hora y Minutos con Steppers */}
+                        <View style={styles.manualTimeBox}>
+                          <View style={styles.manualTimeHeader}>
+                            <Clock size={12} color="#A1A1AA" />
+                            <Text style={styles.miniSectionTitle}>HORA EXACTA</Text>
+                          </View>
+
+                          <View style={styles.timeControlsRow}>
+                            {/* Stepper de Horas */}
+                            <View style={styles.stepperContainer}>
+                              <Pressable onPress={() => handleHourStep(1)} style={styles.stepperArrowBtn} hitSlop={8}>
+                                <ChevronUp size={15} color="#FFFFFF" />
+                              </Pressable>
+                              <View style={styles.stepperDisplay}>
+                                <Text style={styles.stepperDisplayText}>
+                                  {String(manualHour).padStart(2, '0')}
+                                </Text>
+                              </View>
+                              <Pressable onPress={() => handleHourStep(-1)} style={styles.stepperArrowBtn} hitSlop={8}>
+                                <ChevronDown size={15} color="#FFFFFF" />
+                              </Pressable>
+                            </View>
+
+                            <Text style={styles.timeColonText}>:</Text>
+
+                            {/* Stepper de Minutos */}
+                            <View style={styles.stepperContainer}>
+                              <Pressable onPress={() => handleMinuteStep(5)} style={styles.stepperArrowBtn} hitSlop={8}>
+                                <ChevronUp size={15} color="#FFFFFF" />
+                              </Pressable>
+                              <View style={styles.stepperDisplay}>
+                                <Text style={styles.stepperDisplayText}>
+                                  {String(manualMinute).padStart(2, '0')}
+                                </Text>
+                              </View>
+                              <Pressable onPress={() => handleMinuteStep(-5)} style={styles.stepperArrowBtn} hitSlop={8}>
+                                <ChevronDown size={15} color="#FFFFFF" />
+                              </Pressable>
+                            </View>
+
+                            {/* Selector AM / PM */}
+                            <View style={styles.ampmSwitchContainer}>
+                              <Pressable
+                                onPress={() => handleToggleAmpm('AM')}
+                                style={[styles.ampmSwitchBtn, manualAmpm === 'AM' && styles.ampmSwitchBtnActive]}
+                              >
+                                <Text style={[styles.ampmSwitchText, manualAmpm === 'AM' && styles.ampmSwitchTextActive]}>
+                                  AM
+                                </Text>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => handleToggleAmpm('PM')}
+                                style={[styles.ampmSwitchBtn, manualAmpm === 'PM' && styles.ampmSwitchBtnActive]}
+                              >
+                                <Text style={[styles.ampmSwitchText, manualAmpm === 'PM' && styles.ampmSwitchTextActive]}>
+                                  PM
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Botones de Acción del Selector Manual */}
+                        <View style={styles.manualActionsFooter}>
+                          {Boolean(dueDate) ? (
+                            <Pressable
+                              onPress={() => setPresetDate('clear')}
+                              style={styles.dateOptionClearBtn}
+                            >
+                              <Text style={styles.dateOptionClearText}>Quitar fecha</Text>
+                            </Pressable>
+                          ) : <View />}
+
                           <Pressable
-                            onPress={() => setPresetDate('clear')}
-                            style={styles.dateOptionClearBtn}
+                            onPress={() => {
+                              triggerHaptic('light')
+                              setActivePicker(null)
+                            }}
+                            style={styles.dateOptionDoneBtn}
                           >
-                            <Text style={styles.dateOptionClearText}>Quitar fecha</Text>
+                            <Text style={styles.dateOptionDoneText}>Aplicar</Text>
                           </Pressable>
-                        )}
+                        </View>
                       </View>
                     )}
                   </View>
@@ -1596,11 +1833,11 @@ const styles = StyleSheet.create({
   inlineDateMenu: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     marginTop: 6,
-    gap: 10,
+    gap: 12,
   },
   dateSegmentedRow: {
     flexDirection: 'row',
@@ -1614,7 +1851,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
+    paddingVertical: 7.5,
     borderRadius: 8,
     gap: 6,
   },
@@ -1707,7 +1944,89 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 11,
   },
-  manualPickerContainer: {
+  manualCalendarContainer: {
+    gap: 12,
+  },
+  calendarNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  calendarNavBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarMonthTitle: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  calendarWeekDaysRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 4,
+  },
+  calendarWeekDayText: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarCell: {
+    width: '14.28%',
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDayCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDayCircleSelected: {
+    backgroundColor: '#818CF8',
+  },
+  calendarDayCircleToday: {
+    borderWidth: 1,
+    borderColor: '#818CF8',
+  },
+  calendarDayText: {
+    color: '#D4D4D8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  calendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  calendarDayTextToday: {
+    color: '#818CF8',
+    fontWeight: '700',
+  },
+  manualTimeBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 10,
+    gap: 8,
+  },
+  manualTimeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
   miniSectionTitle: {
@@ -1716,14 +2035,89 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  hourOptionBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 11,
+  timeControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  stepperContainer: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  stepperArrowBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  stepperDisplay: {
+    paddingVertical: 1,
+    minWidth: 28,
+    alignItems: 'center',
+  },
+  stepperDisplayText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+  timeColonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  ampmSwitchContainer: {
+    flexDirection: 'column',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  ampmSwitchBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 7,
+  },
+  ampmSwitchBtnActive: {
+    backgroundColor: '#818CF8',
+  },
+  ampmSwitchText: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ampmSwitchTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  manualActionsFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 2,
+  },
+  dateOptionDoneBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 10,
+    alignSelf: 'flex-end',
+  },
+  dateOptionDoneText: {
+    color: '#09090B',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  dateOptionClearBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
   },
-  hourOptionText: {
-    color: '#A1A1AA',
+  dateOptionClearText: {
+    color: '#F87171',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1753,35 +2147,6 @@ const styles = StyleSheet.create({
   inlineMenuItemText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
-  },
-  dateOptionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  dateOptionBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  dateOptionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dateOptionClearBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-    marginTop: 6,
-  },
-  dateOptionClearText: {
-    color: '#F87171',
-    fontSize: 12,
     fontWeight: '600',
   },
   typeOptionsRow: {

@@ -39,6 +39,17 @@ export default function TodayScreen() {
     return day === 0 ? 7 : day // 1: Lun ... 5: Vie
   }
 
+  // Formato elegante de fecha actual (ej. "Lunes, 1 de Septiembre")
+  const getFormattedCurrentDate = () => {
+    const d = new Date()
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    return `${days[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]}`
+  }
+
   const loadData = useCallback(async () => {
     const [cachedScheds, cachedTasks, cachedSubjs] = await Promise.all([
       personalStorage.getSchedules(),
@@ -153,24 +164,23 @@ export default function TodayScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 90 },
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
         ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#FFFFFF"
-            colors={['#818CF8']}
           />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Cabecera / Saludo */}
+        {/* Header Coherente con Tareas y Horario */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>HOLA DE NUEVO</Text>
-              <Text style={styles.userName}>{profile?.full_name || 'Estudiante'}</Text>
+              <Text style={styles.title}>Hoy</Text>
+              <Text style={styles.subtitle}>{getFormattedCurrentDate()}</Text>
             </View>
 
             <Pressable
@@ -181,7 +191,7 @@ export default function TodayScreen() {
               }}
               style={styles.headerAddBtn}
             >
-              <Plus size={15} color="#09090B" strokeWidth={2.8} />
+              <Plus size={14} color="#09090B" strokeWidth={2.8} />
               <Text style={styles.headerAddBtnText}>Tarea</Text>
             </Pressable>
           </View>
@@ -199,7 +209,7 @@ export default function TodayScreen() {
             setActiveTask(t)
             setTaskModalMode('detail')
           }}
-          onNavigateToTasks={() => router.replace('/(tabs)/tasks')}
+          onNavigateToTasks={() => router.navigate('/(tabs)/tasks')}
         />
 
         {/* Timeline Continuo de Clases */}
@@ -246,30 +256,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  greeting: {
-    color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-  userName: {
+  title: {
     color: '#FFFFFF',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: '#71717A',
+    fontSize: 12.5,
+    marginTop: 2,
+    fontWeight: '500',
   },
   headerAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 13,
+    paddingVertical: 7.5,
+    borderRadius: 14,
   },
   headerAddBtnText: {
     color: '#09090B',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 12.5,
+    fontWeight: '800',
   },
 })

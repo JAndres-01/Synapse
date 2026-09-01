@@ -1,7 +1,7 @@
-import React from 'react'
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import React, { useRef } from 'react'
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
-import { Check, CheckCircle2, ChevronRight } from 'lucide-react-native'
+import { Check, CheckSquare, ChevronRight, Clock, Paperclip } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistTodayTasksProps {
@@ -9,6 +9,137 @@ interface MinimalistTodayTasksProps {
   onToggleTask: (taskId: string, currentStatus: string) => void
   onOpenTaskDetail: (task: Task) => void
   onNavigateToTasks: () => void
+}
+
+function TodayTaskItem({
+  task,
+  isLast,
+  onToggle,
+  onOpenDetail,
+}: {
+  task: Task
+  isLast: boolean
+  onToggle: () => void
+  onOpenDetail: () => void
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current
+  const isDone = task.status === 'completed'
+  const subjColor = task.subject?.color || '#71717A'
+  const isWhite = task.subject?.color === '#FFFFFF'
+  const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      stiffness: 500,
+      damping: 24,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      stiffness: 450,
+      damping: 22,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  // Formato limpio de hora de entrega
+  const formatDue = (dateStr?: string | null) => {
+    if (!dateStr) return null
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return null
+      const now = new Date()
+      const isToday = d.toDateString() === now.toDateString()
+      const hours = d.getHours()
+      const mins = d.getMinutes().toString().padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const formattedH = hours % 12 || 12
+
+      if (isToday) return `Hoy ${formattedH}:${mins} ${ampm}`
+      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+      return `${dayNames[d.getDay()]} ${formattedH}:${mins} ${ampm}`
+    } catch {
+      return null
+    }
+  }
+
+  const dueLabel = formatDue(task.due_date)
+
+  return (
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.taskRowOuter]}>
+      <View style={[styles.taskRow, !isLast && styles.taskRowBorder]}>
+        {/* Checkbox Circular */}
+        <Pressable
+          onPress={() => {
+            triggerHaptic(isDone ? 'light' : 'success')
+            onToggle()
+          }}
+          style={[styles.checkbox, isDone && styles.checkboxDone]}
+          hitSlop={8}
+        >
+          {isDone && <Check size={11} color="#09090B" strokeWidth={3.2} />}
+        </Pressable>
+
+        {/* Contenido de la Tarea */}
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light')
+            onOpenDetail()
+          }}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={styles.taskContent}
+        >
+          <Text
+            style={[styles.taskTitle, isDone && styles.taskTitleDone]}
+            numberOfLines={1}
+          >
+            {task.title}
+          </Text>
+
+          <View style={styles.metaRow}>
+            {/* Tag de Materia o General */}
+            <View style={styles.subjectTag}>
+              <View
+                style={[
+                  styles.dot,
+                  { backgroundColor: subjColor },
+                  isWhite && styles.whiteDotBorder,
+                ]}
+              />
+              <Text style={styles.subjectName}>
+                {task.subject?.name || 'General'}
+              </Text>
+            </View>
+
+            {Boolean(dueLabel) && (
+              <>
+                <Text style={styles.metaDot}>•</Text>
+                <View style={styles.dueItem}>
+                  <Clock size={10.5} color="#71717A" />
+                  <Text style={styles.dueText}>{dueLabel}</Text>
+                </View>
+              </>
+            )}
+
+            {attachCount > 0 && (
+              <>
+                <Text style={styles.metaDot}>•</Text>
+                <View style={styles.dueItem}>
+                  <Paperclip size={10} color="#71717A" />
+                  <Text style={styles.dueText}>{attachCount}</Text>
+                </View>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </View>
+    </Animated.View>
+  )
 }
 
 export function MinimalistTodayTasks({
@@ -30,93 +161,43 @@ export function MinimalistTodayTasks({
     return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
   })
 
-  if (tasks.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>PENDIENTES PRÓXIMOS</Text>
-        </View>
-        <View style={styles.emptyBox}>
-          <CheckCircle2 size={24} color="#27272A" />
-          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas urgentes.</Text>
-        </View>
-      </View>
-    )
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>
-          PENDIENTES ({pendingTasks.length})
+          PENDIENTES PRÓXIMOS ({pendingTasks.length})
         </Text>
-        <Pressable onPress={onNavigateToTasks} hitSlop={10} style={styles.seeAllBtn}>
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light')
+            onNavigateToTasks()
+          }}
+          hitSlop={10}
+          style={styles.seeAllBtn}
+        >
           <Text style={styles.seeAllText}>Ver todas</Text>
-          <ChevronRight size={13} color="#818CF8" />
+          <ChevronRight size={13} color="#A1A1AA" />
         </Pressable>
       </View>
 
-      {/* Lista Plana (Sin Cajas Envolventes Repetitivas) */}
-      <View style={styles.flatList}>
-        {sortedTasks.slice(0, 4).map((task, idx) => {
-          const isDone = task.status === 'completed'
-          return (
-            <View
+      {sortedTasks.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <CheckSquare size={22} color="#3F3F46" />
+          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas pendientes.</Text>
+        </View>
+      ) : (
+        <View style={styles.cardContainer}>
+          {sortedTasks.slice(0, 4).map((task, idx) => (
+            <TodayTaskItem
               key={task.id}
-              style={[
-                styles.taskRow,
-                idx < Math.min(tasks.length, 4) - 1 && styles.taskRowBorder,
-              ]}
-            >
-              {/* Checkbox Circular */}
-              <Pressable
-                onPress={() => {
-                  triggerHaptic(isDone ? 'light' : 'success')
-                  onToggleTask(task.id, task.status)
-                }}
-                style={[styles.checkbox, isDone && styles.checkboxDone]}
-                hitSlop={8}
-              >
-                {isDone && <Check size={11} color="#09090B" strokeWidth={3} />}
-              </Pressable>
-
-              {/* Título e Info */}
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('light')
-                  onOpenTaskDetail(task)
-                }}
-                style={styles.taskContent}
-              >
-                <Text
-                  style={[styles.taskTitle, isDone && styles.taskTitleDone]}
-                  numberOfLines={1}
-                >
-                  {task.title}
-                </Text>
-
-                <View style={styles.metaRow}>
-                  {task.subject && (
-                    <View style={styles.subjectTag}>
-                      <View
-                        style={[
-                          styles.dot,
-                          { backgroundColor: task.subject.color || '#6366F1' },
-                        ]}
-                      />
-                      <Text style={styles.subjectName}>{task.subject.name}</Text>
-                    </View>
-                  )}
-
-                  {task.type !== 'individual' && (
-                    <Text style={styles.typeTag}>â€¢ {task.type}</Text>
-                  )}
-                </View>
-              </Pressable>
-            </View>
-          )
-        })}
-      </View>
+              task={task}
+              isLast={idx === Math.min(sortedTasks.length, 4) - 1}
+              onToggle={() => onToggleTask(task.id, task.status)}
+              onOpenDetail={() => onOpenTaskDetail(task)}
+            />
+          ))}
+        </View>
+      )}
     </View>
   )
 }
@@ -133,26 +214,46 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: '#71717A',
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
   seeAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   seeAllText: {
-    color: '#818CF8',
-    fontSize: 11.5,
+    color: '#A1A1AA',
+    fontSize: 12,
     fontWeight: '600',
   },
-  flatList: {
-    backgroundColor: '#18181B',
-    borderRadius: 16,
+  cardContainer: {
+    backgroundColor: '#101014',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
     paddingHorizontal: 14,
+    overflow: 'hidden',
+  },
+  emptyCard: {
+    backgroundColor: '#101014',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    color: '#71717A',
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  taskRowOuter: {
+    width: '100%',
   },
   taskRow: {
     flexDirection: 'row',
@@ -162,17 +263,17 @@ const styles = StyleSheet.create({
   },
   taskRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#27272A',
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#52525B',
+    borderColor: '#3F3F46',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
   },
   checkboxDone: {
     backgroundColor: '#FFFFFF',
@@ -180,16 +281,17 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   taskTitle: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
   taskTitleDone: {
-    textDecorationLine: 'line-through',
     color: '#71717A',
+    textDecorationLine: 'line-through',
   },
   metaRow: {
     flexDirection: 'row',
@@ -199,31 +301,34 @@ const styles = StyleSheet.create({
   subjectTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 4.5,
   },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#71717A',
   },
   subjectName: {
-    color: '#A1A1AA',
+    color: '#71717A',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  typeTag: {
+  metaDot: {
+    color: '#3F3F46',
+    fontSize: 10,
+  },
+  dueItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+  },
+  dueText: {
     color: '#71717A',
     fontSize: 10.5,
-    textTransform: 'capitalize',
-  },
-  emptyBox: {
-    paddingVertical: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  emptyText: {
-    color: '#71717A',
-    fontSize: 12,
+    fontWeight: '500',
   },
 })

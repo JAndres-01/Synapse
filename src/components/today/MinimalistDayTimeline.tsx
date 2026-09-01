@@ -2,7 +2,7 @@ import React from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { User } from 'lucide-react-native'
+import { MapPin, User } from 'lucide-react-native'
 
 interface MinimalistDayTimelineProps {
   schedulesToday: Schedule[]
@@ -27,9 +27,17 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
           const isPast = currentMins >= endTotal
 
           const sched = schedulesToday.find((s) => s.block_number === blockDef.block)
+          const subjColor = sched?.subject?.color || '#FFFFFF'
+          const isWhite = subjColor === '#FFFFFF'
 
           return (
-            <View key={blockDef.block} style={styles.blockRow}>
+            <View
+              key={blockDef.block}
+              style={[
+                styles.blockRow,
+                isPast && styles.blockRowPast,
+              ]}
+            >
               {/* Columna de Hora */}
               <View style={styles.timeCol}>
                 <Text
@@ -51,7 +59,8 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
                     styles.lineDot,
                     isCurrent && styles.lineDotCurrent,
                     isPast && styles.lineDotPast,
-                    sched?.subject && { backgroundColor: sched.subject.color || '#FFFFFF' },
+                    Boolean(sched?.subject) && { backgroundColor: subjColor },
+                    isWhite && styles.whiteDotBorder,
                   ]}
                 />
                 {index < PERSONAL_SCHEDULE_BLOCKS.length - 1 && (
@@ -73,26 +82,47 @@ export function MinimalistDayTimeline({ schedulesToday = [] }: MinimalistDayTime
               >
                 {sched?.subject ? (
                   <>
-                    <Text
-                      style={[
-                        styles.subjectTitle,
-                        isPast && styles.subjectTitlePast,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {sched.subject.name}
-                    </Text>
-                    {sched.subject.teacher_name && (
-                      <View style={styles.subInfoRow}>
-                        <User size={11} color="#71717A" />
-                        <Text style={styles.teacherText} numberOfLines={1}>
-                          {sched.subject.teacher_name}
-                        </Text>
+                    <View style={styles.subjectHeaderRow}>
+                      <Text
+                        style={[
+                          styles.subjectTitle,
+                          isPast && styles.subjectTitlePast,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {sched.subject.name}
+                      </Text>
+                      {isCurrent && (
+                        <View style={styles.nowBadge}>
+                          <Text style={styles.nowBadgeText}>En curso</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {(Boolean(sched.classroom_room) || Boolean(sched.subject.teacher_name)) && (
+                      <View style={styles.metaRow}>
+                        {Boolean(sched.classroom_room) && (
+                          <View style={styles.metaItem}>
+                            <MapPin size={11} color="#71717A" />
+                            <Text style={styles.metaText} numberOfLines={1}>
+                              {sched.classroom_room}
+                            </Text>
+                          </View>
+                        )}
+
+                        {Boolean(sched.subject.teacher_name) && (
+                          <View style={styles.metaItem}>
+                            <User size={11} color="#71717A" />
+                            <Text style={styles.metaText} numberOfLines={1}>
+                              {sched.subject.teacher_name}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </>
                 ) : (
-                  <Text style={styles.freeText}>Hora Libre</Text>
+                  <Text style={styles.freeText}>Libre</Text>
                 )}
               </View>
             </View>
@@ -109,110 +139,143 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: '#71717A',
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
     paddingHorizontal: 2,
   },
   timelineList: {
-    backgroundColor: '#18181B',
-    borderRadius: 16,
+    backgroundColor: '#101014',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#27272A',
-    padding: 14,
-    gap: 12,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    padding: 16,
+    gap: 14,
   },
   blockRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  blockRowPast: {
+    opacity: 0.5,
+  },
   timeCol: {
-    width: 48,
+    width: 46,
     alignItems: 'flex-start',
     paddingTop: 1,
   },
   timeText: {
-    color: '#E4E4E7',
-    fontSize: 11,
-    fontFamily: 'monospace',
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   timeTextCurrent: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
   timeTextPast: {
-    color: '#52525B',
+    color: '#71717A',
   },
   blockNumText: {
     color: '#52525B',
     fontSize: 9.5,
     fontWeight: '700',
-    marginTop: 1,
+    marginTop: 2,
   },
   lineCol: {
-    width: 20,
+    width: 22,
     alignItems: 'center',
-    paddingTop: 4,
+    paddingTop: 5,
     position: 'relative',
   },
   lineDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#52525B',
-    zIndex: 2,
+    backgroundColor: '#3F3F46',
+  },
+  whiteDotBorder: {
+    borderWidth: 0.8,
+    borderColor: '#71717A',
   },
   lineDotCurrent: {
     backgroundColor: '#FFFFFF',
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    transform: [{ scale: 1.25 }],
   },
   lineDotPast: {
-    backgroundColor: '#3F3F46',
+    backgroundColor: '#27272A',
   },
   verticalLine: {
     position: 'absolute',
-    top: 11,
-    bottom: -16,
+    top: 15,
+    bottom: -15,
     width: 1,
-    backgroundColor: '#27272A',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   verticalLinePast: {
-    backgroundColor: '#27272A',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   contentCol: {
     flex: 1,
     paddingLeft: 8,
-    gap: 2,
+    gap: 3,
+    paddingTop: 1,
   },
   contentColCurrent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 10,
     padding: 6,
-    marginLeft: 4,
+    paddingLeft: 10,
+    marginLeft: -2,
+  },
+  subjectHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   subjectTitle: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
+    letterSpacing: -0.2,
+    flex: 1,
   },
   subjectTitlePast: {
-    color: '#71717A',
+    color: '#A1A1AA',
   },
-  subInfoRow: {
+  nowBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  nowBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    marginTop: 2,
   },
-  teacherText: {
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3.5,
+  },
+  metaText: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 10.5,
+    fontWeight: '500',
+    maxWidth: 130,
   },
   freeText: {
-    color: '#52525B',
-    fontSize: 12,
-    fontStyle: 'italic',
+    color: '#3F3F46',
+    fontSize: 12.5,
+    fontWeight: '600',
   },
 })

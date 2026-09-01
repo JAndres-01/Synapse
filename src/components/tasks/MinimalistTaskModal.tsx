@@ -24,9 +24,6 @@ import {
   Trash2,
   Edit2,
   Check,
-  Rocket,
-  FileText,
-  Users,
   Paperclip,
   ExternalLink,
   Camera,
@@ -36,6 +33,7 @@ import {
   Calendar,
   Layers,
   ArrowLeft,
+  Maximize2,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Linking from 'expo-linking'
@@ -226,7 +224,6 @@ export function MinimalistTaskModal({
   }
 
   const isCompleted = task?.status === 'completed'
-  const isWhite = task?.subject?.color === '#FFFFFF'
 
   const formatDueDate = (dateStr?: string | null) => {
     if (!dateStr) return { text: '', isOverdue: false, isToday: false }
@@ -250,12 +247,12 @@ export function MinimalistTaskModal({
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isToday) {
-        return { text: `Hoy ${timeStr}`, isOverdue: false, isToday: true }
+        return { text: `Hoy, ${timeStr}`, isOverdue: false, isToday: true }
       }
       if (isPast && !isCompleted) {
-        return { text: `Venció ${dayName} ${dayNum} ${monthName}`, isOverdue: true, isToday: false }
+        return { text: `Venció el ${dayName} ${dayNum} de ${monthName}`, isOverdue: true, isToday: false }
       }
-      return { text: `${dayName} ${dayNum} ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
+      return { text: `${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
     } catch {
       return { text: '', isOverdue: false, isToday: false }
     }
@@ -263,12 +260,6 @@ export function MinimalistTaskModal({
 
   const dueInfo = formatDueDate(task?.due_date)
   const detailAttachments = Array.isArray(task?.attachments) ? task.attachments : []
-
-  const handleToggle = () => {
-    if (!task) return
-    triggerHaptic(isCompleted ? 'selection' : 'success')
-    onToggleStatus(task.id, task.status)
-  }
 
   const handleDelete = () => {
     if (!task) return
@@ -526,192 +517,140 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE ULTRA-MINIMALISTA CON ORDEN DE PRIORIDAD DE ELEMENTOS       */}
+          {/* VISTA: DETALLE PRECISO (TÍTULO > DETALLES > FECHA > MATERIA/TIPO SUTILES) */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header de Acciones de Vista */}
-              <View style={styles.minimalHeader}>
+              {/* Header Minimalista: Sin botón X, solo handle y botón Editar */}
+              <View style={styles.detailHeaderBar}>
                 <View style={styles.dragHandle} />
-                <View style={styles.minimalNavRow}>
-                  <Pressable
-                    onPress={handleSmoothClose}
-                    hitSlop={12}
-                    style={styles.minimalCloseBtn}
-                  >
-                    <X size={18} color="#A1A1AA" />
-                  </Pressable>
-
+                <View style={styles.detailHeaderActions}>
                   <Pressable
                     onPress={handleSwitchToEdit}
                     hitSlop={12}
-                    style={styles.minimalEditBtn}
+                    style={styles.detailEditBtn}
                   >
-                    <Edit2 size={13} color="#FFFFFF" />
-                    <Text style={styles.minimalEditBtnText}>Editar</Text>
+                    <Edit2 size={12.5} color="#FFFFFF" />
+                    <Text style={styles.detailEditBtnText}>Editar</Text>
                   </Pressable>
                 </View>
               </View>
 
               <ScrollView
-                style={styles.minimalScroll}
-                contentContainerStyle={styles.minimalScrollContent}
+                style={styles.detailScroll}
+                contentContainerStyle={styles.detailScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* PRIORIDAD 1: Identidad y Estado (Checkbox + Título Limpio) */}
-                <View style={styles.minimalTitleRow}>
-                  <Pressable
-                    onPress={handleToggle}
-                    style={[
-                      styles.minimalCheckBtn,
-                      isCompleted && styles.minimalCheckBtnCompleted,
-                    ]}
-                    hitSlop={10}
-                  >
-                    {isCompleted ? (
-                      <Check size={14} color="#09090B" strokeWidth={3.5} />
-                    ) : null}
-                  </Pressable>
+                {/* 1. TÍTULO DE LA TAREA (ELEMENTO MÁS IMPORTANTE - SIN CHECKBOX) */}
+                <Text style={styles.detailHeroTitle}>
+                  {task?.title}
+                </Text>
 
-                  <Text
-                    style={[
-                      styles.minimalTitle,
-                      isCompleted && styles.minimalTitleCompleted,
-                    ]}
-                  >
-                    {task?.title}
-                  </Text>
-                </View>
-
-                {/* PRIORIDAD 2: Metadatos Esenciales (Materia, Vencimiento, Modalidad) */}
-                <View style={styles.minimalPillsRow}>
-                  {/* Materia */}
-                  {task?.subject ? (
-                    <View
-                      style={[
-                        styles.minimalPill,
-                        {
-                          backgroundColor: isWhite
-                            ? 'rgba(255, 255, 255, 0.12)'
-                            : `${task.subject.color || '#FFFFFF'}18`,
-                          borderColor: isWhite
-                            ? 'rgba(255, 255, 255, 0.3)'
-                            : `${task.subject.color || '#FFFFFF'}40`,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.dot,
-                          { backgroundColor: task.subject.color || '#FFFFFF' },
-                          isWhite && styles.whiteDotBorder,
-                        ]}
-                      />
-                      <Text style={styles.minimalPillText}>{task.subject.name}</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.minimalPillMuted}>
-                      <Text style={styles.minimalPillTextMuted}>General</Text>
-                    </View>
-                  )}
-
-                  {/* Fecha Límite */}
-                  {Boolean(dueInfo.text) && (
-                    <View
-                      style={[
-                        styles.minimalPillMuted,
-                        dueInfo.isOverdue && styles.minimalPillOverdue,
-                        isCompleted && styles.minimalPillCompleted,
-                      ]}
-                    >
-                      <Clock
-                        size={11.5}
-                        color={
-                          isCompleted
-                            ? '#34D399'
-                            : dueInfo.isOverdue
-                            ? '#F87171'
-                            : '#A1A1AA'
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.minimalPillTextMuted,
-                          dueInfo.isOverdue && styles.minimalPillTextOverdue,
-                          isCompleted && styles.minimalPillTextCompleted,
-                        ]}
-                      >
-                        {dueInfo.text}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Tipo de Tarea (solo si es diferente a individual) */}
-                  {task?.type && task.type !== 'individual' && (
-                    <View style={styles.minimalPillMuted}>
-                      {task.type === 'proyecto' ? (
-                        <Rocket size={11} color="#C084FC" />
-                      ) : task.type === 'examen' ? (
-                        <FileText size={11} color="#FB7185" />
-                      ) : (
-                        <Users size={11} color="#38BDF8" />
-                      )}
-                      <Text style={styles.minimalPillTextMuted}>{task.type}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* PRIORIDAD 3: Notas / Instrucciones (Directo al fondo, lectura fluida) */}
+                {/* 2. DETALLES / NOTAS (SEGUNDA POSICIÓN EN PRIORIDAD) */}
                 {Boolean(task?.description) && (
-                  <View style={styles.minimalDescContainer}>
-                    <Text style={styles.minimalDescText}>{task?.description}</Text>
+                  <Text style={styles.detailDescriptionText}>
+                    {task?.description}
+                  </Text>
+                )}
+
+                {/* 3. FECHA DE ENTREGA (UNA POSICIÓN ARRIBA DE MATERIA Y TIPO) */}
+                {Boolean(dueInfo.text) && (
+                  <View style={styles.detailDateRow}>
+                    <Clock
+                      size={13}
+                      color={dueInfo.isOverdue ? '#F87171' : isCompleted ? '#34D399' : '#A1A1AA'}
+                    />
+                    <Text
+                      style={[
+                        styles.detailDateText,
+                        dueInfo.isOverdue && styles.detailDateTextOverdue,
+                        isCompleted && styles.detailDateTextCompleted,
+                      ]}
+                    >
+                      {dueInfo.text}
+                    </Text>
                   </View>
                 )}
 
-                {/* PRIORIDAD 4: Adjuntos y Enlaces */}
+                {/* 4. MATERIA Y TIPO DE ACTIVIDAD (LO MENOS VISTOSO / SUTILES) */}
+                <View style={styles.detailMutedMetaRow}>
+                  {task?.subject && (
+                    <Text style={styles.detailMutedMetaText}>
+                      {task.subject.name}
+                    </Text>
+                  )}
+                  {task?.subject && task?.type && task.type !== 'individual' && (
+                    <Text style={styles.detailMutedMetaDot}>•</Text>
+                  )}
+                  {task?.type && task.type !== 'individual' && (
+                    <Text style={styles.detailMutedMetaText}>
+                      {task.type}
+                    </Text>
+                  )}
+                </View>
+
+                {/* 5. PREVIEW VISUAL DE ADJUNTOS / FOTOS */}
                 {detailAttachments.length > 0 && (
-                  <View style={styles.minimalAttachmentsRow}>
+                  <View style={styles.detailAttachmentsSection}>
                     {detailAttachments.map((att: TaskAttachment, idx: number) => {
                       const isImg =
                         att.file_type === 'image' ||
                         att.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
+
+                      if (isImg) {
+                        return (
+                          <Pressable
+                            key={idx}
+                            onPress={() => setSelectedLightboxImage(att.file_url)}
+                            style={styles.detailImagePreviewCard}
+                          >
+                            <Image
+                              source={{ uri: att.file_url }}
+                              style={styles.detailPreviewImage}
+                              resizeMode="cover"
+                            />
+                            <View style={styles.detailPreviewBadge}>
+                              <Maximize2 size={12} color="#FFFFFF" />
+                              <Text style={styles.detailPreviewBadgeText}>
+                                {att.file_name || 'Ver foto'}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        )
+                      }
+
                       return (
                         <Pressable
                           key={idx}
                           onPress={() => {
-                            if (isImg) {
-                              setSelectedLightboxImage(att.file_url)
-                            } else if (att.file_url) {
-                              Linking.openURL(att.file_url)
-                            }
+                            if (att.file_url) Linking.openURL(att.file_url)
                           }}
-                          style={styles.minimalAttachmentChip}
+                          style={styles.detailLinkCard}
                         >
-                          <Paperclip size={12} color="#A1A1AA" />
-                          <Text style={styles.minimalAttachmentName} numberOfLines={1}>
-                            {att.file_name || 'Archivo'}
-                          </Text>
-                          <ExternalLink size={11} color="#71717A" />
+                          <Link2 size={15} color="#818CF8" />
+                          <View style={styles.detailLinkInfo}>
+                            <Text style={styles.detailLinkTitle} numberOfLines={1}>
+                              {att.file_name || 'Enlace adjunto'}
+                            </Text>
+                          </View>
+                          <ExternalLink size={13} color="#71717A" />
                         </Pressable>
                       )
                     })}
                   </View>
                 )}
 
-                {/* PRIORIDAD 5: Acción Destructiva Secundaria */}
-                <View style={styles.minimalFooterAction}>
+                {/* 6. ACCIÓN DE ELIMINAR */}
+                <View style={styles.detailFooterSection}>
                   <Pressable
                     onPress={handleDelete}
                     disabled={deleteLoading}
-                    style={styles.minimalDeleteBtn}
+                    style={styles.detailDeleteAction}
                   >
                     {deleteLoading ? (
                       <ActivityIndicator size="small" color="#EF4444" />
                     ) : (
-                      <>
-                        <Trash2 size={13} color="#EF4444" />
-                        <Text style={styles.minimalDeleteText}>Eliminar tarea</Text>
-                      </>
+                      <Text style={styles.detailDeleteActionText}>Eliminar tarea</Text>
                     )}
                   </Pressable>
                 </View>
@@ -1054,18 +993,22 @@ export function MinimalistTaskModal({
 
         {/* Visor Lightbox para Fotos en Pantalla Completa */}
         {selectedLightboxImage && (
-          <Modal visible={true} transparent={true} animationType="fade">
-            <Pressable
-              style={styles.lightboxBackdrop}
-              onPress={() => setSelectedLightboxImage(null)}
-            >
+          <Modal visible={true} transparent={true} animationType="fade" onRequestClose={() => setSelectedLightboxImage(null)}>
+            <View style={styles.lightboxBackdrop}>
+              <Pressable
+                style={styles.lightboxCloseButton}
+                onPress={() => setSelectedLightboxImage(null)}
+                hitSlop={12}
+              >
+                <X size={20} color="#FFFFFF" />
+              </Pressable>
               <Image
                 source={{ uri: selectedLightboxImage }}
                 style={styles.lightboxImage}
                 resizeMode="contain"
               />
-              <Text style={styles.lightboxTip}>Toca en cualquier lugar para cerrar</Text>
-            </Pressable>
+              <Text style={styles.lightboxTip}>Toca la X para cerrar</Text>
+            </View>
           </Modal>
         )}
       </View>
@@ -1101,164 +1044,150 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignSelf: 'center',
   },
-  minimalHeader: {
+  detailHeaderBar: {
     paddingTop: 10,
-    paddingBottom: 6,
+    paddingBottom: 4,
+    position: 'relative',
   },
-  minimalNavRow: {
+  detailHeaderActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
+    paddingTop: 4,
   },
-  minimalCloseBtn: {
-    padding: 6,
-  },
-  minimalEditBtn: {
+  detailEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 5.5,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
   },
-  minimalEditBtnText: {
+  detailEditBtnText: {
     color: '#FFFFFF',
     fontSize: 12.5,
     fontWeight: '700',
   },
-  minimalScroll: {
+  detailScroll: {
     paddingHorizontal: 22,
   },
-  minimalScrollContent: {
+  detailScrollContent: {
     paddingTop: 10,
-    paddingBottom: 24,
+    paddingBottom: 28,
     gap: 14,
   },
-  minimalTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  minimalCheckBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.8,
-    borderColor: '#52525B',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 3,
-  },
-  minimalCheckBtnCompleted: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  minimalTitle: {
+  detailHeroTitle: {
     color: '#FFFFFF',
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    flex: 1,
-    lineHeight: 28,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 31,
   },
-  minimalTitleCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#71717A',
+  detailDescriptionText: {
+    color: '#D4D4D8',
+    fontSize: 15,
+    lineHeight: 22,
   },
-  minimalPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  minimalPill: {
+  detailDateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
+    paddingTop: 2,
   },
-  minimalPillText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  minimalPillMuted: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  minimalPillOverdue: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-  },
-  minimalPillCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-  },
-  minimalPillTextMuted: {
+  detailDateText: {
     color: '#A1A1AA',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
-  minimalPillTextOverdue: {
+  detailDateTextOverdue: {
     color: '#F87171',
     fontWeight: '700',
   },
-  minimalPillTextCompleted: {
+  detailDateTextCompleted: {
     color: '#34D399',
     fontWeight: '700',
   },
-  minimalDescContainer: {
-    paddingTop: 4,
-  },
-  minimalDescText: {
-    color: '#D4D4D8',
-    fontSize: 14.5,
-    lineHeight: 22,
-  },
-  minimalAttachmentsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: 4,
-  },
-  minimalAttachmentChip: {
+  detailMutedMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingTop: 0,
+  },
+  detailMutedMetaText: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  detailMutedMetaDot: {
+    color: '#52525B',
+    fontSize: 12,
+  },
+  detailAttachmentsSection: {
+    gap: 10,
+    paddingTop: 6,
+  },
+  detailImagePreviewCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#18181B',
+    height: 180,
+    position: 'relative',
+  },
+  detailPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  detailPreviewBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  detailPreviewBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  detailLinkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    maxWidth: '100%',
+    borderRadius: 12,
+    padding: 11,
+    gap: 10,
   },
-  minimalAttachmentName: {
-    color: '#D4D4D8',
-    fontSize: 12,
-    maxWidth: 160,
+  detailLinkInfo: {
+    flex: 1,
   },
-  minimalFooterAction: {
+  detailLinkTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  detailFooterSection: {
     paddingTop: 12,
     alignItems: 'flex-start',
   },
-  minimalDeleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  detailDeleteAction: {
     paddingVertical: 4,
   },
-  minimalDeleteText: {
+  detailDeleteActionText: {
     color: '#EF4444',
     fontSize: 12.5,
     fontWeight: '600',
@@ -1516,6 +1445,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+    position: 'relative',
+  },
+  lightboxCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   lightboxImage: {
     width: '100%',

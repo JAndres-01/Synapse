@@ -16,7 +16,7 @@ import { MinimalistTodayTasks } from '@/components/today/MinimalistTodayTasks'
 import { MinimalistDayTimeline } from '@/components/today/MinimalistDayTimeline'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
@@ -47,8 +47,26 @@ export default function TodayScreen() {
     ])
 
     const todayNum = getTodayDayOfWeek()
-    setSchedulesToday(cachedScheds.filter((s) => s.day_of_week === todayNum))
-    setTasks(cachedTasks)
+
+    const resolvedScheds = cachedScheds.map((s) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
+      return {
+        ...s,
+        subject: foundSubj || null,
+      }
+    }).filter((s) => Boolean(s.subject))
+
+    const resolvedTasks = cachedTasks.map((t) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+
+    setSchedulesToday(resolvedScheds.filter((s) => s.day_of_week === todayNum))
+    setTasks(resolvedTasks)
     setSubjects(cachedSubjs)
 
     if (!user?.id) return
@@ -60,22 +78,38 @@ export default function TodayScreen() {
         supabase.from('subjects').select('*').eq('user_id', user.id),
       ])
 
-      if (schedRes.data) {
-        setSchedulesToday(schedRes.data.filter((s) => s.day_of_week === todayNum))
-        personalStorage.saveSchedules(schedRes.data)
-      }
-      if (tasksRes.data) {
-        setTasks(tasksRes.data)
-        personalStorage.saveTasks(tasksRes.data)
-      }
       if (subjRes.data) {
         setSubjects(subjRes.data)
-        personalStorage.saveSubjects(subjRes.data)
+        await personalStorage.setSubjects(subjRes.data)
+      }
+
+      if (schedRes.data) {
+        const remoteScheds = schedRes.data.map((s: any) => {
+          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === s.subject_id)
+          return { ...s, subject: foundSubj || null }
+        }).filter((s: any) => Boolean(s.subject))
+        setSchedulesToday(remoteScheds.filter((s: any) => s.day_of_week === todayNum))
+        await personalStorage.setSchedules(remoteScheds)
+      }
+
+      if (tasksRes.data) {
+        const remoteTasks = tasksRes.data.map((t: any) => {
+          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === t.subject_id)
+          return { ...t, subject: foundSubj || null, subject_id: foundSubj ? t.subject_id : null }
+        })
+        setTasks(remoteTasks)
+        await personalStorage.setTasks(remoteTasks)
       }
     } catch (err) {
       console.warn('Sync background offline:', err)
     }
   }, [user?.id])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData])
+  )
 
   useEffect(() => {
     loadData()

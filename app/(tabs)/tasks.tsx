@@ -24,7 +24,7 @@ import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useFocusEffect } from 'expo-router'
 import {
   CheckSquare,
   Plus,
@@ -92,7 +92,21 @@ export default function TasksScreen() {
       personalStorage.getTasks(),
       personalStorage.getSubjects(),
     ])
-    setTasks(cachedTasks)
+
+    // Resolver materias actualizadas para todas las tareas (si la materia fue eliminada pasa a General)
+    const resolvedTasks = cachedTasks.map((t) => {
+      if (!t.subject_id) {
+        return { ...t, subject: null }
+      }
+      const foundSubj = cachedSubjs.find((s) => s.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+
+    setTasks(resolvedTasks)
     setSubjects(cachedSubjs)
 
     if (!user) return
@@ -111,16 +125,25 @@ export default function TasksScreen() {
           .order('name', { ascending: true }),
       ])
 
-      if (tasksRes.data && tasksRes.data.length > 0) {
-        const allTasks = tasksRes.data as Task[]
-        await personalStorage.setTasks(allTasks)
-        setTasks(allTasks)
-      }
-
       if (subjRes.data && subjRes.data.length > 0) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
+      }
+
+      if (tasksRes.data && tasksRes.data.length > 0) {
+        const allTasks = tasksRes.data as Task[]
+        const resolvedRemote = allTasks.map((t) => {
+          if (!t.subject_id) return { ...t, subject: null }
+          const foundSubj = (subjRes.data || cachedSubjs).find((s: any) => s.id === t.subject_id)
+          return {
+            ...t,
+            subject: foundSubj || null,
+            subject_id: foundSubj ? t.subject_id : null,
+          }
+        })
+        await personalStorage.setTasks(resolvedRemote)
+        setTasks(resolvedRemote)
       }
     } catch (err) {
       console.log('Sync tasks info:', err)
@@ -128,6 +151,13 @@ export default function TasksScreen() {
       setRefreshing(false)
     }
   }, [user?.id])
+
+  // Recargar datos cada vez que la pestaña Tareas entra en pantalla
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData])
+  )
 
   // Estado de Tarea Resaltada (brillo y elevación animada)
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)

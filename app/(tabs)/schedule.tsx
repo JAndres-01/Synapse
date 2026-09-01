@@ -21,7 +21,9 @@ import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTask
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
@@ -49,30 +51,27 @@ export default function ScheduleScreen() {
     visible: false,
     day: 1,
     block: 1,
+    existingSchedule: null,
   })
 
-  // Modal de Tareas del Día (activado desde la Matriz Semanal)
+  // Modal de Tareas del Día (Minimalista y Rápido)
   const [dayTasksModalData, setDayTasksModalData] = useState<{
     visible: boolean
     day: number
   }>({
     visible: false,
-    day: 1,
+    day: initialDay,
   })
 
-  // Animación del Segmented Control
-  const [segmentContainerWidth, setSegmentContainerWidth] = useState(0)
-  const segmentWidth = segmentContainerWidth > 0 ? (segmentContainerWidth - 6) / 2 : 0
-  const slideAnim = useRef(new Animated.Value(0)).current
+  // Animaciones del Switcher de Vista (Día / Semana)
+  const segmentWidth = (SCREEN_WIDTH - 32 - 6) / 2
+  const viewModeAnim = useRef(new Animated.Value(0)).current
 
   const handleViewModeChange = (mode: 'day' | 'week') => {
-    if (mode === viewMode) return
     triggerHaptic('selection')
     setViewMode(mode)
-
-    const targetX = mode === 'day' ? 0 : segmentWidth
-    Animated.spring(slideAnim, {
-      toValue: targetX,
+    Animated.spring(viewModeAnim, {
+      toValue: mode === 'day' ? 0 : segmentWidth,
       stiffness: 500,
       damping: 32,
       mass: 0.8,
@@ -86,9 +85,28 @@ export default function ScheduleScreen() {
       personalStorage.getSubjects(),
       personalStorage.getTasks(),
     ])
-    setSchedules(cachedScheds)
+
+    // Resolver materias dinámicamente y filtrar materias eliminadas
+    const resolvedScheds = cachedScheds.map((s) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
+      return {
+        ...s,
+        subject: foundSubj || null,
+      }
+    }).filter((s) => Boolean(s.subject))
+
+    const resolvedTasks = cachedTasks.map((t) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+
+    setSchedules(resolvedScheds)
     setSubjects(cachedSubjs)
-    setTasks(cachedTasks)
+    setTasks(resolvedTasks)
 
     if (!user) return
 
@@ -111,22 +129,38 @@ export default function ScheduleScreen() {
           .order('due_date', { ascending: true }),
       ])
 
-      if (schedRes.data && schedRes.data.length > 0) {
-        const allScheds = schedRes.data as Schedule[]
-        await personalStorage.setSchedules(allScheds)
-        setSchedules(allScheds)
-      }
-
       if (subjRes.data && subjRes.data.length > 0) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
 
+      if (schedRes.data && schedRes.data.length > 0) {
+        const allScheds = schedRes.data as Schedule[]
+        const resolvedRemoteScheds = allScheds.map((s) => {
+          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === s.subject_id)
+          return {
+            ...s,
+            subject: foundSubj || null,
+          }
+        }).filter((s) => Boolean(s.subject))
+
+        await personalStorage.setSchedules(resolvedRemoteScheds)
+        setSchedules(resolvedRemoteScheds)
+      }
+
       if (taskRes.data && taskRes.data.length > 0) {
         const allTasks = taskRes.data as Task[]
-        await personalStorage.setTasks(allTasks)
-        setTasks(allTasks)
+        const resolvedRemoteTasks = allTasks.map((t) => {
+          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === t.subject_id)
+          return {
+            ...t,
+            subject: foundSubj || null,
+            subject_id: foundSubj ? t.subject_id : null,
+          }
+        })
+        await personalStorage.setTasks(resolvedRemoteTasks)
+        setTasks(resolvedRemoteTasks)
       }
     } catch (err) {
       console.log('Sync info:', err)
@@ -134,6 +168,12 @@ export default function ScheduleScreen() {
       setRefreshing(false)
     }
   }, [user?.id])
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData()
+    }, [loadData])
+  )
 
   useEffect(() => {
     loadData()

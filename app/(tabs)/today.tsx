@@ -212,8 +212,17 @@ export default function TodayScreen() {
           onNavigateToTasks={() => router.navigate('/(tabs)/tasks')}
         />
 
-        {/* Timeline Continuo de Clases */}
-        <MinimalistDayTimeline schedulesToday={schedulesToday} />
+        {/* Timeline Continuo de Clases con Entregas de Tareas */}
+        <MinimalistDayTimeline
+          schedulesToday={schedulesToday}
+          tasks={tasks}
+          onToggleTask={handleToggleTaskStatus}
+          onOpenTaskDetail={(t) => {
+            triggerHaptic('light')
+            setActiveTask(t)
+            setTaskModalMode('detail')
+          }}
+        />
       </ScrollView>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}

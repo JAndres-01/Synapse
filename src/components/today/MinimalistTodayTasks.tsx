@@ -48,7 +48,6 @@ function TodayTaskItem({
   }
 
   const handleCheckboxToggle = () => {
-    // Animación de rebote elástica rápida (snappy)
     Animated.sequence([
       Animated.timing(checkBounceAnim, {
         toValue: 1.45,
@@ -72,7 +71,6 @@ function TodayTaskItem({
     onToggle()
   }
 
-  // Formato limpio de hora de entrega
   const formatDue = (dateStr?: string | null) => {
     if (!dateStr) return null
     try {
@@ -177,7 +175,6 @@ export function MinimalistTodayTasks({
   onOpenTaskDetail,
   onNavigateToTasks,
 }: MinimalistTodayTasksProps) {
-  // Filtrar ÚNICAMENTE pendientes de los próximos 7 días
   const now = new Date()
   const endOf7Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 23, 59, 59, 999).getTime()
 
@@ -221,12 +218,12 @@ export function MinimalistTodayTasks({
       </View>
 
       {sortedTasks.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <CheckSquare size={22} color="#3F3F46" />
-          <Text style={styles.emptyText}>¡Todo al día! No tienes entregas para los próximos 7 días.</Text>
+        <View style={styles.emptyContainer}>
+          <CheckSquare size={18} color="#3F3F46" />
+          <Text style={styles.emptyText}>¡Todo al día para los próximos 7 días!</Text>
         </View>
       ) : (
-        <View style={styles.cardContainer}>
+        <View style={styles.listWrapper}>
           {sortedTasks.slice(0, 4).map((task, idx) => (
             <TodayTaskItem
               key={task.id}
@@ -244,13 +241,14 @@ export function MinimalistTodayTasks({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 2,
+    paddingBottom: 4,
   },
   sectionTitle: {
     color: '#71717A',
@@ -268,29 +266,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  cardContainer: {
-    backgroundColor: '#101014',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 14,
-    overflow: 'hidden',
+  listWrapper: {
+    paddingHorizontal: 2,
   },
-  emptyCard: {
-    backgroundColor: '#101014',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    padding: 24,
+  emptyContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   emptyText: {
     color: '#71717A',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '500',
-    textAlign: 'center',
   },
   taskRowOuter: {
     width: '100%',
@@ -298,12 +287,12 @@ const styles = StyleSheet.create({
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     gap: 12,
   },
   taskRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   checkbox: {
     width: 20,
@@ -321,7 +310,7 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   taskTitle: {
     color: '#FFFFFF',

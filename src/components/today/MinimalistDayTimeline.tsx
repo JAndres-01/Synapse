@@ -90,7 +90,7 @@ export function MinimalistDayTimeline({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>CRONOGRAMA DE HOY (4 BLOQUES)</Text>
+      <Text style={styles.sectionTitle}>CRONOGRAMA DE HOY</Text>
 
       <View style={styles.timelineList}>
         {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, index) => {
@@ -106,7 +106,6 @@ export function MinimalistDayTimeline({
           const subjColor = sched?.subject?.color || '#FFFFFF'
           const isWhite = subjColor === '#FFFFFF'
 
-          // Filtrar tareas que pertenecen a la materia de esta clase y cuya entrega es hoy
           const classTasks = tasks.filter((t) => {
             if (!t.due_date || !sched?.subject_id) return false
             if (t.subject_id !== sched.subject_id) return false
@@ -242,6 +241,7 @@ export function MinimalistDayTimeline({
 const styles = StyleSheet.create({
   container: {
     gap: 8,
+    marginTop: 4,
   },
   sectionTitle: {
     color: '#71717A',
@@ -251,19 +251,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   timelineList: {
-    backgroundColor: '#101014',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: 2,
+    gap: 14,
   },
   blockRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   blockRowPast: {
-    opacity: 0.45,
+    opacity: 0.4,
   },
   timeCol: {
     width: 46,
@@ -315,9 +311,9 @@ const styles = StyleSheet.create({
   verticalLine: {
     position: 'absolute',
     top: 15,
-    bottom: -20,
+    bottom: -18,
     width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
   },
   verticalLinePast: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
@@ -329,7 +325,7 @@ const styles = StyleSheet.create({
     paddingTop: 1,
   },
   contentColCurrent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 10,
     padding: 8,
     marginLeft: -2,

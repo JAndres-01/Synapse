@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { calculateLiveClassStatus } from '@/lib/scheduleEngine'
-import { MapPin, User, Clock, Sparkles } from 'lucide-react-native'
+import { MapPin, User, Clock } from 'lucide-react-native'
 
 interface MinimalistLiveHeroProps {
   schedulesToday: Schedule[]
@@ -31,14 +31,8 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
   const isWhite = subjColor === '#FFFFFF'
 
   return (
-    <View
-      style={[
-        styles.heroContainer,
-        isLive && styles.heroContainerLive,
-        isBreak && styles.heroContainerBreak,
-      ]}
-    >
-      {/* Cabecera con Estado y Badge */}
+    <View style={styles.container}>
+      {/* Fila Superior de Estado y Hora */}
       <View style={styles.topRow}>
         <View style={styles.badgeRow}>
           <View
@@ -67,7 +61,7 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         )}
       </View>
 
-      {/* Título Principal */}
+      {/* Nombre de la Clase / Titular */}
       <View style={styles.titleRow}>
         {activeSched?.subject && (
           <View
@@ -83,18 +77,18 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         </Text>
       </View>
 
-      {/* Subtítulo / Aula / Docente */}
+      {/* Detalles: Aula, Docente y Subtítulo */}
       <View style={styles.detailsRow}>
         {Boolean(activeSched?.classroom_room) && (
           <View style={styles.detailItem}>
-            <MapPin size={11.5} color="#71717A" />
+            <MapPin size={11} color="#71717A" />
             <Text style={styles.detailText}>{activeSched!.classroom_room}</Text>
           </View>
         )}
 
         {Boolean(activeSched?.subject?.teacher_name) && (
           <View style={styles.detailItem}>
-            <User size={11.5} color="#71717A" />
+            <User size={11} color="#71717A" />
             <Text style={styles.detailText}>{activeSched!.subject!.teacher_name}</Text>
           </View>
         )}
@@ -102,7 +96,7 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
         <Text style={styles.subheadline}>{liveData.subheadline}</Text>
       </View>
 
-      {/* Barra de Progreso Minimalista Fina (2.5px) */}
+      {/* Barra de Progreso Fina Integrada */}
       {(isLive || isBreak) && (
         <View style={styles.progressBarBg}>
           <View
@@ -119,22 +113,10 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
 }
 
 const styles = StyleSheet.create({
-  heroContainer: {
-    backgroundColor: '#101014',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    padding: 16,
-    gap: 10,
-    overflow: 'hidden',
-  },
-  heroContainerLive: {
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-  },
-  heroContainerBreak: {
-    borderColor: 'rgba(245, 158, 11, 0.25)',
-    backgroundColor: 'rgba(245, 158, 11, 0.03)',
+  container: {
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    gap: 8,
   },
   topRow: {
     flexDirection: 'row',
@@ -147,12 +129,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pulseDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.25,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   pulseDotLive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#10B981',
   },
   pulseDotBreak: {
     backgroundColor: '#F59E0B',
@@ -162,11 +144,11 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10.5,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.6,
   },
   badgeTextLive: {
-    color: '#FFFFFF',
+    color: '#10B981',
   },
   badgeTextBreak: {
     color: '#F59E0B',
@@ -177,17 +159,12 @@ const styles = StyleSheet.create({
   timeTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 8,
-    gap: 4.5,
+    gap: 4,
   },
   timeTagText: {
-    color: '#A1A1AA',
-    fontSize: 10.5,
+    color: '#71717A',
+    fontSize: 11,
     fontWeight: '600',
-    letterSpacing: -0.2,
   },
   titleRow: {
     flexDirection: 'row',
@@ -195,9 +172,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   subjectDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   whiteDotBorder: {
     borderWidth: 0.8,
@@ -205,29 +182,25 @@ const styles = StyleSheet.create({
   },
   headline: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     flex: 1,
   },
   detailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     flexWrap: 'wrap',
-    gap: 8,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 7,
+    gap: 3.5,
   },
   detailText: {
     color: '#A1A1AA',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '500',
   },
   subheadline: {
@@ -237,7 +210,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 2.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 1.5,
     overflow: 'hidden',
     marginTop: 2,

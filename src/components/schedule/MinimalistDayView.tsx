@@ -22,13 +22,15 @@ const DAYS = [
   { num: 5, name: 'Viernes', short: 'Vie' },
 ]
 
-function DayClassCard({
+function DayClassRow({
   blockDef,
   schedule,
+  isLast,
   onPress,
 }: {
   blockDef: { block: number; startTime: string; endTime: string; label: string }
   schedule?: Schedule | null
+  isLast: boolean
   onPress: () => void
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current
@@ -39,8 +41,8 @@ function DayClassCard({
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
       toValue: 0.985,
-      stiffness: 550,
-      damping: 26,
+      stiffness: 600,
+      damping: 24,
       useNativeDriver: true,
     }).start()
   }
@@ -49,13 +51,13 @@ function DayClassCard({
     Animated.spring(scaleAnim, {
       toValue: 1,
       stiffness: 500,
-      damping: 24,
+      damping: 22,
       useNativeDriver: true,
     }).start()
   }
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.rowOuter]}>
       <Pressable
         onPress={() => {
           triggerHaptic('light')
@@ -63,74 +65,60 @@ function DayClassCard({
         }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        style={[
-          styles.classCard,
-          isAssigned ? styles.classCardAssigned : styles.classCardFree,
-        ]}
+        style={[styles.rowContainer, !isLast && styles.rowBorder]}
       >
-        <View style={styles.cardMainContent}>
-          {/* Fila Superior: Bloque y Horario */}
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.blockBadge}>
-              <Text style={styles.blockBadgeText}>Bloque {blockDef.block}</Text>
-            </View>
-
-            <View style={styles.timeTag}>
-              <Clock size={11} color="#71717A" />
-              <Text style={styles.timeTagText}>
-                {blockDef.startTime} - {blockDef.endTime}
-              </Text>
-            </View>
+        {/* Columna Izquierda: Hora y Bloque */}
+        <View style={styles.timeCol}>
+          <Text style={styles.timeStartText}>{blockDef.startTime}</Text>
+          <Text style={styles.timeEndText}>{blockDef.endTime}</Text>
+          <View style={styles.blockBadge}>
+            <Text style={styles.blockBadgeText}>B{blockDef.block}</Text>
           </View>
+        </View>
 
-          {/* Nombre de la Materia con Punto de Color Discreto */}
-          <View style={styles.subjectRow}>
-            {isAssigned && (
-              <View
-                style={[
-                  styles.subjDot,
-                  { backgroundColor: subjColor },
-                  isWhite && styles.whiteDotBorder,
-                ]}
-              />
-            )}
-            <Text
-              style={[
-                styles.cardSubjectTitle,
-                !isAssigned && styles.cardSubjectTitleFree,
-              ]}
-              numberOfLines={1}
-            >
-              {isAssigned ? schedule!.subject!.name : 'Hora Libre'}
-            </Text>
-          </View>
-
-          {/* Fila de Metadatos: Profesor y Aula */}
+        {/* Columna Derecha: Información de la Materia */}
+        <View style={styles.contentCol}>
           {isAssigned ? (
-            <View style={styles.cardMetaRow}>
-              {Boolean(schedule?.classroom_room) && (
-                <View style={styles.metaItem}>
-                  <MapPin size={11.5} color="#71717A" />
-                  <Text style={styles.metaText}>{schedule!.classroom_room}</Text>
-                </View>
-              )}
+            <>
+              <View style={styles.subjectRow}>
+                <View
+                  style={[
+                    styles.subjDot,
+                    { backgroundColor: subjColor },
+                    isWhite && styles.whiteDotBorder,
+                  ]}
+                />
+                <Text style={styles.subjectTitle} numberOfLines={1}>
+                  {schedule!.subject!.name}
+                </Text>
+              </View>
 
-              {Boolean(schedule?.classroom_room) && Boolean(schedule?.subject?.teacher_name) && (
-                <Text style={styles.metaDot}>•</Text>
-              )}
+              <View style={styles.metaRow}>
+                {Boolean(schedule?.classroom_room) && (
+                  <View style={styles.metaItem}>
+                    <MapPin size={11.5} color="#71717A" />
+                    <Text style={styles.metaText}>{schedule!.classroom_room}</Text>
+                  </View>
+                )}
 
-              {Boolean(schedule?.subject?.teacher_name) && (
-                <View style={styles.metaItem}>
-                  <User size={11.5} color="#71717A" />
-                  <Text style={styles.metaText}>{schedule!.subject!.teacher_name}</Text>
-                </View>
-              )}
-            </View>
+                {Boolean(schedule?.classroom_room) && Boolean(schedule?.subject?.teacher_name) && (
+                  <Text style={styles.metaDot}>•</Text>
+                )}
+
+                {Boolean(schedule?.subject?.teacher_name) && (
+                  <View style={styles.metaItem}>
+                    <User size={11.5} color="#71717A" />
+                    <Text style={styles.metaText}>{schedule!.subject!.teacher_name}</Text>
+                  </View>
+                )}
+              </View>
+            </>
           ) : (
-            <View style={styles.cardMetaRow}>
+            <View style={styles.freeSlotWrapper}>
+              <Text style={styles.freeTitle}>Hora Libre</Text>
               <View style={styles.freePromptRow}>
-                <Plus size={11.5} color="#52525B" />
-                <Text style={styles.freePromptText}>Toca para asignar materia a este bloque</Text>
+                <Plus size={11} color="#52525B" />
+                <Text style={styles.freePromptText}>Toca para asignar materia</Text>
               </View>
             </View>
           )}
@@ -197,15 +185,16 @@ export function MinimalistDayView({
         })}
       </BlurView>
 
-      {/* Lista de 4 Bloques Diarios */}
+      {/* Lista Abierta y Continua de 4 Bloques Diarios (Sin Cards Pesadas) */}
       <View style={styles.blocksList}>
-        {PERSONAL_SCHEDULE_BLOCKS.map((blockDef) => {
+        {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, idx) => {
           const item = daySchedules.find((s) => s.block_number === blockDef.block)
           return (
-            <DayClassCard
+            <DayClassRow
               key={blockDef.block}
               blockDef={blockDef}
               schedule={item}
+              isLast={idx === PERSONAL_SCHEDULE_BLOCKS.length - 1}
               onPress={() => onAssignSlot(selectedDay, blockDef.block, item)}
             />
           )
@@ -217,7 +206,7 @@ export function MinimalistDayView({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 14,
+    gap: 12,
   },
   daySelectorContainer: {
     flexDirection: 'row',
@@ -259,78 +248,70 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   dayPillTextToday: {
-    color: '#D4D4D8',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   todayDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#A1A1AA',
+    backgroundColor: '#10B981',
   },
   todayDotActive: {
     backgroundColor: '#09090B',
   },
   blocksList: {
-    gap: 10,
+    paddingHorizontal: 2,
   },
-  classCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    overflow: 'hidden',
-    minHeight: 88,
+  rowOuter: {
+    width: '100%',
   },
-  classCardAssigned: {
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-  },
-  classCardFree: {
-    backgroundColor: 'rgba(255, 255, 255, 0.015)',
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    borderStyle: 'dashed',
-  },
-  cardMainContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    justifyContent: 'center',
-    gap: 6,
-  },
-  cardHeaderRow: {
+  rowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingVertical: 14,
+    gap: 16,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  timeCol: {
+    width: 58,
+    alignItems: 'flex-start',
+    gap: 2,
+  },
+  timeStartText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  timeEndText: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '600',
   },
   blockBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+    marginTop: 2,
   },
   blockBadgeText: {
     color: '#71717A',
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
   },
-  timeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  timeTagText: {
-    color: '#A1A1AA',
-    fontSize: 11,
-    fontWeight: '600',
+  contentCol: {
+    flex: 1,
+    gap: 4,
   },
   subjectRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7.5,
   },
   subjDot: {
     width: 7,
@@ -341,19 +322,14 @@ const styles = StyleSheet.create({
     borderWidth: 0.8,
     borderColor: '#71717A',
   },
-  cardSubjectTitle: {
+  subjectTitle: {
     color: '#FFFFFF',
-    fontSize: 16.5,
+    fontSize: 15.5,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
     flex: 1,
   },
-  cardSubjectTitleFree: {
-    color: '#52525B',
-    fontWeight: '600',
-    fontSize: 15.5,
-  },
-  cardMetaRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -361,16 +337,24 @@ const styles = StyleSheet.create({
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4.5,
+    gap: 4,
   },
   metaText: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
   },
   metaDot: {
     color: '#3F3F46',
-    fontSize: 12,
+    fontSize: 11,
+  },
+  freeSlotWrapper: {
+    gap: 2,
+  },
+  freeTitle: {
+    color: '#52525B',
+    fontSize: 14.5,
+    fontWeight: '600',
   },
   freePromptRow: {
     flexDirection: 'row',
@@ -378,8 +362,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   freePromptText: {
-    color: '#52525B',
-    fontSize: 12,
+    color: '#3F3F46',
+    fontSize: 11,
     fontWeight: '500',
   },
 })

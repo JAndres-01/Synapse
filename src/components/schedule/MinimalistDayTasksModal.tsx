@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Schedule, Subject } from '@/types/personal'
-import { X, Check, Clock, Plus, CheckCircle2, Paperclip, Calendar } from 'lucide-react-native'
+import { X, Check, Clock, CheckCircle2, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -25,7 +25,6 @@ interface MinimalistDayTasksModalProps {
   onClose: () => void
   onToggleTaskStatus: (taskId: string, currentStatus: string) => void
   onOpenTaskDetail: (task: Task) => void
-  onCreateTaskForDay?: (day: number) => void
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -44,7 +43,6 @@ export function MinimalistDayTasksModal({
   onClose,
   onToggleTaskStatus,
   onOpenTaskDetail,
-  onCreateTaskForDay,
 }: MinimalistDayTasksModalProps) {
   const insets = useSafeAreaInsets()
 
@@ -160,28 +158,19 @@ export function MinimalistDayTasksModal({
 
   if (!modalVisible) return null
 
-  // Obtener las materias programadas en este día
-  const daySubjectIds = new Set(
-    schedules
-      .filter((s) => s.day_of_week === day && s.subject_id)
-      .map((s) => s.subject_id)
-  )
-
-  // Filtrar tareas que pertenecen a este día (por due_date o por materias del día)
+  // Filtrar tareas que pertenecen EXCLUSIVAMENTE a este día según su due_date
   const dayTasks = tasks.filter((t) => {
-    if (t.due_date) {
-      try {
-        const taskDay = new Date(t.due_date).getDay()
-        if (taskDay === day) return true
-      } catch {}
+    if (!t.due_date) return false
+    try {
+      const taskDate = new Date(t.due_date)
+      if (isNaN(taskDate.getTime())) return false
+      return taskDate.getDay() === day
+    } catch {
+      return false
     }
-    if (t.subject_id && daySubjectIds.has(t.subject_id)) {
-      return true
-    }
-    return false
   })
 
-  // Ordenar: pendientes primero, luego por urgencia
+  // Ordenar: pendientes primero, luego por urgencia horaria
   const sortedDayTasks = [...dayTasks].sort((a, b) => {
     if (a.status !== b.status) {
       return a.status === 'pending' ? -1 : 1
@@ -189,13 +178,26 @@ export function MinimalistDayTasksModal({
     if (a.due_date && b.due_date) {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     }
-    if (a.due_date) return -1
-    if (b.due_date) return 1
     return 0
   })
 
   const pendingCount = sortedDayTasks.filter((t) => t.status === 'pending').length
   const dayName = DAY_NAMES[day] || 'Día'
+
+  const formatTaskTime = (dateStr?: string | null) => {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return ''
+      const hours = d.getHours()
+      const mins = String(d.getMinutes()).padStart(2, '0')
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      const hStr = hours % 12 || 12
+      return `${hStr}:${mins} ${ampm}`
+    } catch {
+      return ''
+    }
+  }
 
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
@@ -230,7 +232,7 @@ export function MinimalistDayTasksModal({
                 </View>
                 <Text style={styles.sheetSubtitle}>
                   {sortedDayTasks.length === 0
-                    ? 'Sin pendientes registrados para este día'
+                    ? 'Sin tareas programadas para este día'
                     : `${pendingCount} pendiente${pendingCount === 1 ? '' : 's'} • ${sortedDayTasks.length - pendingCount} completada${sortedDayTasks.length - pendingCount === 1 ? '' : 's'}`}
                 </Text>
               </View>
@@ -253,6 +255,7 @@ export function MinimalistDayTasksModal({
                   const isDone = t.status === 'completed'
                   const isWhite = t.subject?.color === '#FFFFFF'
                   const attachCount = Array.isArray(t.attachments) ? t.attachments.length : 0
+                  const timeLabel = formatTaskTime(t.due_date)
 
                   return (
                     <Pressable
@@ -300,17 +303,12 @@ export function MinimalistDayTasksModal({
                             </View>
                           )}
 
-                          {t.subject && t.due_date && <Text style={styles.metaDot}>•</Text>}
+                          {t.subject && Boolean(timeLabel) && <Text style={styles.metaDot}>•</Text>}
 
-                          {t.due_date && (
+                          {Boolean(timeLabel) && (
                             <View style={styles.metaDueTag}>
                               <Clock size={10.5} color="#71717A" />
-                              <Text style={styles.metaDueText}>
-                                {new Date(t.due_date).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </Text>
+                              <Text style={styles.metaDueText}>{timeLabel}</Text>
                             </View>
                           )}
 
@@ -325,6 +323,9 @@ export function MinimalistDayTasksModal({
                           )}
                         </View>
                       </View>
+
+                      {/* Chevron para indicar navegación */}
+                      <ChevronRight size={14} color="#52525B" style={styles.taskItemChevron} />
                     </Pressable>
                   )
                 })}
@@ -334,7 +335,7 @@ export function MinimalistDayTasksModal({
                 <CheckCircle2 size={36} color="#27272A" />
                 <Text style={styles.emptyStateTitle}>¡Al día con las tareas de {dayName}!</Text>
                 <Text style={styles.emptyStateSub}>
-                  No tienes entregas ni tareas pendientes vinculadas a las clases de este día.
+                  No tienes tareas pendientes programadas con fecha de entrega para este día.
                 </Text>
               </View>
             )}
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
   },
   taskItemCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderRadius: 14,
     borderWidth: 1,
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   checkboxArea: {
-    paddingTop: 2,
+    paddingTop: 1,
   },
   checkbox: {
     width: 18,
@@ -513,6 +514,9 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 11.5,
     fontWeight: '500',
+  },
+  taskItemChevron: {
+    marginLeft: 4,
   },
   emptyStateContainer: {
     alignItems: 'center',

@@ -18,13 +18,14 @@ import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMa
 import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectModal'
 import { MinimalistAssignSlotModal } from '@/components/schedule/MinimalistAssignSlotModal'
 import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTasksModal'
-import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { useRouter } from 'expo-router'
 
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const { user } = usePersonalAuth()
 
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -58,10 +59,6 @@ export default function ScheduleScreen() {
     visible: false,
     day: 1,
   })
-
-  // Modal de Detalle de Tarea
-  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   // Animación del Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(0)
@@ -182,14 +179,18 @@ export default function ScheduleScreen() {
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      await personalStorage.deleteTask(taskId)
-      setTasks((prev) => prev.filter((t) => t.id !== taskId))
-      supabase.from('tasks').delete().eq('id', taskId).then(() => {})
-    } catch (err) {
-      console.error('Error eliminando tarea:', err)
-    }
+  const handleOpenTaskInTasksTab = (task: Task) => {
+    triggerHaptic('light')
+    // Cerrar el modal del día primero de forma suave
+    setDayTasksModalData((prev) => ({ ...prev, visible: false }))
+
+    // Navegar fluidamente a la pestaña Tareas y abrir el detalle
+    setTimeout(() => {
+      router.navigate({
+        pathname: '/(tabs)/tasks',
+        params: { taskId: task.id },
+      })
+    }, 120)
   }
 
   const onRefresh = () => {
@@ -314,25 +315,7 @@ export default function ScheduleScreen() {
         tasks={tasks}
         onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false }))}
         onToggleTaskStatus={handleToggleTaskStatus}
-        onOpenTaskDetail={(t) => {
-          setActiveTask(t)
-          setTaskModalMode('detail')
-        }}
-      />
-
-      {/* Modal Unificado de Detalle / Edición de Tarea */}
-      <MinimalistTaskModal
-        mode={taskModalMode}
-        task={activeTask}
-        userId={user?.id || ''}
-        subjects={subjects}
-        onClose={() => {
-          setTaskModalMode('none')
-          setActiveTask(null)
-        }}
-        onToggleStatus={handleToggleTaskStatus}
-        onDeleteTask={handleDeleteTask}
-        onTaskSaved={loadData}
+        onOpenTaskDetail={handleOpenTaskInTasksTab}
       />
 
       {/* Modal de Asignar Bloque (Desde Vista Diaria) */}

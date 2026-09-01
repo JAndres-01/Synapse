@@ -24,6 +24,7 @@ import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useLocalSearchParams } from 'expo-router'
 import {
   CheckSquare,
   Plus,
@@ -128,9 +129,21 @@ export default function TasksScreen() {
     }
   }, [user?.id])
 
+  const params = useLocalSearchParams<{ taskId?: string }>()
+
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    if (params.taskId && tasks.length > 0) {
+      const found = tasks.find((t) => t.id === params.taskId)
+      if (found) {
+        setActiveTask(found)
+        setTaskModalMode('detail')
+      }
+    }
+  }, [params.taskId, tasks])
 
   useEffect(() => {
     if (showSubjectMenu) {

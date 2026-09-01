@@ -92,7 +92,7 @@ function MatrixSlotCard({
                 <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
               </View>
 
-              {/* Indicador Minimalista de Tareas Pendientes */}
+              {/* Indicador Minimalista de Tareas Pendientes para este día y materia */}
               {pendingTaskCount > 0 && (
                 <View style={styles.taskBadge}>
                   <CheckSquare size={8.5} color="#FFFFFF" />
@@ -145,14 +145,6 @@ export function MinimalistWeeklyMatrix({
   onDayPress,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
-
-  // Mapear conteo de tareas pendientes por materia
-  const pendingTasksBySubject: Record<string, number> = {}
-  tasks.forEach((t) => {
-    if (t.status === 'pending' && t.subject_id) {
-      pendingTasksBySubject[t.subject_id] = (pendingTasksBySubject[t.subject_id] || 0) + 1
-    }
-  })
 
   return (
     <View style={styles.wrapper}>
@@ -208,9 +200,21 @@ export function MinimalistWeeklyMatrix({
                     const item = schedules.find(
                       (s) => s.day_of_week === d.num && s.block_number === blockDef.block
                     )
-                    const pendingCount = item?.subject_id
-                      ? pendingTasksBySubject[item.subject_id] || 0
-                      : 0
+
+                    // Filtrado estricto: contar tareas pendientes cuya fecha de entrega caiga exactamente en este día de la semana
+                    const pendingCount = tasks.filter((t) => {
+                      if (t.status !== 'pending' || !t.due_date) return false
+                      try {
+                        const taskDate = new Date(t.due_date)
+                        if (isNaN(taskDate.getTime()) || taskDate.getDay() !== d.num) return false
+                        if (item?.subject_id) {
+                          return t.subject_id === item.subject_id
+                        }
+                        return true
+                      } catch {
+                        return false
+                      }
+                    }).length
 
                     return (
                       <MatrixSlotCard

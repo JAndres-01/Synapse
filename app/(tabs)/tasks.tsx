@@ -565,7 +565,7 @@ export default function TasksScreen() {
           )}
         </View>
 
-        {/* Segmented Control iOS */}
+        {/* Segmented Control iOS con Glassmorfismo */}
         <View
           style={styles.segmentedContainer}
           onLayout={(e: LayoutChangeEvent) => {
@@ -575,9 +575,6 @@ export default function TasksScreen() {
           <Animated.View
             style={[
               styles.activeSegmentPill,
-              statusFilter === 'pending' && styles.pillPending,
-              statusFilter === 'completed' && styles.pillCompleted,
-              statusFilter === 'all' && styles.pillAll,
               {
                 width: segmentWidth,
                 transform: [{ translateX: slideAnim }],
@@ -592,7 +589,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'pending' && styles.segmentTextPending,
+                statusFilter === 'pending' && styles.segmentButtonTextActive,
               ]}
             >
               Pendientes
@@ -606,7 +603,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'completed' && styles.segmentTextCompleted,
+                statusFilter === 'completed' && styles.segmentButtonTextActive,
               ]}
             >
               Completadas
@@ -620,7 +617,7 @@ export default function TasksScreen() {
             <Text
               style={[
                 styles.segmentButtonText,
-                statusFilter === 'all' && styles.segmentTextAll,
+                statusFilter === 'all' && styles.segmentButtonTextActive,
               ]}
             >
               Todas
@@ -956,11 +953,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     position: 'relative',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 14,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     padding: 3,
-    height: 40,
+    height: 42,
     alignItems: 'center',
   },
   activeSegmentPill: {
@@ -968,20 +965,13 @@ const styles = StyleSheet.create({
     top: 3,
     bottom: 3,
     left: 3,
-    borderRadius: 11,
-    borderWidth: 1,
-  },
-  pillPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.16)',
-    borderColor: 'rgba(245, 158, 11, 0.35)',
-  },
-  pillCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.16)',
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-  },
-  pillAll: {
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 4,
   },
   segmentButton: {
     flex: 1,
@@ -992,20 +982,12 @@ const styles = StyleSheet.create({
   },
   segmentButtonText: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
   },
-  segmentTextPending: {
-    color: '#FDE68A',
-    fontWeight: '700',
-  },
-  segmentTextCompleted: {
-    color: '#A7F3D0',
-    fontWeight: '700',
-  },
-  segmentTextAll: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  segmentButtonTextActive: {
+    color: '#09090B',
+    fontWeight: '800',
   },
   dot: {
     width: 7,

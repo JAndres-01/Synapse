@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native'
+import { BlurView } from 'expo-blur'
 import type { Schedule, Subject } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, Plus, Clock } from 'lucide-react-native'
@@ -151,8 +152,12 @@ export function MinimalistDayView({
 
   return (
     <View style={styles.container}>
-      {/* Selector de Días Horizontal */}
-      <View style={styles.daySelectorContainer}>
+      {/* Selector de Días Horizontal con Glassmorfismo Nativo */}
+      <BlurView
+        intensity={Platform.OS === 'ios' ? 55 : 90}
+        tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
+        style={styles.daySelectorContainer}
+      >
         {DAYS.map((d) => {
           const isSelected = selectedDay === d.num
           const isToday = currentDay === d.num
@@ -190,7 +195,7 @@ export function MinimalistDayView({
             </Pressable>
           )
         })}
-      </View>
+      </BlurView>
 
       {/* Lista de 4 Bloques Diarios */}
       <View style={styles.blocksList}>
@@ -216,12 +221,13 @@ const styles = StyleSheet.create({
   },
   daySelectorContainer: {
     flexDirection: 'row',
-    backgroundColor: '#18181B',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     padding: 3,
-    borderRadius: 14,
+    borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     gap: 4,
+    overflow: 'hidden',
   },
   dayPill: {
     flex: 1,
@@ -229,11 +235,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
-    borderRadius: 11,
+    borderRadius: 12,
     gap: 4,
   },
   dayPillActive: {
     backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 4,
   },
   dayPillToday: {
     backgroundColor: 'rgba(255, 255, 255, 0.06)',

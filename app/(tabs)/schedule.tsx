@@ -130,13 +130,13 @@ export default function ScheduleScreen() {
           .order('due_date', { ascending: true }),
       ])
 
-      if (subjRes.data && subjRes.data.length > 0) {
+      if (subjRes.data) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
 
-      if (schedRes.data && schedRes.data.length > 0) {
+      if (schedRes.data) {
         const allScheds = schedRes.data as Schedule[]
         const resolvedRemoteScheds = allScheds.map((s) => {
           const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === s.subject_id)
@@ -150,7 +150,7 @@ export default function ScheduleScreen() {
         setSchedules(resolvedRemoteScheds)
       }
 
-      if (taskRes.data && taskRes.data.length > 0) {
+      if (taskRes.data) {
         const allTasks = taskRes.data as Task[]
         const resolvedRemoteTasks = allTasks.map((t) => {
           const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === t.subject_id)

@@ -125,13 +125,13 @@ export default function TasksScreen() {
           .order('name', { ascending: true }),
       ])
 
-      if (subjRes.data && subjRes.data.length > 0) {
+      if (subjRes.data) {
         const allSubjs = subjRes.data as Subject[]
         await personalStorage.setSubjects(allSubjs)
         setSubjects(allSubjs)
       }
 
-      if (tasksRes.data && tasksRes.data.length > 0) {
+      if (tasksRes.data) {
         const allTasks = tasksRes.data as Task[]
         const resolvedRemote = allTasks.map((t) => {
           if (!t.subject_id) return { ...t, subject: null }

@@ -273,11 +273,25 @@ export function MinimalistSubjectModal({
               if (editingSubject?.id === subjectId) {
                 resetForm()
               }
+
+              // 1. Eliminar localmente en Storage
               await personalStorage.removeSubject(subjectId)
+
+              // 2. Sincronizar eliminación en Supabase
+              if (userId) {
+                try {
+                  await Promise.all([
+                    supabase.from('subjects').delete().eq('id', subjectId),
+                    supabase.from('schedules').delete().eq('subject_id', subjectId),
+                    supabase.from('tasks').update({ subject_id: null }).eq('subject_id', subjectId),
+                  ])
+                } catch (supaErr) {
+                  console.log('Supabase delete subject error:', supaErr)
+                }
+              }
+
+              // 3. Notificar actualización
               onSubjectsUpdated()
-              supabase.from('subjects').delete().eq('id', subjectId).then(() => {})
-              supabase.from('schedules').delete().eq('subject_id', subjectId).then(() => {})
-              supabase.from('tasks').update({ subject_id: null }).eq('subject_id', subjectId).then(() => {})
             } catch (err) {
               console.error('Error eliminando materia:', err)
             }

@@ -250,12 +250,12 @@ export function MinimalistTaskModal({
       const timeStr = `${formattedHour}:${minutes} ${ampm}`
 
       if (isToday) {
-        return { text: `Hoy a las ${timeStr}`, isOverdue: false, isToday: true }
+        return { text: `Hoy, ${timeStr}`, isOverdue: false, isToday: true }
       }
       if (isPast && !isCompleted) {
-        return { text: `Venció el ${dayName} ${dayNum} de ${monthName}`, isOverdue: true, isToday: false }
+        return { text: `Venció ${dayName} ${dayNum} ${monthName}`, isOverdue: true, isToday: false }
       }
-      return { text: `${dayName} ${dayNum} de ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
+      return { text: `${dayName} ${dayNum} ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
     } catch {
       return { text: '', isOverdue: false, isToday: false }
     }
@@ -520,21 +520,39 @@ export function MinimalistTaskModal({
           ]}
         >
           {/* ========================================================================= */}
-          {/* VISTA: DETALLE ESTILIZADO CON SIMETRÍA Y ALINEACIÓN PERFECTA              */}
+          {/* VISTA: DETALLE 100% SIMÉTRICO Y ALINEADO AL MARGEN IZQUIERDO              */}
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Header con Drag Handle y Botón de Editar Estilizado */}
+              {/* Header con Drag Handle y Botones de Acción Superiores */}
               <View style={styles.detailHeaderBar}>
                 <View style={styles.dragHandle} />
-                <View style={styles.detailHeaderActions}>
+                <View style={styles.detailHeaderRow}>
+                  {/* Botón Eliminar reubicado arriba */}
+                  <Pressable
+                    onPress={handleDelete}
+                    disabled={deleteLoading}
+                    hitSlop={12}
+                    style={styles.detailHeaderDeleteBtn}
+                  >
+                    {deleteLoading ? (
+                      <ActivityIndicator size="small" color="#EF4444" />
+                    ) : (
+                      <>
+                        <Trash2 size={13} color="#EF4444" />
+                        <Text style={styles.detailHeaderDeleteText}>Eliminar</Text>
+                      </>
+                    )}
+                  </Pressable>
+
+                  {/* Botón Editar */}
                   <Pressable
                     onPress={handleSwitchToEdit}
                     hitSlop={12}
-                    style={styles.detailEditBtn}
+                    style={styles.detailHeaderEditBtn}
                   >
                     <Edit2 size={12} color="#FFFFFF" />
-                    <Text style={styles.detailEditBtnText}>Editar</Text>
+                    <Text style={styles.detailHeaderEditText}>Editar</Text>
                   </Pressable>
                 </View>
               </View>
@@ -544,82 +562,92 @@ export function MinimalistTaskModal({
                 contentContainerStyle={styles.detailScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                {/* 1. TÍTULO DE LA TAREA (PROTAGONISTA Y ALINEADO AL BORDE IZQUIERDO) */}
+                {/* 1. TÍTULO DE LA TAREA (ALINEADO AL MARGEN IZQUIERDO) */}
                 <Text style={styles.detailHeroTitle}>
                   {task?.title}
                 </Text>
 
-                {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL BORDE IZQUIERDO) */}
+                {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL MARGEN IZQUIERDO) */}
                 {Boolean(task?.description) && (
                   <Text style={styles.detailDescriptionText}>
                     {task?.description}
                   </Text>
                 )}
 
-                {/* 3. FECHA DE ENTREGA (DIRECTA, SIN CARD, ALINEADA AL BORDE IZQUIERDO) */}
-                {Boolean(dueInfo.text) && (
-                  <View style={styles.detailDateRow}>
-                    <Clock
-                      size={13}
-                      color={
-                        isCompleted
-                          ? '#34D399'
-                          : dueInfo.isOverdue
-                          ? '#F87171'
-                          : dueInfo.isToday
-                          ? '#818CF8'
-                          : '#A1A1AA'
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.detailDateText,
-                        dueInfo.isToday && styles.detailDateTextToday,
-                        dueInfo.isOverdue && styles.detailDateTextOverdue,
-                        isCompleted && styles.detailDateTextCompleted,
-                      ]}
-                    >
-                      {dueInfo.text}
-                    </Text>
+                {/* 3. METADATOS EN UNA FILA SIMÉTRICA Y UNIFICADA (FECHA > MATERIA > TIPO) */}
+                {(Boolean(dueInfo.text) || Boolean(task?.subject) || (Boolean(task?.type) && task.type !== 'individual')) && (
+                  <View style={styles.detailUnifiedMetaRow}>
+                    {/* Fecha de Entrega */}
+                    {Boolean(dueInfo.text) && (
+                      <View style={styles.detailMetaItem}>
+                        <Clock
+                          size={12.5}
+                          color={
+                            isCompleted
+                              ? '#34D399'
+                              : dueInfo.isOverdue
+                              ? '#F87171'
+                              : dueInfo.isToday
+                              ? '#818CF8'
+                              : '#A1A1AA'
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.detailMetaText,
+                            dueInfo.isToday && styles.detailMetaTextToday,
+                            dueInfo.isOverdue && styles.detailMetaTextOverdue,
+                            isCompleted && styles.detailMetaTextCompleted,
+                          ]}
+                        >
+                          {dueInfo.text}
+                        </Text>
+                      </View>
+                    )}
+
+                    {Boolean(dueInfo.text) && Boolean(task?.subject) && (
+                      <Text style={styles.detailMetaDot}>•</Text>
+                    )}
+
+                    {/* Materia con punto de color */}
+                    {task?.subject && (
+                      <View style={styles.detailMetaItem}>
+                        <View
+                          style={[
+                            styles.detailSubjectColorDot,
+                            { backgroundColor: task.subject.color || '#FFFFFF' },
+                            task.subject.color === '#FFFFFF' && styles.whiteDotBorder,
+                          ]}
+                        />
+                        <Text style={styles.detailMetaText}>
+                          {task.subject.name}
+                        </Text>
+                      </View>
+                    )}
+
+                    {(Boolean(dueInfo.text) || Boolean(task?.subject)) && Boolean(task?.type) && task.type !== 'individual' && (
+                      <Text style={styles.detailMetaDot}>•</Text>
+                    )}
+
+                    {/* Tipo de Tarea */}
+                    {Boolean(task?.type) && task.type !== 'individual' && (
+                      <View style={styles.detailMetaItem}>
+                        {task.type === 'proyecto' ? (
+                          <Rocket size={11} color="#C084FC" />
+                        ) : task.type === 'examen' ? (
+                          <FileText size={11} color="#FB7185" />
+                        ) : (
+                          <Users size={11} color="#38BDF8" />
+                        )}
+                        <Text style={styles.detailMetaText}>
+                          {task.type}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 )}
 
-                {/* 4. MATERIA (CON COLOR) Y TIPO DE ACTIVIDAD (SUTILES Y ALINEADOS) */}
-                <View style={styles.detailMutedMetaRow}>
-                  {task?.subject && (
-                    <View style={styles.detailSubjectWrapper}>
-                      <View
-                        style={[
-                          styles.detailSubjectColorDot,
-                          { backgroundColor: task.subject.color || '#FFFFFF' },
-                          task.subject.color === '#FFFFFF' && styles.whiteDotBorder,
-                        ]}
-                      />
-                      <Text style={styles.detailMutedMetaText}>
-                        {task.subject.name}
-                      </Text>
-                    </View>
-                  )}
-                  {task?.subject && task?.type && task.type !== 'individual' && (
-                    <Text style={styles.detailMutedMetaDot}>•</Text>
-                  )}
-                  {task?.type && task.type !== 'individual' && (
-                    <View style={styles.detailTypeWrapper}>
-                      {task.type === 'proyecto' ? (
-                        <Rocket size={11} color="#C084FC" />
-                      ) : task.type === 'examen' ? (
-                        <FileText size={11} color="#FB7185" />
-                      ) : (
-                        <Users size={11} color="#38BDF8" />
-                      )}
-                      <Text style={styles.detailMutedMetaText}>
-                        {task.type}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* 5. PREVIEW COMPACTO DE ADJUNTOS / FOTOS */}
+                {/* 4. PREVIEW COMPACTO DE ADJUNTOS / FOTOS */}
                 {detailAttachments.length > 0 && (
                   <View style={styles.detailAttachmentsSection}>
                     {detailAttachments.map((att: TaskAttachment, idx: number) => {
@@ -670,24 +698,6 @@ export function MinimalistTaskModal({
                     })}
                   </View>
                 )}
-
-                {/* 6. ACCIÓN DE ELIMINAR */}
-                <View style={styles.detailFooterSection}>
-                  <Pressable
-                    onPress={handleDelete}
-                    disabled={deleteLoading}
-                    style={styles.detailDeleteAction}
-                  >
-                    {deleteLoading ? (
-                      <ActivityIndicator size="small" color="#EF4444" />
-                    ) : (
-                      <>
-                        <Trash2 size={12} color="#EF4444" />
-                        <Text style={styles.detailDeleteActionText}>Eliminar tarea</Text>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
               </ScrollView>
             </>
           )}
@@ -1080,16 +1090,33 @@ const styles = StyleSheet.create({
   },
   detailHeaderBar: {
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 6,
     position: 'relative',
   },
-  detailHeaderActions: {
+  detailHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 2,
   },
-  detailEditBtn: {
+  detailHeaderDeleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    paddingHorizontal: 11,
+    paddingVertical: 5.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  detailHeaderDeleteText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  detailHeaderEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -1100,7 +1127,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  detailEditBtnText: {
+  detailHeaderEditText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
@@ -1109,9 +1136,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   detailScrollContent: {
-    paddingTop: 8,
-    paddingBottom: 28,
-    gap: 13,
+    paddingTop: 10,
+    paddingBottom: 32,
+    gap: 12,
     alignItems: 'flex-start',
   },
   detailHeroTitle: {
@@ -1128,59 +1155,44 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     alignSelf: 'stretch',
   },
-  detailDateRow: {
+  detailUnifiedMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignSelf: 'stretch',
+    paddingTop: 2,
   },
-  detailDateText: {
-    color: '#D4D4D8',
-    fontSize: 13,
+  detailMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5.5,
+  },
+  detailMetaText: {
+    color: '#71717A',
+    fontSize: 12.5,
+    fontWeight: '500',
+  },
+  detailMetaTextToday: {
+    color: '#818CF8',
     fontWeight: '600',
   },
-  detailDateTextToday: {
-    color: '#818CF8',
-    fontWeight: '700',
-  },
-  detailDateTextOverdue: {
+  detailMetaTextOverdue: {
     color: '#F87171',
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  detailDateTextCompleted: {
+  detailMetaTextCompleted: {
     color: '#34D399',
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  detailMutedMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'flex-start',
-  },
-  detailSubjectWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  detailMetaDot: {
+    color: '#3F3F46',
+    fontSize: 12,
   },
   detailSubjectColorDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-  },
-  detailTypeWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  detailMutedMetaText: {
-    color: '#71717A',
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  detailMutedMetaDot: {
-    color: '#52525B',
-    fontSize: 12,
   },
   detailAttachmentsSection: {
     gap: 8,
@@ -1235,22 +1247,6 @@ const styles = StyleSheet.create({
   detailLinkTitle: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
-  },
-  detailFooterSection: {
-    paddingTop: 10,
-    alignItems: 'flex-start',
-    alignSelf: 'flex-start',
-  },
-  detailDeleteAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 4,
-  },
-  detailDeleteActionText: {
-    color: '#EF4444',
-    fontSize: 12.5,
     fontWeight: '600',
   },
   sheetHeader: {

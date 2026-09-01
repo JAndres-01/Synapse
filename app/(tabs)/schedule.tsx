@@ -9,7 +9,9 @@ import {
   Animated,
   LayoutChangeEvent,
   Dimensions,
+  Platform,
 } from 'react-native'
+import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
@@ -276,8 +278,12 @@ export default function ScheduleScreen() {
           </View>
         </View>
 
-        {/* Segmented Control iOS con Animación Fluida */}
-        <View style={styles.segmentedContainer}>
+        {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 55 : 90}
+          tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
+          style={styles.segmentedContainer}
+        >
           <Animated.View
             style={[
               styles.activeSegmentPill,
@@ -294,7 +300,7 @@ export default function ScheduleScreen() {
           >
             <CalendarDays
               size={13.5}
-              color={viewMode === 'day' ? '#09090B' : '#71717A'}
+              color={viewMode === 'day' ? '#09090B' : '#A1A1AA'}
             />
             <Text
               style={[
@@ -312,7 +318,7 @@ export default function ScheduleScreen() {
           >
             <LayoutGrid
               size={13.5}
-              color={viewMode === 'week' ? '#09090B' : '#71717A'}
+              color={viewMode === 'week' ? '#09090B' : '#A1A1AA'}
             />
             <Text
               style={[
@@ -323,7 +329,7 @@ export default function ScheduleScreen() {
               Matriz Semanal
             </Text>
           </Pressable>
-        </View>
+        </BlurView>
 
         {/* Vista Seleccionada */}
         {viewMode === 'day' ? (
@@ -431,14 +437,15 @@ const styles = StyleSheet.create({
   },
   segmentedContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     padding: 3,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     position: 'relative',
     height: 42,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   activeSegmentPill: {
     position: 'absolute',

@@ -16,6 +16,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native'
+import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
@@ -565,8 +566,10 @@ export default function TasksScreen() {
           )}
         </View>
 
-        {/* Segmented Control iOS con Glassmorfismo */}
-        <View
+        {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
+        <BlurView
+          intensity={Platform.OS === 'ios' ? 55 : 90}
+          tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
           style={styles.segmentedContainer}
           onLayout={(e: LayoutChangeEvent) => {
             setSegmentContainerWidth(e.nativeEvent.layout.width)
@@ -623,7 +626,7 @@ export default function TasksScreen() {
               Todas
             </Text>
           </Pressable>
-        </View>
+        </BlurView>
 
         {/* Lista Plana y Abierta */}
         <View style={styles.tasksListWrapper}>
@@ -952,13 +955,14 @@ const styles = StyleSheet.create({
   segmentedContainer: {
     flexDirection: 'row',
     position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     padding: 3,
     height: 42,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   activeSegmentPill: {
     position: 'absolute',

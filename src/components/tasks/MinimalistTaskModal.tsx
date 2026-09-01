@@ -316,12 +316,15 @@ export function MinimalistTaskModal({
     })
   }
 
-  // PanResponder para Deslizar Hacia Abajo y Cerrar
+  // PanResponder Amplio para Deslizar Hacia Abajo y Cerrar (Abarca tirador, título y botones de acción)
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
@@ -329,7 +332,7 @@ export function MinimalistTaskModal({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
+        if (gestureState.dy > 95 || gestureState.vy > 0.45) {
           handleSmoothClose()
         } else {
           Animated.spring(panY, {
@@ -628,17 +631,14 @@ export function MinimalistTaskModal({
           {/* ========================================================================= */}
           {currentView === 'detail' && (
             <>
-              {/* Drag Handle Superior con Gesto de Deslizar Hacia Abajo */}
-              <View style={styles.dragHandleTopArea} {...panResponder.panHandlers}>
-                <View style={styles.dragHandle} />
-              </View>
+              {/* ZONA SUPERIOR COMPLETA CON GESTO DE DESLIZAR (Tirador + Título + Acciones) */}
+              <View {...panResponder.panHandlers}>
+                {/* Tirador Superior Grande */}
+                <View style={styles.dragHandleTopArea}>
+                  <View style={styles.dragHandle} />
+                </View>
 
-              <ScrollView
-                style={styles.detailScroll}
-                contentContainerStyle={styles.detailScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* 1. TÍTULO DE LA TAREA + BOTONES DE ACCIÓN EN LA MISMA FILA (CERO ESPACIO VACÍO) */}
+                {/* 1. TÍTULO DE LA TAREA + BOTONES DE ACCIÓN EN LA MISMA FILA */}
                 <View style={styles.detailTitleInlineRow}>
                   <Text style={styles.detailHeroTitle} numberOfLines={2}>
                     {task?.title}
@@ -669,7 +669,13 @@ export function MinimalistTaskModal({
                     </Pressable>
                   </View>
                 </View>
+              </View>
 
+              <ScrollView
+                style={styles.detailScroll}
+                contentContainerStyle={styles.detailScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL MARGEN IZQUIERDO) */}
                 {Boolean(task?.description) && (
                   <Text style={styles.detailDescriptionText}>
@@ -1435,16 +1441,15 @@ const styles = StyleSheet.create({
     maxHeight: '92%',
   },
   dragHandleTopArea: {
-    paddingTop: 10,
-    paddingBottom: 8,
+    paddingTop: 12,
+    paddingBottom: 10,
     alignItems: 'center',
   },
   dragHandle: {
-    width: 36,
-    height: 4.5,
+    width: 52,
+    height: 5,
     borderRadius: 3,
-    backgroundColor: '#3F3F46',
-    marginBottom: 4,
+    backgroundColor: '#52525B',
   },
   detailScroll: {
     paddingHorizontal: 22,
@@ -1460,6 +1465,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     width: '100%',
+    paddingHorizontal: 22,
+    paddingBottom: 4,
     gap: 12,
   },
   detailHeroTitle: {
@@ -1598,7 +1605,7 @@ const styles = StyleSheet.create({
   },
   sheetHeader: {
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',

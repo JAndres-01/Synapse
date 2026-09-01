@@ -132,7 +132,7 @@ export default function TasksScreen() {
   // Estado de Tarea Resaltada (brillo y elevación animada)
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
 
-  const params = useLocalSearchParams<{ taskId?: string }>()
+  const params = useLocalSearchParams<{ taskId?: string; highlightTimestamp?: string }>()
 
   useEffect(() => {
     loadData()
@@ -146,15 +146,23 @@ export default function TasksScreen() {
         if (found.status === 'completed' && statusFilter === 'pending') {
           setStatusFilter('all')
         }
-        // Resaltar la tarea con brillo blanco y elevación
-        setHighlightedTaskId(found.id)
-        const timer = setTimeout(() => {
+        // Reiniciar estado brevemente para garantizar la animación si es la misma tarea
+        setHighlightedTaskId(null)
+        const frameTimer = setTimeout(() => {
+          setHighlightedTaskId(found.id)
+        }, 20)
+
+        const clearTimer = setTimeout(() => {
           setHighlightedTaskId(null)
         }, 2800)
-        return () => clearTimeout(timer)
+
+        return () => {
+          clearTimeout(frameTimer)
+          clearTimeout(clearTimer)
+        }
       }
     }
-  }, [params.taskId, tasks])
+  }, [params.taskId, params.highlightTimestamp, tasks])
 
   useEffect(() => {
     if (showSubjectMenu) {

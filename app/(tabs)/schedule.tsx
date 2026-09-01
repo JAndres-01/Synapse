@@ -184,11 +184,14 @@ export default function ScheduleScreen() {
     // Cerrar el modal del día primero de forma suave
     setDayTasksModalData((prev) => ({ ...prev, visible: false }))
 
-    // Navegar fluidamente a la pestaña Tareas y abrir el detalle
+    // Navegar fluidamente a la pestaña Tareas y resaltar la tarea
     setTimeout(() => {
       router.navigate({
         pathname: '/(tabs)/tasks',
-        params: { taskId: task.id },
+        params: {
+          taskId: task.id,
+          highlightTimestamp: Date.now().toString(),
+        },
       })
     }, 120)
   }

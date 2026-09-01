@@ -42,6 +42,8 @@ export function MinimalistTaskRow({
   useEffect(() => {
     if (isHighlighted) {
       triggerHaptic('medium')
+      liftAnim.setValue(0)
+      highlightAnim.setValue(0)
       Animated.parallel([
         Animated.spring(liftAnim, {
           toValue: -5,
@@ -73,6 +75,9 @@ export function MinimalistTaskRow({
       }, 1600)
 
       return () => clearTimeout(timer)
+    } else {
+      liftAnim.setValue(0)
+      highlightAnim.setValue(0)
     }
   }, [isHighlighted])
 

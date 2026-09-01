@@ -61,9 +61,11 @@ export default function ScheduleScreen() {
   const [dayTasksModalData, setDayTasksModalData] = useState<{
     visible: boolean
     day: number
+    subjectId?: string | null
   }>({
     visible: false,
     day: initialDay,
+    subjectId: null,
   })
 
   // Animaciones del Switcher de Vista (Día / Semana)
@@ -192,11 +194,12 @@ export default function ScheduleScreen() {
     })
   }
 
-  const handleOpenDayTasks = (day: number) => {
+  const handleOpenDayTasks = (day: number, subjectId?: string | null) => {
     triggerHaptic('light')
     setDayTasksModalData({
       visible: true,
       day,
+      subjectId: subjectId || null,
     })
   }
 
@@ -225,7 +228,7 @@ export default function ScheduleScreen() {
   const handleOpenTaskInTasksTab = (task: Task) => {
     triggerHaptic('light')
     // Cerrar el modal del día primero de forma suave
-    setDayTasksModalData((prev) => ({ ...prev, visible: false }))
+    setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))
 
     // Navegar fluidamente a la pestaña Tareas y resaltar la tarea
     setTimeout(() => {
@@ -351,13 +354,14 @@ export default function ScheduleScreen() {
         )}
       </ScrollView>
 
-      {/* Modal de Tareas del Día (Activado desde la Matriz Semanal) */}
+      {/* Modal de Tareas del Día */}
       <MinimalistDayTasksModal
         visible={dayTasksModalData.visible}
         day={dayTasksModalData.day}
+        subjectId={dayTasksModalData.subjectId}
         schedules={schedules}
         tasks={tasks}
-        onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false }))}
+        onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
         onToggleTaskStatus={handleToggleTaskStatus}
         onOpenTaskDetail={handleOpenTaskInTasksTab}
       />

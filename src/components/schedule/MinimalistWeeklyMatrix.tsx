@@ -93,7 +93,7 @@ function MatrixSlotCard({
                   <Text style={styles.slotBlockBadge}>C{blockNum}</Text>
                 </View>
 
-                {/* Indicador de Tareas */}
+                {/* Indicador de Tareas estrictas de este día */}
                 {pendingTaskCount > 0 && (
                   <View style={styles.taskBadge}>
                     <CheckSquare size={8.5} color="#FFFFFF" />
@@ -142,13 +142,13 @@ export function MinimalistWeeklyMatrix({
     if (!subjectId) return 0
     return tasks.filter((t) => {
       if (t.status !== 'pending' || t.subject_id !== subjectId) return false
-      if (!t.due_date) return true
+      if (!t.due_date) return false
       try {
         const taskDate = new Date(t.due_date)
         const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
         return dayNum === day
       } catch {
-        return true
+        return false
       }
     }).length
   }

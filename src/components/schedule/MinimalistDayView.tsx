@@ -12,7 +12,7 @@ interface MinimalistDayViewProps {
   tasks?: Task[]
   selectedDay: number // 1: Lun ... 5: Vie
   onSelectDay: (day: number) => void
-  onOpenDayTasks: (day: number) => void
+  onOpenDayTasks: (day: number, subjectId?: string | null) => void
 }
 
 const DAYS = [
@@ -102,7 +102,7 @@ function DayClassRow({
                   </Text>
                 </View>
 
-                {/* Badge de Tareas Pendientes */}
+                {/* Badge de Tareas Pendientes para este día */}
                 {pendingTasks.length > 0 && (
                   <View style={styles.taskBadge}>
                     <CheckSquare size={10} color="#FFFFFF" />
@@ -132,7 +132,7 @@ function DayClassRow({
                 )}
               </View>
 
-              {/* Tareas Correspondientes a esta Clase */}
+              {/* Tareas Correspondientes a esta Clase ÚNICAMENTE para este día */}
               {classTasks.length > 0 && (
                 <View style={styles.classTasksList}>
                   {classTasks.slice(0, 3).map((t) => {
@@ -231,18 +231,18 @@ export function MinimalistDayView({
         {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, idx) => {
           const item = daySchedules.find((s) => s.block_number === blockDef.block)
 
-          // Filtrar las tareas correspondientes a la materia de este bloque
+          // FILTRADO ESTRICTO: ÚNICAMENTE tareas de esta materia cuya fecha de entrega sea este día
           const classTasks = tasks.filter((t) => {
-            if (!item?.subject_id) return false
-            if (t.subject_id !== item.subject_id) return false
-            if (t.due_date) {
-              try {
-                const taskDate = new Date(t.due_date)
-                const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
-                if (dayNum === selectedDay) return true
-              } catch {}
+            if (t.status !== 'pending') return false
+            if (!item?.subject_id || t.subject_id !== item.subject_id) return false
+            if (!t.due_date) return false
+            try {
+              const taskDate = new Date(t.due_date)
+              const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
+              return dayNum === selectedDay
+            } catch {
+              return false
             }
-            return t.status === 'pending'
           })
 
           return (
@@ -252,7 +252,7 @@ export function MinimalistDayView({
               schedule={item}
               classTasks={classTasks}
               isLast={idx === PERSONAL_SCHEDULE_BLOCKS.length - 1}
-              onPressClass={() => onOpenDayTasks(selectedDay)}
+              onPressClass={() => onOpenDayTasks(selectedDay, item?.subject_id)}
             />
           )
         })}

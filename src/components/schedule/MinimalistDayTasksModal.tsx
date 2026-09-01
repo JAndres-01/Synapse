@@ -20,6 +20,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 interface MinimalistDayTasksModalProps {
   visible: boolean
   day: number // 1: Lun ... 5: Vie
+  subjectId?: string | null
   schedules: Schedule[]
   tasks: Task[]
   onClose: () => void
@@ -38,6 +39,7 @@ const DAY_NAMES: Record<number, string> = {
 export function MinimalistDayTasksModal({
   visible,
   day,
+  subjectId,
   schedules = [],
   tasks = [],
   onClose,
@@ -157,31 +159,30 @@ export function MinimalistDayTasksModal({
     })
   ).current
 
-  const daySchedules = schedules.filter((s) => s.day_of_week === day)
-  const daySubjectIds = new Set(daySchedules.map((s) => s.subject_id).filter(Boolean))
-
+  // FILTRADO ESTRICTO: ÚNICAMENTE tareas cuya fecha de entrega cae en este día específico
   const dayTasks = tasks.filter((t) => {
+    if (t.status !== 'pending') return false
     if (!t.due_date) return false
     try {
       const taskDate = new Date(t.due_date)
       const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
-      if (dayNum === day) return true
-    } catch {}
-    if (t.subject_id && daySubjectIds.has(t.subject_id)) return true
-    return false
+      if (dayNum !== day) return false
+      if (subjectId && t.subject_id !== subjectId) return false
+      return true
+    } catch {
+      return false
+    }
   })
 
   const sortedDayTasks = [...dayTasks].sort((a, b) => {
-    if (a.status === 'pending' && b.status === 'completed') return -1
-    if (a.status === 'completed' && b.status === 'pending') return 1
     if (a.due_date && b.due_date) {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     }
     return 0
   })
 
-  const pendingCount = sortedDayTasks.filter((t) => t.status === 'pending').length
   const dayName = DAY_NAMES[day] || 'Día'
+  const targetSubject = subjectId ? schedules.find((s) => s.subject_id === subjectId)?.subject : null
 
   const formatTaskTime = (dateStr?: string | null) => {
     if (!dateStr) return null
@@ -222,17 +223,19 @@ export function MinimalistDayTasksModal({
             <View style={styles.headerRow}>
               <View>
                 <View style={styles.titleWithBadgeRow}>
-                  <Text style={styles.sheetTitle}>Tareas de {dayName}</Text>
-                  {pendingCount > 0 && (
+                  <Text style={styles.sheetTitle}>
+                    {targetSubject ? `Tareas de ${targetSubject.name}` : `Tareas del ${dayName}`}
+                  </Text>
+                  {sortedDayTasks.length > 0 && (
                     <View style={styles.countBadge}>
-                      <Text style={styles.countBadgeText}>{pendingCount}</Text>
+                      <Text style={styles.countBadgeText}>{sortedDayTasks.length}</Text>
                     </View>
                   )}
                 </View>
                 <Text style={styles.sheetSubtitle}>
                   {sortedDayTasks.length === 0
-                    ? 'Sin tareas programadas para este día'
-                    : `${pendingCount} pendiente${pendingCount === 1 ? '' : 's'} • ${sortedDayTasks.length - pendingCount} completada${sortedDayTasks.length - pendingCount === 1 ? '' : 's'}`}
+                    ? `Sin entregas programadas para el ${dayName}`
+                    : `${sortedDayTasks.length} pendiente${sortedDayTasks.length === 1 ? '' : 's'} para este día`}
                 </Text>
               </View>
 
@@ -329,9 +332,9 @@ export function MinimalistDayTasksModal({
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Todo al día para {dayName}</Text>
+                <Text style={styles.emptyTitle}>¡Todo al día!</Text>
                 <Text style={styles.emptyText}>
-                  No tienes entregas ni pendientes programados para las materias de este día.
+                  No tienes entregas pendientes para {targetSubject ? targetSubject.name : `el ${dayName}`}.
                 </Text>
               </View>
             )}

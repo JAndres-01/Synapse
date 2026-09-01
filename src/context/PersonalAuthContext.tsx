@@ -96,15 +96,28 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
   }, [])
 
   const signInWithEmail = async (email: string, pass: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass })
+    const cleanEmail = email.trim().toLowerCase()
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass })
     if (error) throw error
     if (data.session) {
       setSession(data.session)
       setUser(data.session.user)
+      let profileName = data.session.user.user_metadata?.full_name || 'Estudiante'
+      try {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', data.session.user.id)
+          .single()
+        if (profileRow?.full_name) {
+          profileName = profileRow.full_name
+        }
+      } catch {}
+
       const profileData: PersonalProfile = {
         id: data.session.user.id,
-        full_name: data.session.user.user_metadata?.full_name || 'Estudiante',
-        email: data.session.user.email || '',
+        full_name: profileName,
+        email: data.session.user.email || cleanEmail,
         theme: 'dark',
         created_at: data.session.user.created_at,
       }
@@ -114,10 +127,11 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
   }
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
+    const cleanEmail = email.trim().toLowerCase()
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password: pass,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name.trim() } },
     })
     if (error) throw error
     if (data.session) {
@@ -125,8 +139,8 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       setUser(data.session.user)
       const profileData: PersonalProfile = {
         id: data.session.user.id,
-        full_name: name,
-        email: data.session.user.email || '',
+        full_name: name.trim(),
+        email: data.session.user.email || cleanEmail,
         theme: 'dark',
         created_at: data.session.user.created_at,
       }

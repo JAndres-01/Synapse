@@ -17,7 +17,7 @@ import { MinimalistDayTimeline } from '@/components/today/MinimalistDayTimeline'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
-import { Plus, Sparkles, RotateCcw } from 'lucide-react-native'
+import { Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 export default function TodayScreen() {
@@ -29,7 +29,6 @@ export default function TodayScreen() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [refreshing, setRefreshing] = useState(false)
-  const [demoActive, setDemoActive] = useState(false)
 
   // Modal Unificado de Tareas
   const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
@@ -52,14 +51,12 @@ export default function TodayScreen() {
   }
 
   const loadData = useCallback(async () => {
-    const [cachedScheds, cachedTasks, cachedSubjs, isDemo] = await Promise.all([
+    const [cachedScheds, cachedTasks, cachedSubjs] = await Promise.all([
       personalStorage.getSchedules(),
       personalStorage.getTasks(),
       personalStorage.getSubjects(),
-      personalStorage.isDemoActive(),
     ])
 
-    setDemoActive(isDemo)
     const todayNum = getTodayDayOfWeek()
 
     const resolvedScheds = cachedScheds.map((s) => {
@@ -141,37 +138,32 @@ export default function TodayScreen() {
       t.id === taskId ? { ...t, status: newStatus as 'pending' | 'completed' } : t
     )
     setTasks(updatedTasks)
-    await personalStorage.saveTasks(updatedTasks)
+    await personalStorage.setTasks(updatedTasks)
 
     if (activeTask && activeTask.id === taskId) {
       setActiveTask({ ...activeTask, status: newStatus as 'pending' | 'completed' })
     }
 
     if (user?.id) {
-      supabase.from('tasks').update({ status: newStatus }).eq('id', taskId).then(() => {})
+      try {
+        await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
+      } catch (err) {
+        console.warn('Error updating task status in supabase:', err)
+      }
     }
   }
 
   const handleDeleteTask = async (taskId: string) => {
     const updatedTasks = tasks.filter((t) => t.id !== taskId)
     setTasks(updatedTasks)
-    await personalStorage.saveTasks(updatedTasks)
+    await personalStorage.setTasks(updatedTasks)
     if (user?.id) {
-      supabase.from('tasks').delete().eq('id', taskId).then(() => {})
+      try {
+        await supabase.from('tasks').delete().eq('id', taskId)
+      } catch (err) {
+        console.warn('Error deleting task in supabase:', err)
+      }
     }
-  }
-
-  const handleLoadDemo = async () => {
-    triggerHaptic('success')
-    const todayNum = getTodayDayOfWeek()
-    await personalStorage.loadDemoData(todayNum)
-    loadData()
-  }
-
-  const handleRevertDemo = async () => {
-    triggerHaptic('warning')
-    await personalStorage.revertDemoData()
-    loadData()
   }
 
   return (
@@ -199,44 +191,19 @@ export default function TodayScreen() {
               <Text style={styles.subtitle}>{getFormattedCurrentDate()}</Text>
             </View>
 
-            <View style={styles.headerRightActions}>
-              {/* Botón de Demo Reversible */}
-              {demoActive ? (
-                <Pressable onPress={handleRevertDemo} style={styles.revertDemoBtn}>
-                  <RotateCcw size={12} color="#EF4444" />
-                  <Text style={styles.revertDemoBtnText}>Revertir</Text>
-                </Pressable>
-              ) : (
-                <Pressable onPress={handleLoadDemo} style={styles.loadDemoBtn}>
-                  <Sparkles size={12} color="#A1A1AA" />
-                  <Text style={styles.loadDemoBtnText}>Ver Demo</Text>
-                </Pressable>
-              )}
-
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('medium')
-                  setActiveTask(null)
-                  setTaskModalMode('create')
-                }}
-                style={styles.headerAddBtn}
-              >
-                <Plus size={14} color="#09090B" strokeWidth={2.8} />
-                <Text style={styles.headerAddBtnText}>Tarea</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('medium')
+                setActiveTask(null)
+                setTaskModalMode('create')
+              }}
+              style={styles.headerAddBtn}
+            >
+              <Plus size={14} color="#09090B" strokeWidth={2.8} />
+              <Text style={styles.headerAddBtnText}>Tarea</Text>
+            </Pressable>
           </View>
         </View>
-
-        {/* Banner informativo cuando el modo demo está activo */}
-        {demoActive && (
-          <Pressable onPress={handleRevertDemo} style={styles.demoActiveBanner}>
-            <RotateCcw size={12.5} color="#EF4444" />
-            <Text style={styles.demoActiveBannerText}>
-              Modo ejemplo activo • Toca aquí para volver a tus datos
-            </Text>
-          </Pressable>
-        )}
 
         {/* Hero Card Dinámica: Clase en Vivo / Próxima */}
         <MinimalistLiveHero schedules={schedulesToday} />
@@ -318,43 +285,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  loadDemoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4.5,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 7.5,
-    borderRadius: 14,
-  },
-  loadDemoBtnText: {
-    color: '#A1A1AA',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  revertDemoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4.5,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
-    paddingHorizontal: 10,
-    paddingVertical: 7.5,
-    borderRadius: 14,
-  },
-  revertDemoBtnText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '700',
-  },
   headerAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,22 +298,5 @@ const styles = StyleSheet.create({
     color: '#09090B',
     fontSize: 12.5,
     fontWeight: '800',
-  },
-  demoActiveBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  demoActiveBannerText: {
-    color: '#F87171',
-    fontSize: 11.5,
-    fontWeight: '600',
   },
 })

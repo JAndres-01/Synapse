@@ -29,16 +29,15 @@ interface MinimalistSubjectModalProps {
   onSubjectsUpdated: () => void
 }
 
-// 8 Colores de alto contraste + Blanco Puro (#FFFFFF)
 const DISTINCT_PALETTE = [
-  '#FFFFFF', // Blanco Puro
-  '#3B82F6', // Azul Eléctrico
-  '#10B981', // Verde Esmeralda
-  '#EF4444', // Rojo Brillante
-  '#F59E0B', // Amarillo Ámbar
-  '#8B5CF6', // Morado Eléctrico
-  '#EC4899', // Rosa Fucsia
-  '#06B6D4', // Cian / Turquesa
+  '#FFFFFF',
+  '#3B82F6',
+  '#10B981',
+  '#EF4444',
+  '#F59E0B',
+  '#8B5CF6',
+  '#EC4899',
+  '#06B6D4',
 ]
 
 export function MinimalistSubjectModal({
@@ -54,7 +53,6 @@ export function MinimalistSubjectModal({
   const [selectedColor, setSelectedColor] = useState(DISTINCT_PALETTE[0])
   const [loading, setLoading] = useState(false)
 
-  // Animaciones del Modal y Gesto de Deslizar
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
@@ -102,76 +100,79 @@ export function MinimalistSubjectModal({
     }
   }, [visible, fadeAnim, slideAnim])
 
-  const resetForm = () => {
-    setEditingSubject(null)
-    setName('')
-    setTeacher('')
-    setSelectedColor(DISTINCT_PALETTE[0])
-  }
-
   const handleSmoothClose = () => {
     triggerHaptic('light')
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 220,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(panY, {
         toValue: 0,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      resetForm()
       onClose()
+      setModalVisible(false)
+      resetForm()
     })
   }
 
-  // PanResponder Robusto para Deslizar Hacia Abajo y Cerrar
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
       },
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           panY.setValue(gestureState.dy)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 90 || gestureState.vy > 0.4) {
-          handleSmoothClose()
+        if (gestureState.dy > 120 || gestureState.vy > 0.8) {
+          triggerHaptic('light')
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 150,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 180,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            onClose()
+            setModalVisible(false)
+            resetForm()
+          })
         } else {
           Animated.spring(panY, {
             toValue: 0,
-            damping: 22,
-            stiffness: 400,
+            stiffness: 450,
+            damping: 28,
             useNativeDriver: true,
           }).start()
         }
       },
-      onPanResponderTerminate: () => {
-        Animated.spring(panY, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 400,
-          useNativeDriver: true,
-        }).start()
-      },
     })
   ).current
+
+  const resetForm = () => {
+    setEditingSubject(null)
+    setName('')
+    setTeacher('')
+    setSelectedColor(DISTINCT_PALETTE[0])
+  }
 
   const handleStartEdit = (subject: Subject) => {
     triggerHaptic('selection')
@@ -188,67 +189,67 @@ export function MinimalistSubjectModal({
 
   const handleSaveSubject = async () => {
     if (!name.trim()) {
-      Alert.alert('Campo requerido', 'Ingresa el nombre de la materia.')
-      triggerHaptic('warning')
+      Alert.alert('Nombre requerido', 'Ingresa el nombre de la materia.')
+      triggerHaptic('error')
       return
     }
 
     setLoading(true)
+    triggerHaptic('medium')
 
     try {
       if (editingSubject) {
-        // MODO EDICIÓN
-        const updatedSubject: Subject = {
+        const updated: Subject = {
           ...editingSubject,
           name: name.trim(),
-          teacher_name: teacher.trim() || null,
+          teacher_name: teacher.trim() || undefined,
           color: selectedColor,
         }
 
-        await personalStorage.saveSubject(updatedSubject)
+        await personalStorage.updateSubject(updated)
         triggerHaptic('success')
-        resetForm()
         onSubjectsUpdated()
+        resetForm()
 
-        supabase
-          .from('subjects')
-          .update({
-            name: updatedSubject.name,
-            teacher_name: updatedSubject.teacher_name,
-            color: updatedSubject.color,
-          })
-          .eq('id', editingSubject.id)
-          .then(({ error }) => {
-            if (error) console.log('Supabase update subject info:', error.message)
-          })
+        if (userId) {
+          supabase
+            .from('subjects')
+            .update({
+              name: updated.name,
+              teacher_name: updated.teacher_name,
+              color: updated.color,
+            })
+            .eq('id', updated.id)
+            .then(() => {})
+        }
       } else {
-        // MODO CREACIÓN
         const newSubject: Subject = {
-          id: 'subj_' + Math.random().toString(36).substring(2, 11),
+          id: `subj_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
           user_id: userId,
           name: name.trim(),
-          teacher_name: teacher.trim() || null,
+          teacher_name: teacher.trim() || undefined,
           color: selectedColor,
-          created_at: new Date().toISOString(),
+          credits: 3,
         }
 
-        await personalStorage.saveSubject(newSubject)
+        await personalStorage.addSubject(newSubject)
         triggerHaptic('success')
-        resetForm()
         onSubjectsUpdated()
+        resetForm()
 
-        supabase
-          .from('subjects')
-          .insert({
-            id: newSubject.id,
-            user_id: userId,
-            name: newSubject.name,
-            teacher_name: newSubject.teacher_name,
-            color: newSubject.color,
-          })
-          .then(({ error }) => {
-            if (error) console.log('Supabase sync subject info:', error.message)
-          })
+        if (userId) {
+          supabase
+            .from('subjects')
+            .insert({
+              id: newSubject.id,
+              user_id: userId,
+              name: newSubject.name,
+              teacher_name: newSubject.teacher_name,
+              color: newSubject.color,
+              credits: newSubject.credits,
+            })
+            .then(() => {})
+        }
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudo guardar la materia.')
@@ -259,9 +260,10 @@ export function MinimalistSubjectModal({
   }
 
   const handleDeleteSubject = (subjectId: string, subjectName: string) => {
+    triggerHaptic('warning')
     Alert.alert(
-      '¿Eliminar materia?',
-      `Se eliminará "${subjectName}" de tus materias y horarios. Las tareas vinculadas pasarán a "General".`,
+      'Eliminar Materia',
+      `¿Deseas eliminar "${subjectName}"? Se liberarán sus bloques en el horario.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -274,10 +276,8 @@ export function MinimalistSubjectModal({
                 resetForm()
               }
 
-              // 1. Eliminar localmente en Storage
               await personalStorage.removeSubject(subjectId)
 
-              // 2. Sincronizar eliminación en Supabase
               if (userId) {
                 try {
                   await Promise.all([
@@ -290,7 +290,6 @@ export function MinimalistSubjectModal({
                 }
               }
 
-              // 3. Notificar actualización
               onSubjectsUpdated()
             } catch (err) {
               console.error('Error eliminando materia:', err)
@@ -306,26 +305,24 @@ export function MinimalistSubjectModal({
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop Estático */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante */}
         <Animated.View
           style={[
             styles.sheetContainer,
             { transform: [{ translateY: slideAnim }, { translateY: panY }] },
           ]}
         >
-          {/* Header con PanResponder */}
+          {/* Header */}
           <View style={styles.sheetHeader} {...panResponder.panHandlers}>
             <View style={styles.dragHandle} />
             <View style={styles.headerRow}>
               <View>
                 <Text style={styles.sheetTitle}>Gestionar Materias</Text>
                 <Text style={styles.sheetSubtitle}>
-                  {editingSubject ? 'Editando materia existente' : `${subjects.length} materias registradas`}
+                  {editingSubject ? 'Editando materia' : `${subjects.length} registradas`}
                 </Text>
               </View>
 
@@ -336,10 +333,10 @@ export function MinimalistSubjectModal({
           </View>
 
           <ScrollView style={styles.sheetScroll} showsVerticalScrollIndicator={false}>
-            {/* Caja de Formulario (Creación o Edición) */}
-            <View style={[styles.createBox, Boolean(editingSubject) && styles.createBoxEditing]}>
+            {/* Formulario Abierto (Sin Card Externa) */}
+            <View style={styles.formSection}>
               <View style={styles.boxHeaderRow}>
-                <Text style={[styles.sectionHeader, Boolean(editingSubject) && styles.sectionHeaderEditing]}>
+                <Text style={styles.sectionHeader}>
                   {editingSubject ? 'EDITAR MATERIA' : 'NUEVA MATERIA'}
                 </Text>
 
@@ -381,7 +378,7 @@ export function MinimalistSubjectModal({
                 </View>
               </View>
 
-              {/* Selector de Color (8 Tonos de Alto Contraste + Blanco Puro) */}
+              {/* Selector de Color */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>COLOR IDENTIFICADOR</Text>
                 <View style={styles.colorPaletteRow}>
@@ -415,11 +412,11 @@ export function MinimalistSubjectModal({
                 </View>
               </View>
 
-              {/* Botón Principal (Añadir o Guardar Cambios) */}
+              {/* Botón Guardar */}
               <Pressable
                 onPress={handleSaveSubject}
                 disabled={loading}
-                style={[styles.saveBtn, Boolean(editingSubject) && styles.saveBtnEditing]}
+                style={styles.saveBtn}
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#09090B" />
@@ -441,7 +438,7 @@ export function MinimalistSubjectModal({
               </Pressable>
             </View>
 
-            {/* Lista de Materias Registradas */}
+            {/* Lista Abierta de Materias Registradas */}
             <View style={styles.listSection}>
               <Text style={styles.sectionHeader}>
                 MATERIAS REGISTRADAS ({subjects.length})
@@ -449,59 +446,63 @@ export function MinimalistSubjectModal({
 
               {subjects.length > 0 ? (
                 <View style={styles.subjectsList}>
-                  {subjects.map((s) => {
+                  {subjects.map((s, idx) => {
+                    const isEditing = editingSubject?.id === s.id
                     const isWhite = s.color === '#FFFFFF'
-                    const isCurrentlyEditing = editingSubject?.id === s.id
+                    const isLast = idx === subjects.length - 1
 
                     return (
-                      <Pressable
+                      <View
                         key={s.id}
-                        onPress={() => handleStartEdit(s)}
                         style={[
-                          styles.subjectItem,
-                          isCurrentlyEditing && styles.subjectItemActive,
+                          styles.subjectRow,
+                          !isLast && styles.subjectRowBorder,
+                          isEditing && styles.subjectRowEditing,
                         ]}
                       >
-                        <View style={styles.subjectItemLeft}>
+                        <View style={styles.subjectLeft}>
                           <View
                             style={[
-                              styles.dot,
+                              styles.subjDot,
                               { backgroundColor: s.color || '#FFFFFF' },
                               isWhite && styles.whiteDotBorder,
                             ]}
                           />
-                          <View style={styles.subjectItemTextCol}>
-                            <Text style={styles.subjectName}>{s.name}</Text>
+                          <View style={styles.subjectInfo}>
+                            <Text style={styles.subjectName} numberOfLines={1}>
+                              {s.name}
+                            </Text>
                             {Boolean(s.teacher_name) && (
-                              <Text style={styles.teacherName}>{s.teacher_name}</Text>
+                              <Text style={styles.subjectTeacher} numberOfLines={1}>
+                                {s.teacher_name}
+                              </Text>
                             )}
                           </View>
                         </View>
 
-                        <View style={styles.subjectItemActions}>
+                        <View style={styles.subjectActions}>
                           <Pressable
                             onPress={() => handleStartEdit(s)}
                             hitSlop={8}
-                            style={styles.actionBtn}
+                            style={styles.actionIconBtn}
                           >
-                            <Pencil size={14} color={isCurrentlyEditing ? '#FFFFFF' : '#A1A1AA'} />
+                            <Pencil size={15} color="#A1A1AA" />
                           </Pressable>
-
                           <Pressable
                             onPress={() => handleDeleteSubject(s.id, s.name)}
                             hitSlop={8}
-                            style={styles.deleteSubjBtn}
+                            style={styles.actionIconBtn}
                           >
-                            <Trash2 size={14} color="#EF4444" />
+                            <Trash2 size={15} color="#EF4444" />
                           </Pressable>
                         </View>
-                      </Pressable>
+                      </View>
                     )
                   })}
                 </View>
               ) : (
-                <Text style={styles.emptySubjsText}>
-                  Aún no tienes materias registradas. Crea una arriba para asignar a tus horarios y tareas.
+                <Text style={styles.emptyListNotice}>
+                  No tienes materias registradas aún. Completa el formulario superior para añadir tu primera materia.
                 </Text>
               )}
             </View>
@@ -525,70 +526,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#0F0F13',
+    backgroundColor: '#0E0E11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.09)',
-    maxHeight: '88%',
-    paddingBottom: 36,
+    maxHeight: SCREEN_HEIGHT * 0.88,
   },
   sheetHeader: {
-    alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 14,
+    paddingHorizontal: 20,
   },
   dragHandle: {
-    width: 52,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#52525B',
-    marginBottom: 8,
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 20,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   sheetSubtitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   sheetScroll: {
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingBottom: 36,
   },
-  createBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  formSection: {
     gap: 12,
-  },
-  createBoxEditing: {
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   boxHeaderRow: {
     flexDirection: 'row',
@@ -597,12 +583,9 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
-  },
-  sectionHeaderEditing: {
-    color: '#FFFFFF',
   },
   cancelEditBtn: {
     flexDirection: 'row',
@@ -610,8 +593,8 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   cancelEditBtnText: {
     color: '#A1A1AA',
@@ -622,29 +605,30 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    color: '#A1A1AA',
-    fontSize: 11,
+    color: '#71717A',
+    fontSize: 9.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181B',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
     paddingHorizontal: 12,
-    height: 44,
+    height: 46,
+    gap: 8,
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 2,
   },
   textInput: {
     flex: 1,
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   colorPaletteRow: {
     flexDirection: 'row',
@@ -666,22 +650,20 @@ const styles = StyleSheet.create({
   colorCircleSelected: {
     transform: [{ scale: 1.15 }],
     shadowColor: '#000000',
-    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    height: 44,
-    borderRadius: 12,
     gap: 6,
-    marginTop: 4,
-  },
-  saveBtnEditing: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 13,
+    marginTop: 4,
   },
   saveBtnText: {
     color: '#09090B',
@@ -689,44 +671,40 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   listSection: {
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 16,
     gap: 10,
+    marginBottom: 24,
   },
   subjectsList: {
-    gap: 8,
+    paddingHorizontal: 2,
   },
-  subjectItem: {
+  subjectRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: 14,
     paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
-  subjectItemActive: {
-    borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  subjectRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
-  subjectItemLeft: {
+  subjectRowEditing: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+  },
+  subjectLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flex: 1,
   },
-  dot: {
+  subjDot: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
   },
-  whiteDotBorder: {
-    borderWidth: 1,
-    borderColor: '#71717A',
-  },
-  subjectItemTextCol: {
+  subjectInfo: {
     flex: 1,
     gap: 2,
   },
@@ -736,37 +714,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  teacherName: {
+  subjectTeacher: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
   },
-  subjectItemActions: {
+  subjectActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
   },
-  actionBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionIconBtn: {
+    padding: 6,
   },
-  deleteSubjBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptySubjsText: {
-    color: '#71717A',
-    fontSize: 13,
+  emptyListNotice: {
+    color: '#52525B',
+    fontSize: 12.5,
     textAlign: 'center',
-    lineHeight: 18,
-    paddingVertical: 14,
+    paddingVertical: 16,
+    fontStyle: 'italic',
   },
 })

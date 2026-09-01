@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Schedule, Subject } from '@/types/personal'
-import { X, Check, Clock, CheckCircle2, Paperclip, ChevronRight } from 'lucide-react-native'
+import { X, Check, Clock, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -46,7 +46,6 @@ export function MinimalistDayTasksModal({
 }: MinimalistDayTasksModalProps) {
   const insets = useSafeAreaInsets()
 
-  // Animaciones del Modal y Gesto de Deslizar
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
@@ -98,83 +97,83 @@ export function MinimalistDayTasksModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 160,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 200,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.timing(panY, {
         toValue: 0,
-        duration: 180,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
     })
   }
 
-  // PanResponder Robusto para Deslizar Hacia Abajo y Cerrar
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
       },
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           panY.setValue(gestureState.dy)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 80 || gestureState.vy > 0.35) {
-          handleSmoothClose()
+        if (gestureState.dy > 100 || gestureState.vy > 0.8) {
+          triggerHaptic('light')
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 140,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 180,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            onClose()
+            setModalVisible(false)
+          })
         } else {
           Animated.spring(panY, {
             toValue: 0,
-            damping: 22,
-            stiffness: 400,
+            stiffness: 450,
+            damping: 28,
             useNativeDriver: true,
           }).start()
         }
       },
-      onPanResponderTerminate: () => {
-        Animated.spring(panY, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 400,
-          useNativeDriver: true,
-        }).start()
-      },
     })
   ).current
 
-  if (!modalVisible) return null
+  const daySchedules = schedules.filter((s) => s.day_of_week === day)
+  const daySubjectIds = new Set(daySchedules.map((s) => s.subject_id).filter(Boolean))
 
-  // Filtrar tareas que pertenecen EXCLUSIVAMENTE a este día según su due_date
   const dayTasks = tasks.filter((t) => {
     if (!t.due_date) return false
     try {
       const taskDate = new Date(t.due_date)
-      if (isNaN(taskDate.getTime())) return false
-      return taskDate.getDay() === day
-    } catch {
-      return false
-    }
+      const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
+      if (dayNum === day) return true
+    } catch {}
+    if (t.subject_id && daySubjectIds.has(t.subject_id)) return true
+    return false
   })
 
-  // Ordenar: pendientes primero, luego por urgencia horaria
   const sortedDayTasks = [...dayTasks].sort((a, b) => {
-    if (a.status !== b.status) {
-      return a.status === 'pending' ? -1 : 1
-    }
+    if (a.status === 'pending' && b.status === 'completed') return -1
+    if (a.status === 'completed' && b.status === 'pending') return 1
     if (a.due_date && b.due_date) {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
     }
@@ -185,29 +184,29 @@ export function MinimalistDayTasksModal({
   const dayName = DAY_NAMES[day] || 'Día'
 
   const formatTaskTime = (dateStr?: string | null) => {
-    if (!dateStr) return ''
+    if (!dateStr) return null
     try {
       const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return ''
+      if (isNaN(d.getTime())) return null
       const hours = d.getHours()
-      const mins = String(d.getMinutes()).padStart(2, '0')
+      const mins = d.getMinutes().toString().padStart(2, '0')
       const ampm = hours >= 12 ? 'PM' : 'AM'
-      const hStr = hours % 12 || 12
-      return `${hStr}:${mins} ${ampm}`
+      const formattedH = hours % 12 || 12
+      return `${formattedH}:${mins} ${ampm}`
     } catch {
-      return ''
+      return null
     }
   }
+
+  if (!modalVisible) return null
 
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop Estático */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante */}
         <Animated.View
           style={[
             styles.sheetContainer,
@@ -217,7 +216,7 @@ export function MinimalistDayTasksModal({
             },
           ]}
         >
-          {/* Header con PanResponder */}
+          {/* Header */}
           <View style={styles.sheetHeader} {...panResponder.panHandlers}>
             <View style={styles.dragHandle} />
             <View style={styles.headerRow}>
@@ -243,7 +242,7 @@ export function MinimalistDayTasksModal({
             </View>
           </View>
 
-          {/* Lista de Tareas del Día */}
+          {/* Lista Abierta de Tareas */}
           <ScrollView
             style={styles.sheetScroll}
             contentContainerStyle={styles.sheetScrollContent}
@@ -251,11 +250,12 @@ export function MinimalistDayTasksModal({
           >
             {sortedDayTasks.length > 0 ? (
               <View style={styles.tasksList}>
-                {sortedDayTasks.map((t) => {
+                {sortedDayTasks.map((t, idx) => {
                   const isDone = t.status === 'completed'
                   const isWhite = t.subject?.color === '#FFFFFF'
                   const attachCount = Array.isArray(t.attachments) ? t.attachments.length : 0
                   const timeLabel = formatTaskTime(t.due_date)
+                  const isLast = idx === sortedDayTasks.length - 1
 
                   return (
                     <Pressable
@@ -264,7 +264,7 @@ export function MinimalistDayTasksModal({
                         triggerHaptic('light')
                         onOpenTaskDetail(t)
                       }}
-                      style={[styles.taskItemCard, isDone && styles.taskItemCardDone]}
+                      style={[styles.taskItemRow, !isLast && styles.taskItemRowBorder]}
                     >
                       {/* Checkbox Circular */}
                       <Pressable
@@ -280,11 +280,11 @@ export function MinimalistDayTasksModal({
                         </View>
                       </Pressable>
 
-                      {/* Contenido de la Tarea */}
+                      {/* Contenido */}
                       <View style={styles.taskItemContent}>
                         <Text
                           style={[styles.taskItemTitle, isDone && styles.taskItemTitleDone]}
-                          numberOfLines={2}
+                          numberOfLines={1}
                         >
                           {t.title}
                         </Text>
@@ -295,7 +295,7 @@ export function MinimalistDayTasksModal({
                               style={[
                                 styles.subjDot,
                                 { backgroundColor: t.subject?.color || '#71717A' },
-                                t.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                                isWhite && styles.whiteDotBorder,
                               ]}
                             />
                             <Text style={styles.taskSubjName}>{t.subject?.name || 'General'}</Text>
@@ -322,18 +322,16 @@ export function MinimalistDayTasksModal({
                         </View>
                       </View>
 
-                      {/* Chevron para indicar navegación */}
-                      <ChevronRight size={14} color="#52525B" style={styles.taskItemChevron} />
+                      <ChevronRight size={14} color="#52525B" />
                     </Pressable>
                   )
                 })}
               </View>
             ) : (
-              <View style={styles.emptyStateContainer}>
-                <CheckCircle2 size={36} color="#27272A" />
-                <Text style={styles.emptyStateTitle}>¡Al día con las tareas de {dayName}!</Text>
-                <Text style={styles.emptyStateSub}>
-                  No tienes tareas pendientes programadas con fecha de entrega para este día.
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Todo al día para {dayName}</Text>
+                <Text style={styles.emptyText}>
+                  No tienes entregas ni pendientes programados para las materias de este día.
                 </Text>
               </View>
             )}
@@ -357,33 +355,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
-    backgroundColor: '#0F0F13',
+    backgroundColor: '#0E0E11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.09)',
-    maxHeight: '88%',
+    maxHeight: SCREEN_HEIGHT * 0.75,
   },
   sheetHeader: {
-    alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 14,
+    paddingHorizontal: 20,
   },
   dragHandle: {
-    width: 52,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#52525B',
-    marginBottom: 8,
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 20,
   },
   titleWithBadgeRow: {
     flexDirection: 'row',
@@ -392,15 +387,15 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   countBadge: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 6.5,
-    paddingVertical: 1.5,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 10,
   },
   countBadgeText: {
     color: '#09090B',
@@ -409,50 +404,42 @@ const styles = StyleSheet.create({
   },
   sheetSubtitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '500',
     marginTop: 2,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   sheetScroll: {
     paddingHorizontal: 20,
   },
   sheetScrollContent: {
-    paddingTop: 14,
     paddingBottom: 24,
   },
   tasksList: {
-    gap: 8,
+    paddingHorizontal: 2,
   },
-  taskItemCard: {
+  taskItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    padding: 12,
+    paddingVertical: 12,
     gap: 12,
   },
-  taskItemCardDone: {
-    opacity: 0.55,
+  taskItemRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   checkboxArea: {
-    paddingTop: 1,
+    padding: 2,
   },
   checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#52525B',
+    borderColor: '#3F3F46',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -462,11 +449,11 @@ const styles = StyleSheet.create({
   },
   taskItemContent: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   taskItemTitle: {
     color: '#FFFFFF',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
@@ -477,8 +464,7 @@ const styles = StyleSheet.create({
   taskItemMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 5,
+    gap: 6,
   },
   taskSubjTag: {
     flexDirection: 'row',
@@ -495,9 +481,9 @@ const styles = StyleSheet.create({
     borderColor: '#71717A',
   },
   taskSubjName: {
-    color: '#A1A1AA',
-    fontSize: 11.5,
-    fontWeight: '500',
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '600',
   },
   metaDot: {
     color: '#3F3F46',
@@ -510,29 +496,24 @@ const styles = StyleSheet.create({
   },
   metaDueText: {
     color: '#71717A',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '500',
   },
-  taskItemChevron: {
-    marginLeft: 4,
-  },
-  emptyStateContainer: {
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 36,
-    paddingHorizontal: 20,
-    gap: 8,
+    gap: 6,
   },
-  emptyStateTitle: {
+  emptyTitle: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
-    textAlign: 'center',
   },
-  emptyStateSub: {
+  emptyText: {
     color: '#71717A',
-    fontSize: 12.5,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 18,
+    paddingHorizontal: 16,
   },
 })

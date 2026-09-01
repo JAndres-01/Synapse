@@ -14,7 +14,7 @@ import {
 } from 'react-native'
 import type { Subject, Schedule } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { X, Check, Trash2, BookOpen } from 'lucide-react-native'
+import { X, Check, Trash2 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { supabase } from '@/lib/personalSupabase'
@@ -55,7 +55,6 @@ export function MinimalistAssignSlotModal({
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Animaciones independientes para evitar arrastre de fondo negro
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
@@ -68,7 +67,7 @@ export function MinimalistAssignSlotModal({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 200,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
@@ -102,37 +101,27 @@ export function MinimalistAssignSlotModal({
     }
   }, [visible, fadeAnim, slideAnim])
 
-  useEffect(() => {
-    setDayOfWeek(initialDay)
-    setBlockNumber(initialBlock)
-
-    if (existingSchedule) {
-      setSelectedSubjectId(existingSchedule.subject_id || null)
-    } else {
-      setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
-    }
-  }, [existingSchedule, initialDay, initialBlock, visible, subjects])
-
   const handleSmoothClose = () => {
     triggerHaptic('light')
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 220,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(panY, {
         toValue: 0,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
     })
   }
 
@@ -148,13 +137,28 @@ export function MinimalistAssignSlotModal({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
-          handleSmoothClose()
+        if (gestureState.dy > 120 || gestureState.vy > 0.8) {
+          triggerHaptic('light')
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 150,
+              useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+              toValue: SCREEN_HEIGHT,
+              duration: 180,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            onClose()
+            setModalVisible(false)
+          })
         } else {
           Animated.spring(panY, {
             toValue: 0,
-            damping: 24,
-            stiffness: 400,
+            stiffness: 450,
+            damping: 28,
             useNativeDriver: true,
           }).start()
         }
@@ -162,34 +166,42 @@ export function MinimalistAssignSlotModal({
     })
   ).current
 
-  const blockDef =
-    PERSONAL_SCHEDULE_BLOCKS.find((b) => b.block === blockNumber) ||
-    PERSONAL_SCHEDULE_BLOCKS[0]
+  useEffect(() => {
+    setDayOfWeek(initialDay)
+    setBlockNumber(initialBlock)
+    if (existingSchedule) {
+      setSelectedSubjectId(existingSchedule.subject_id)
+    } else {
+      setSelectedSubjectId(null)
+    }
+  }, [initialDay, initialBlock, existingSchedule, visible])
 
   const handleSave = async () => {
     if (!selectedSubjectId) {
-      Alert.alert('Materia requerida', 'Por favor selecciona una materia.')
-      triggerHaptic('warning')
+      Alert.alert('Selecciona una materia', 'Por favor selecciona la materia para este bloque.')
+      triggerHaptic('error')
       return
     }
 
-    setLoading(true)
+    const blockDef = PERSONAL_SCHEDULE_BLOCKS.find((b) => b.block === blockNumber)
+    if (!blockDef) return
 
-    const subjectObj = subjects.find((s) => s.id === selectedSubjectId)
-    const slotData: Schedule = {
-      id: existingSchedule?.id || 'sched_' + Math.random().toString(36).substring(2, 11),
-      user_id: userId,
-      day_of_week: dayOfWeek,
-      block_number: blockNumber,
-      subject_id: selectedSubjectId,
-      start_time: blockDef.startTime,
-      end_time: blockDef.endTime,
-      subject: subjectObj,
-      updated_at: new Date().toISOString(),
-    }
+    setLoading(true)
+    triggerHaptic('medium')
 
     try {
-      await personalStorage.saveScheduleSlot(slotData)
+      const slotData: Schedule = {
+        id: existingSchedule?.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        user_id: userId,
+        day_of_week: dayOfWeek,
+        block_number: blockNumber,
+        subject_id: selectedSubjectId,
+        start_time: blockDef.startTime,
+        end_time: blockDef.endTime,
+        classroom_room: existingSchedule?.classroom_room || '',
+      }
+
+      await personalStorage.setScheduleSlot(slotData)
       triggerHaptic('success')
       onScheduleSaved()
       handleSmoothClose()
@@ -246,12 +258,10 @@ export function MinimalistAssignSlotModal({
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop Estático */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante */}
         <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }, { translateY: panY }] }]}>
           {/* Header */}
           <View style={styles.sheetHeader} {...panResponder.panHandlers}>
@@ -297,12 +307,13 @@ export function MinimalistAssignSlotModal({
               </View>
             </View>
 
-            {/* Selector de Bloque (4 Bloques Continuos) */}
+            {/* Selector de Bloque (Filas Abiertas y Continuas) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>BLOQUE HORARIO (1H 30M)</Text>
               <View style={styles.blocksList}>
-                {PERSONAL_SCHEDULE_BLOCKS.map((b) => {
+                {PERSONAL_SCHEDULE_BLOCKS.map((b, idx) => {
                   const isSelected = blockNumber === b.block
+                  const isLast = idx === PERSONAL_SCHEDULE_BLOCKS.length - 1
                   return (
                     <Pressable
                       key={b.block}
@@ -312,6 +323,7 @@ export function MinimalistAssignSlotModal({
                       }}
                       style={[
                         styles.blockRow,
+                        !isLast && styles.blockRowBorder,
                         isSelected && styles.blockRowActive,
                       ]}
                     >
@@ -348,7 +360,7 @@ export function MinimalistAssignSlotModal({
               </View>
             </View>
 
-            {/* Selector de Materia */}
+            {/* Selector de Materia (Grid Abierta sin Cards Pesadas) */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>SELECCIONA LA MATERIA</Text>
 
@@ -365,15 +377,8 @@ export function MinimalistAssignSlotModal({
                           setSelectedSubjectId(s.id)
                         }}
                         style={[
-                          styles.subjectCard,
-                          isSelected && {
-                            borderColor: isWhite
-                              ? 'rgba(255, 255, 255, 0.4)'
-                              : `${s.color || '#FFFFFF'}70`,
-                            backgroundColor: isWhite
-                              ? 'rgba(255, 255, 255, 0.15)'
-                              : `${s.color || '#FFFFFF'}20`,
-                          },
+                          styles.subjectChip,
+                          isSelected && styles.subjectChipSelected,
                         ]}
                       >
                         <View
@@ -383,7 +388,13 @@ export function MinimalistAssignSlotModal({
                             isWhite && styles.whiteDotBorder,
                           ]}
                         />
-                        <Text style={styles.subjectCardText} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.subjectChipText,
+                            isSelected && styles.subjectChipTextSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
                           {s.name}
                         </Text>
                       </Pressable>
@@ -448,47 +459,46 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '88%',
-    paddingBottom: 36,
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    maxHeight: SCREEN_HEIGHT * 0.82,
   },
   sheetHeader: {
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 14,
+    paddingHorizontal: 20,
     position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   dragHandle: {
     width: 36,
-    height: 4.5,
-    borderRadius: 3,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: '#3F3F46',
-    marginBottom: 6,
+    marginBottom: 12,
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
   closeBtn: {
     position: 'absolute',
-    right: 18,
-    top: 14,
+    right: 20,
+    top: 24,
     padding: 4,
   },
   sheetScroll: {
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingBottom: 36,
   },
   inputGroup: {
-    marginBottom: 16,
-    gap: 6,
+    marginBottom: 20,
+    gap: 8,
   },
   label: {
     color: '#71717A',
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
   },
@@ -499,15 +509,15 @@ const styles = StyleSheet.create({
   dayPill: {
     flex: 1,
     paddingVertical: 9,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   dayPillActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
     borderColor: '#FFFFFF',
   },
   dayPillText: {
@@ -516,26 +526,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dayPillTextActive: {
-    color: '#FFFFFF',
+    color: '#09090B',
     fontWeight: '800',
   },
   blocksList: {
-    gap: 6,
+    paddingHorizontal: 2,
   },
   blockRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  blockRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   blockRowActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 10,
   },
   blockRowLeft: {
     flexDirection: 'row',
@@ -546,7 +556,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -554,16 +564,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   blockNumberText: {
-    color: '#A1A1AA',
+    color: '#71717A',
     fontSize: 11,
     fontWeight: '700',
   },
   blockNumberTextActive: {
     color: '#09090B',
+    fontWeight: '800',
   },
   blockLabelText: {
-    color: '#D4D4D8',
-    fontSize: 13,
+    color: '#A1A1AA',
+    fontSize: 13.5,
     fontWeight: '600',
   },
   blockLabelTextActive: {
@@ -575,21 +586,29 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  subjectCard: {
+  subjectChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderRadius: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    gap: 7,
   },
-  subjectCardText: {
-    color: '#FFFFFF',
+  subjectChipSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  subjectChipText: {
+    color: '#A1A1AA',
     fontSize: 13,
     fontWeight: '600',
+  },
+  subjectChipTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   dot: {
     width: 7,
@@ -601,19 +620,20 @@ const styles = StyleSheet.create({
     borderColor: '#71717A',
   },
   emptySubjsNotice: {
-    color: '#71717A',
-    fontSize: 12,
+    color: '#52525B',
+    fontSize: 12.5,
+    fontStyle: 'italic',
     paddingVertical: 8,
   },
   actionButtonsCol: {
-    gap: 8,
+    gap: 10,
     marginTop: 10,
     marginBottom: 20,
   },
   saveBtn: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -627,15 +647,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingVertical: 12,
     borderRadius: 14,
-    paddingVertical: 11,
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(239, 68, 68, 0.18)',
   },
   clearSlotText: {
     color: '#EF4444',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
   },
 })

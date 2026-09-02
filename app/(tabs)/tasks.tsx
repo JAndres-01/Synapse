@@ -37,6 +37,11 @@ import {
   Check,
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import {
+  cancelTaskReminder,
+  scheduleTaskReminder,
+  syncAllNotifications,
+} from '@/lib/personalNotifications'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -313,9 +318,17 @@ export default function TasksScreen() {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (nextStatus === 'completed') {
+      cancelTaskReminder(taskId)
       const prefs = await personalStorage.getPreferences()
       if (prefs.confetti_enabled) {
         setConfettiBurstTrigger((prev) => prev + 1)
+      }
+    } else {
+      const taskObj = tasks.find((t) => t.id === taskId)
+      if (taskObj) {
+        personalStorage.getPreferences().then((p) =>
+          scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
+        )
       }
     }
 
@@ -362,6 +375,7 @@ export default function TasksScreen() {
   }
 
   const handleDeleteTask = async (taskId: string) => {
+    cancelTaskReminder(taskId)
     LayoutAnimation.configureNext({
       duration: 300,
       update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },

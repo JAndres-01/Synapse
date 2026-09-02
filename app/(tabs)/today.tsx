@@ -20,6 +20,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import {
+  cancelTaskReminder,
+  scheduleTaskReminder,
+  syncAllNotifications,
+} from '@/lib/personalNotifications'
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets()
@@ -138,9 +143,17 @@ export default function TodayScreen() {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (newStatus === 'completed') {
+      cancelTaskReminder(taskId)
       const prefs = await personalStorage.getPreferences()
       if (prefs.confetti_enabled) {
         setConfettiBurstTrigger((prev) => prev + 1)
+      }
+    } else {
+      const taskObj = tasks.find((t) => t.id === taskId)
+      if (taskObj) {
+        personalStorage.getPreferences().then((p) =>
+          scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
+        )
       }
     }
 
@@ -164,6 +177,7 @@ export default function TodayScreen() {
   }
 
   const handleDeleteTask = async (taskId: string) => {
+    cancelTaskReminder(taskId)
     const updatedTasks = tasks.filter((t) => t.id !== taskId)
     setTasks(updatedTasks)
     await personalStorage.setTasks(updatedTasks)

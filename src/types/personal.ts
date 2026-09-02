@@ -57,3 +57,11 @@ export interface Task {
   updated_at?: string
   subject?: Subject | null
 }
+
+export interface AppPreferences {
+  haptics_enabled: boolean
+  confetti_enabled: boolean
+  advance_reminder_enabled: boolean
+  advance_reminder_time: string // ej. "20:00"
+  class_reminder_enabled: boolean
+}

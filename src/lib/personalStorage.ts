@@ -167,16 +167,29 @@ export const personalStorage = {
   },
 
   // Preferencias
-  async getPreferences(): Promise<{ haptics_enabled: boolean; confetti_enabled: boolean }> {
+  async getPreferences(): Promise<AppPreferences> {
     try {
       const data = await AsyncStorage.getItem('synapse_personal_prefs_v2')
-      return data ? JSON.parse(data) : { haptics_enabled: true, confetti_enabled: true }
+      const parsed = data ? JSON.parse(data) : {}
+      return {
+        haptics_enabled: parsed.haptics_enabled ?? true,
+        confetti_enabled: parsed.confetti_enabled ?? true,
+        advance_reminder_enabled: parsed.advance_reminder_enabled ?? true,
+        advance_reminder_time: parsed.advance_reminder_time || '20:00',
+        class_reminder_enabled: parsed.class_reminder_enabled ?? true,
+      }
     } catch {
-      return { haptics_enabled: true, confetti_enabled: true }
+      return {
+        haptics_enabled: true,
+        confetti_enabled: true,
+        advance_reminder_enabled: true,
+        advance_reminder_time: '20:00',
+        class_reminder_enabled: true,
+      }
     }
   },
 
-  async setPreferences(prefs: { haptics_enabled: boolean; confetti_enabled: boolean }): Promise<void> {
+  async setPreferences(prefs: AppPreferences): Promise<void> {
     try {
       await AsyncStorage.setItem('synapse_personal_prefs_v2', JSON.stringify(prefs))
     } catch (err) {

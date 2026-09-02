@@ -24,6 +24,11 @@ import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTask
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import {
+  cancelTaskReminder,
+  scheduleTaskReminder,
+  scheduleClassReminders,
+} from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -205,6 +210,18 @@ export default function ScheduleScreen() {
 
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+
+    if (nextStatus === 'completed') {
+      cancelTaskReminder(taskId)
+    } else {
+      const taskObj = tasks.find((t) => t.id === taskId)
+      if (taskObj) {
+        personalStorage.getPreferences().then((p) =>
+          scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
+        )
+      }
+    }
+
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
     )

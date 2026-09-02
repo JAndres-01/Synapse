@@ -28,9 +28,24 @@ import {
   X,
   Check,
   ChevronRight,
+  Bell,
+  Clock,
+  BookOpen,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
+import {
+  syncAllNotifications,
+  requestNotificationPermissions,
+} from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
+
+const PRESET_HOURS = [
+  { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
+  { time: '19:00', label: '7:00 PM', desc: 'Atardecer' },
+  { time: '20:00', label: '8:00 PM', desc: 'Noche (Recomendado)' },
+  { time: '21:00', label: '9:00 PM', desc: 'Noche' },
+  { time: '22:00', label: '10:00 PM', desc: 'Antes de dormir' },
+]
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
@@ -40,6 +55,14 @@ export default function SettingsScreen() {
   const [syncing, setSyncing] = useState(false)
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [confettiEnabled, setConfettiEnabled] = useState(true)
+  const [advanceReminderEnabled, setAdvanceReminderEnabled] = useState(true)
+  const [advanceReminderTime, setAdvanceReminderTime] = useState('20:00')
+  const [classReminderEnabled, setClassReminderEnabled] = useState(true)
+
+  // Modal de Selección de Hora de Recordatorio
+  const [showTimeModal, setShowTimeModal] = useState(false)
+  const timeFadeAnim = useRef(new Animated.Value(0)).current
+  const timeSlideAnim = useRef(new Animated.Value(300)).current
 
   // Modal de Edición de Perfil
   const [showEditProfileModal, setShowEditProfileModal] = useState(false)
@@ -52,6 +75,9 @@ export default function SettingsScreen() {
     const prefs = await personalStorage.getPreferences()
     setHapticsEnabled(prefs.haptics_enabled)
     setConfettiEnabled(prefs.confetti_enabled)
+    setAdvanceReminderEnabled(prefs.advance_reminder_enabled)
+    setAdvanceReminderTime(prefs.advance_reminder_time || '20:00')
+    setClassReminderEnabled(prefs.class_reminder_enabled)
     setGlobalHapticsEnabled(prefs.haptics_enabled)
   }, [])
 
@@ -79,9 +105,11 @@ export default function SettingsScreen() {
         if (subjRes.data) await personalStorage.setSubjects(subjRes.data)
         if (schedRes.data) await personalStorage.setSchedules(schedRes.data)
         if (taskRes.data) await personalStorage.setTasks(taskRes.data)
+
+        await syncAllNotifications(taskRes.data || undefined, schedRes.data || undefined)
       }
       triggerHaptic('success')
-      Alert.alert('Sincronizado', 'Tus datos están actualizados con la nube.')
+      Alert.alert('Sincronizado', 'Tus datos y recordatorios están actualizados.')
     } catch (err: any) {
       triggerHaptic('error')
       Alert.alert('Error', err.message || 'No se pudo sincronizar.')
@@ -143,19 +171,94 @@ export default function SettingsScreen() {
     setHapticsEnabled(val)
     setGlobalHapticsEnabled(val)
     if (val) triggerHaptic('selection')
-    await personalStorage.setPreferences({
-      haptics_enabled: val,
-      confetti_enabled: confettiEnabled,
-    })
+    const current = await personalStorage.getPreferences()
+    await personalStorage.setPreferences({ ...current, haptics_enabled: val })
   }
 
   const handleToggleConfetti = async (val: boolean) => {
     setConfettiEnabled(val)
     triggerHaptic('selection')
-    await personalStorage.setPreferences({
-      haptics_enabled: hapticsEnabled,
-      confetti_enabled: val,
+    const current = await personalStorage.getPreferences()
+    await personalStorage.setPreferences({ ...current, confetti_enabled: val })
+  }
+
+  const handleToggleAdvanceReminder = async (val: boolean) => {
+    if (val) {
+      const granted = await requestNotificationPermissions()
+      if (!granted) {
+        Alert.alert(
+          'Permiso de Notificaciones',
+          'Activa las notificaciones en los Ajustes de tu iPhone para recibir recordatorios.'
+        )
+      }
+    }
+    setAdvanceReminderEnabled(val)
+    triggerHaptic('selection')
+    const current = await personalStorage.getPreferences()
+    const updated = { ...current, advance_reminder_enabled: val }
+    await personalStorage.setPreferences(updated)
+    await syncAllNotifications(undefined, undefined, updated)
+  }
+
+  const handleToggleClassReminder = async (val: boolean) => {
+    if (val) {
+      const granted = await requestNotificationPermissions()
+      if (!granted) {
+        Alert.alert(
+          'Permiso de Notificaciones',
+          'Activa las notificaciones en los Ajustes de tu iPhone para recibir avisos de clase.'
+        )
+      }
+    }
+    setClassReminderEnabled(val)
+    triggerHaptic('selection')
+    const current = await personalStorage.getPreferences()
+    const updated = { ...current, class_reminder_enabled: val }
+    await personalStorage.setPreferences(updated)
+    await syncAllNotifications(undefined, undefined, updated)
+  }
+
+  const handleOpenTimeModal = () => {
+    triggerHaptic('light')
+    setShowTimeModal(true)
+    Animated.parallel([
+      Animated.timing(timeFadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.spring(timeSlideAnim, { toValue: 0, stiffness: 450, damping: 28, useNativeDriver: true }),
+    ]).start()
+  }
+
+  const handleCloseTimeModal = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(timeFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(timeSlideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
+    ]).start(() => {
+      setShowTimeModal(false)
     })
+  }
+
+  const handleSelectHour = async (timeStr: string) => {
+    triggerHaptic('selection')
+    setAdvanceReminderTime(timeStr)
+    const current = await personalStorage.getPreferences()
+    const updated = { ...current, advance_reminder_time: timeStr }
+    await personalStorage.setPreferences(updated)
+    await syncAllNotifications(undefined, undefined, updated)
+    handleCloseTimeModal()
+  }
+
+  const formatTimeDisplay = (timeStr: string) => {
+    const found = PRESET_HOURS.find((p) => p.time === timeStr)
+    if (found) return found.label
+    try {
+      const [h, m] = timeStr.split(':')
+      const hour = parseInt(h, 10)
+      const ampm = hour >= 12 ? 'PM' : 'AM'
+      const formatted = hour % 12 || 12
+      return `${formatted}:${m} ${ampm}`
+    } catch {
+      return timeStr
+    }
   }
 
   const handleSignOut = () => {
@@ -178,6 +281,15 @@ export default function SettingsScreen() {
     )
   }
 
+  const getInitials = (name?: string) => {
+    if (!name) return 'U'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
@@ -188,150 +300,296 @@ export default function SettingsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Limpio */}
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Ajustes</Text>
+          <Text style={styles.subtitle}>Preferencias y cuenta personal</Text>
         </View>
 
-        {/* Perfil Integrado */}
-        <Pressable
-          onPress={handleOpenEditProfile}
-          style={styles.profileRow}
-        >
+        {/* Tarjeta de Perfil Compacta */}
+        <Pressable onPress={handleOpenEditProfile} style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(profile?.full_name || 'E').slice(0, 1).toUpperCase()}
-            </Text>
+            <Text style={styles.avatarText}>{getInitials(profile?.full_name)}</Text>
           </View>
-
           <View style={styles.profileInfo}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {profile?.full_name || 'Estudiante'}
-            </Text>
-            <Text style={styles.userEmail} numberOfLines={1}>
-              {profile?.email || user?.email || 'Sin correo asignado'}
+            <View style={styles.nameWithEditRow}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {profile?.full_name || 'Estudiante'}
+              </Text>
+              <Edit3 size={13} color="#71717A" />
+            </View>
+            <Text style={styles.profileEmail} numberOfLines={1}>
+              {profile?.email || user?.email || 'Sin correo vinculado'}
             </Text>
           </View>
-
-          <View style={styles.editIconBadge}>
-            <Edit3 size={14} color="#A1A1AA" />
-          </View>
+          <ChevronRight size={16} color="#52525B" />
         </Pressable>
 
-        {/* ÚNICA Tarjeta Agrupada de Preferencias y Acciones */}
-        <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeaderTitle}>PREFERENCIAS</Text>
+        {/* Sección de Recordatorios Automáticos */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recordatorios Automáticos</Text>
+        </View>
 
-          <View style={styles.groupCard}>
-            {/* Vibración Háptica */}
-            <View style={styles.groupItem}>
-              <View style={styles.groupItemLeft}>
-                <Smartphone size={16} color="#A1A1AA" />
-                <Text style={styles.itemTitle}>Respuesta Háptica</Text>
-              </View>
-              <Switch
-                value={hapticsEnabled}
-                onValueChange={handleToggleHaptics}
-                trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-                thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
-              />
+        <View style={styles.groupCard}>
+          {/* Recordatorio de Entregas (1 Día Antes) */}
+          <View style={styles.groupRow}>
+            <View style={styles.rowIconContainer}>
+              <Bell size={16} color="#FFFFFF" />
             </View>
-
-            <View style={styles.itemDivider} />
-
-            {/* Animación de Confetti */}
-            <View style={styles.groupItem}>
-              <View style={styles.groupItemLeft}>
-                <Sparkles size={16} color="#A1A1AA" />
-                <Text style={styles.itemTitle}>Celebración con Confetti</Text>
-              </View>
-              <Switch
-                value={confettiEnabled}
-                onValueChange={handleToggleConfetti}
-                trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-                thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
-              />
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Aviso de entregas</Text>
+              <Text style={styles.rowSubtitle}>Notificar el día anterior a la hora elegida</Text>
             </View>
-
-            <View style={styles.itemDivider} />
-
-            {/* Sincronización Manual */}
-            <Pressable
-              onPress={handleManualSync}
-              disabled={syncing}
-              style={styles.groupItem}
-            >
-              <View style={styles.groupItemLeft}>
-                {syncing ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <RefreshCw size={16} color="#A1A1AA" />
-                )}
-                <Text style={styles.itemTitle}>Sincronizar con la Nube</Text>
-              </View>
-              <ChevronRight size={16} color="#52525B" />
-            </Pressable>
+            <Switch
+              value={advanceReminderEnabled}
+              onValueChange={handleToggleAdvanceReminder}
+              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+              thumbColor={advanceReminderEnabled ? '#09090B' : '#71717A'}
+              ios_backgroundColor="#27272A"
+            />
           </View>
+
+          {/* Selector de Hora para el Recordatorio de Entregas */}
+          {advanceReminderEnabled && (
+            <>
+              <View style={styles.rowDivider} />
+              <Pressable
+                onPress={handleOpenTimeModal}
+                style={styles.groupRow}
+              >
+                <View style={styles.rowIconContainer}>
+                  <Clock size={16} color="#A1A1AA" />
+                </View>
+                <View style={styles.rowContent}>
+                  <Text style={styles.rowTitle}>Hora del recordatorio</Text>
+                  <Text style={styles.rowSubtitle}>Momento del aviso previo a la entrega</Text>
+                </View>
+                <View style={styles.timeValuePill}>
+                  <Text style={styles.timeValueText}>
+                    {formatTimeDisplay(advanceReminderTime)}
+                  </Text>
+                  <ChevronRight size={13} color="#71717A" />
+                </View>
+              </Pressable>
+            </>
+          )}
+
+          <View style={styles.rowDivider} />
+
+          {/* Aviso de Próxima Clase */}
+          <View style={styles.groupRow}>
+            <View style={styles.rowIconContainer}>
+              <BookOpen size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Aviso de próxima clase</Text>
+              <Text style={styles.rowSubtitle}>10 min antes con aula y materia</Text>
+            </View>
+            <Switch
+              value={classReminderEnabled}
+              onValueChange={handleToggleClassReminder}
+              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+              thumbColor={classReminderEnabled ? '#09090B' : '#71717A'}
+              ios_backgroundColor="#27272A"
+            />
+          </View>
+        </View>
+
+        {/* Sección de Experiencia */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Experiencia y Respuesta</Text>
+        </View>
+
+        <View style={styles.groupCard}>
+          {/* Respuesta Háptica */}
+          <View style={styles.groupRow}>
+            <View style={styles.rowIconContainer}>
+              <Smartphone size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Vibración háptica</Text>
+              <Text style={styles.rowSubtitle}>Retroalimentación táctil de iOS</Text>
+            </View>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={handleToggleHaptics}
+              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+              thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
+              ios_backgroundColor="#27272A"
+            />
+          </View>
+
+          <View style={styles.rowDivider} />
+
+          {/* Confetti al Completar Tareas */}
+          <View style={styles.groupRow}>
+            <View style={styles.rowIconContainer}>
+              <Sparkles size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Animación festiva</Text>
+              <Text style={styles.rowSubtitle}>Confetti al completar entregas</Text>
+            </View>
+            <Switch
+              value={confettiEnabled}
+              onValueChange={handleToggleConfetti}
+              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+              thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
+              ios_backgroundColor="#27272A"
+            />
+          </View>
+
+          <View style={styles.rowDivider} />
+
+          {/* Sincronización Manual */}
+          <Pressable
+            onPress={handleManualSync}
+            disabled={syncing}
+            style={styles.groupRow}
+          >
+            <View style={styles.rowIconContainer}>
+              <RefreshCw
+                size={16}
+                color="#FFFFFF"
+                style={syncing ? { transform: [{ rotate: '45deg' }] } : undefined}
+              />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Sincronizar ahora</Text>
+              <Text style={styles.rowSubtitle}>
+                {syncing ? 'Sincronizando...' : 'Actualizar nube y recordatorios'}
+              </Text>
+            </View>
+            {syncing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <ChevronRight size={16} color="#52525B" />
+            )}
+          </Pressable>
         </View>
 
         {/* Botón de Cerrar Sesión */}
-        <Pressable onPress={handleSignOut} style={styles.logoutBtn}>
-          <LogOut size={15} color="#EF4444" />
-          <Text style={styles.logoutBtnText}>Cerrar Sesión</Text>
+        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+          <LogOut size={16} color="#EF4444" />
+          <Text style={styles.signOutText}>Cerrar Sesión</Text>
         </Pressable>
 
         {/* Versión */}
-        <Text style={styles.versionText}>Synapse Personal v2.0.0</Text>
+        <Text style={styles.versionText}>Synapse v2.0 • Offline-First Native</Text>
       </ScrollView>
 
-      {/* Modal de Editar Perfil con KeyboardAvoidingView */}
+      {/* Modal de Selección de Hora de Recordatorio */}
+      <Modal visible={showTimeModal} transparent animationType="none" onRequestClose={handleCloseTimeModal}>
+        <View style={styles.modalBackdrop}>
+          <Animated.View style={[styles.backdropTouch, { opacity: timeFadeAnim }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseTimeModal} />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.timeSheetContainer,
+              {
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+                transform: [{ translateY: timeSlideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.dragHandle} />
+            <View style={styles.timeSheetHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Hora del Recordatorio</Text>
+                <Text style={styles.modalSubtitle}>Aviso previo la noche antes de la entrega</Text>
+              </View>
+              <Pressable onPress={handleCloseTimeModal} hitSlop={12} style={styles.modalCloseBtn}>
+                <X size={18} color="#A1A1AA" />
+              </Pressable>
+            </View>
+
+            <View style={styles.hoursList}>
+              {PRESET_HOURS.map((item) => {
+                const isSelected = advanceReminderTime === item.time
+                return (
+                  <Pressable
+                    key={item.time}
+                    onPress={() => handleSelectHour(item.time)}
+                    style={[styles.hourRow, isSelected && styles.hourRowActive]}
+                  >
+                    <View style={styles.hourRowLeft}>
+                      <Clock size={15} color={isSelected ? '#09090B' : '#71717A'} />
+                      <View>
+                        <Text style={[styles.hourLabel, isSelected && styles.hourLabelActive]}>
+                          {item.label}
+                        </Text>
+                        <Text style={[styles.hourDesc, isSelected && styles.hourDescActive]}>
+                          {item.desc}
+                        </Text>
+                      </View>
+                    </View>
+                    {isSelected && <Check size={16} color="#09090B" strokeWidth={3} />}
+                  </Pressable>
+                )
+              })}
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición de Perfil Elevado */}
       <Modal
         visible={showEditProfileModal}
-        transparent={true}
+        transparent
         animationType="none"
         onRequestClose={handleCloseEditProfile}
       >
         <KeyboardAvoidingView
-          style={styles.modalRoot}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+          style={styles.modalBackdrop}
         >
-          <Animated.View style={[styles.modalBackdrop, { opacity: fadeAnim }]}>
-            <Pressable style={styles.modalBackdropTouch} onPress={handleCloseEditProfile} />
+          <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseEditProfile} />
           </Animated.View>
 
-          <Animated.View style={[styles.modalSheet, { transform: [{ translateY: slideAnim }] }]}>
+          <Animated.View
+            style={[
+              styles.modalSheetContainer,
+              {
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.dragHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Editar Perfil</Text>
-              <Pressable onPress={handleCloseEditProfile} hitSlop={10} style={styles.modalCloseBtn}>
+              <Text style={styles.modalTitle}>Editar Nombre</Text>
+              <Pressable onPress={handleCloseEditProfile} hitSlop={12} style={styles.modalCloseBtn}>
                 <X size={18} color="#A1A1AA" />
               </Pressable>
             </View>
 
             <View style={styles.modalBody}>
               <Text style={styles.inputLabel}>NOMBRE COMPLETO</Text>
-              <View style={styles.inputWrapper}>
-                <User size={16} color="#71717A" style={styles.inputIcon} />
-                <TextInput
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Tu nombre completo"
-                  placeholderTextColor="#71717A"
-                  style={styles.modalTextInput}
-                  autoFocus={true}
-                />
-              </View>
+              <TextInput
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Tu nombre"
+                placeholderTextColor="#52525B"
+                style={styles.textInput}
+                autoFocus
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleSaveProfile}
+              />
 
               <Pressable
                 onPress={handleSaveProfile}
                 disabled={savingProfile}
-                style={[styles.saveProfileBtn, savingProfile && styles.saveProfileBtnDisabled]}
+                style={styles.saveProfileBtn}
               >
                 {savingProfile ? (
                   <ActivityIndicator size="small" color="#09090B" />
                 ) : (
                   <>
-                    <Check size={16} color="#09090B" strokeWidth={3} />
+                    <Check size={16} color="#09090B" strokeWidth={2.5} />
                     <Text style={styles.saveProfileBtnText}>Guardar Cambios</Text>
                   </>
                 )}
@@ -353,25 +611,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     gap: 16,
   },
   header: {
-    paddingHorizontal: 2,
+    marginBottom: 4,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  profileRow: {
+  subtitle: {
+    color: '#71717A',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#101014',
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 14,
     gap: 12,
   },
@@ -385,123 +649,174 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: '#09090B',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
   },
   profileInfo: {
     flex: 1,
     gap: 2,
   },
-  userName: {
+  nameWithEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  profileName: {
     color: '#FFFFFF',
     fontSize: 15.5,
     fontWeight: '700',
-    letterSpacing: -0.2,
   },
-  userEmail: {
+  profileEmail: {
     color: '#71717A',
     fontSize: 12,
     fontWeight: '500',
   },
-  editIconBadge: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  sectionBlock: {
-    gap: 6,
-  },
-  sectionHeaderTitle: {
-    color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+  sectionHeader: {
+    marginTop: 6,
     paddingHorizontal: 4,
   },
+  sectionTitle: {
+    color: '#71717A',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   groupCard: {
-    backgroundColor: '#101014',
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 16,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
   },
-  groupItem: {
+  groupRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 13,
+    paddingHorizontal: 16,
+    gap: 12,
   },
-  groupItemLeft: {
+  rowIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: {
+    flex: 1,
+    gap: 2,
+  },
+  rowTitle: {
+    color: '#FFFFFF',
+    fontSize: 14.5,
+    fontWeight: '600',
+  },
+  rowSubtitle: {
+    color: '#71717A',
+    fontSize: 11.5,
+    fontWeight: '500',
+  },
+  timeValuePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  itemTitle: {
+  timeValueText: {
     color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '600',
-    letterSpacing: -0.2,
+    fontSize: 12,
+    fontWeight: '700',
   },
-  itemDivider: {
+  rowDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginLeft: 58,
   },
-  logoutBtn: {
+  signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.18)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    marginTop: 4,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    paddingVertical: 14,
+    gap: 8,
+    marginTop: 8,
   },
-  logoutBtnText: {
+  signOutText: {
     color: '#EF4444',
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: '700',
   },
   versionText: {
-    color: '#3F3F46',
-    fontSize: 11,
-    textAlign: 'center',
+    color: '#52525B',
+    fontSize: 11.5,
     fontWeight: '500',
-    marginTop: 8,
+    textAlign: 'center',
+    marginTop: 4,
   },
-  modalRoot: {
+  modalBackdrop: {
     flex: 1,
     justifyContent: 'flex-end',
   },
-  modalBackdrop: {
+  backdropTouch: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
-  modalBackdropTouch: {
-    flex: 1,
-  },
-  modalSheet: {
-    backgroundColor: '#0F0F13',
+  modalSheetContainer: {
+    backgroundColor: '#0E0E11',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.09)',
-    padding: 20,
-    paddingBottom: 36,
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  timeSheetContainer: {
+    backgroundColor: '#0E0E11',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginBottom: 14,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  timeSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   modalTitle: {
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '800',
-    letterSpacing: -0.3,
+  },
+  modalSubtitle: {
+    color: '#71717A',
+    fontSize: 11.5,
+    fontWeight: '500',
+    marginTop: 2,
   },
   modalCloseBtn: {
     padding: 4,
@@ -511,46 +826,75 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     color: '#71717A',
-    fontSize: 9.5,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#18181B',
+  textInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 48,
-    gap: 8,
-  },
-  inputIcon: {
-    marginRight: 2,
-  },
-  modalTextInput: {
-    flex: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 13,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   saveProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
     backgroundColor: '#FFFFFF',
+    borderRadius: 13,
     paddingVertical: 13,
-    borderRadius: 14,
-    marginTop: 6,
-  },
-  saveProfileBtnDisabled: {
-    opacity: 0.6,
+    gap: 6,
+    marginTop: 4,
   },
   saveProfileBtnText: {
     color: '#09090B',
-    fontSize: 13.5,
+    fontSize: 14.5,
     fontWeight: '800',
+  },
+  hoursList: {
+    gap: 8,
+  },
+  hourRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  hourRowActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  hourRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  hourLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  hourLabelActive: {
+    color: '#09090B',
+    fontWeight: '800',
+  },
+  hourDesc: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  hourDescActive: {
+    color: '#52525B',
+    fontWeight: '600',
   },
 })

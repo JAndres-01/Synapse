@@ -4,6 +4,12 @@
 .pnp.js
 .yarn/install-state.gz
 
+# Expo & Builds
+.expo/
+/dist/
+/ios/
+/android/
+
 # Next.js
 /.next/
 /out/

@@ -5,7 +5,7 @@ import { personalStorage } from '@/lib/personalStorage'
 import type { PersonalProfile } from '@/types/personal'
 
 interface PersonalAuthContextType {
-  user: User | { id: string; email?: string } | null
+  user: User | null
   session: Session | null
   profile: PersonalProfile | null
   loading: boolean
@@ -18,27 +18,10 @@ interface PersonalAuthContextType {
 const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(undefined)
 
 export function PersonalAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const loadLocalProfile = async () => {
-    let saved = await personalStorage.getProfile()
-    if (!saved) {
-      const defaultId = 'user_' + Math.random().toString(36).substring(2, 11)
-      saved = {
-        id: defaultId,
-        full_name: 'Mi Espacio',
-        email: 'estudiante@synapse.local',
-        theme: 'dark',
-        created_at: new Date().toISOString(),
-      }
-      await personalStorage.setProfile(saved)
-    }
-    setProfile((prev) => (prev?.id === saved?.id && prev?.full_name === saved?.full_name ? prev : saved))
-    setUser((prev: any) => (prev?.id === saved?.id ? prev : { id: saved.id, email: saved.email }))
-  }
 
   useEffect(() => {
     let mounted = true
@@ -49,20 +32,37 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
         if (data.session && mounted) {
           setSession(data.session)
           setUser(data.session.user)
+
+          let fullName = data.session.user.user_metadata?.full_name || 'Estudiante'
+          try {
+            const { data: pRow } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', data.session.user.id)
+              .single()
+            if (pRow?.full_name) fullName = pRow.full_name
+          } catch {}
+
           const profileData: PersonalProfile = {
             id: data.session.user.id,
-            full_name: data.session.user.user_metadata?.full_name || 'Estudiante',
+            full_name: fullName,
             email: data.session.user.email || '',
             theme: 'dark',
             created_at: data.session.user.created_at,
           }
-          setProfile((prev) => (prev?.id === profileData.id ? prev : profileData))
+          setProfile(profileData)
           await personalStorage.setProfile(profileData)
-        } else {
-          await loadLocalProfile()
+        } else if (mounted) {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
         }
-      } catch {
-        await loadLocalProfile()
+      } catch (e) {
+        if (mounted) {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+        }
       } finally {
         if (mounted) setLoading(false)
       }
@@ -75,17 +75,28 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       setSession(newSession)
       if (newSession) {
         setUser(newSession.user)
+        let fullName = newSession.user.user_metadata?.full_name || 'Estudiante'
+        try {
+          const { data: pRow } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', newSession.user.id)
+            .single()
+          if (pRow?.full_name) fullName = pRow.full_name
+        } catch {}
+
         const profileData: PersonalProfile = {
           id: newSession.user.id,
-          full_name: newSession.user.user_metadata?.full_name || 'Estudiante',
+          full_name: fullName,
           email: newSession.user.email || '',
           theme: 'dark',
           created_at: newSession.user.created_at,
         }
-        setProfile((prev) => (prev?.id === profileData.id ? prev : profileData))
+        setProfile(profileData)
         await personalStorage.setProfile(profileData)
       } else {
-        await loadLocalProfile()
+        setUser(null)
+        setProfile(null)
       }
     })
 
@@ -128,18 +139,30 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
     const cleanEmail = email.trim().toLowerCase()
+    const cleanName = name.trim()
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password: pass,
-      options: { data: { full_name: name.trim() } },
+      options: { data: { full_name: cleanName } },
     })
     if (error) throw error
     if (data.session) {
       setSession(data.session)
       setUser(data.session.user)
+
+      // Guardar también en tabla profiles si existe
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.session.user.id,
+          full_name: cleanName,
+          email: cleanEmail,
+          updated_at: new Date().toISOString(),
+        })
+      } catch {}
+
       const profileData: PersonalProfile = {
         id: data.session.user.id,
-        full_name: name.trim(),
+        full_name: cleanName,
         email: data.session.user.email || cleanEmail,
         theme: 'dark',
         created_at: data.session.user.created_at,
@@ -150,9 +173,13 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch {}
+    await personalStorage.clearAll()
     setSession(null)
-    await loadLocalProfile()
+    setUser(null)
+    setProfile(null)
   }
 
   const refreshProfile = async () => {

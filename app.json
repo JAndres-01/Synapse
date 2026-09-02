@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.synapse.app",
       "userInterfaceStyle": "dark",
       "infoPlist": {
-        "UIViewControllerBasedStatusBarAppearance": true
+        "UIViewControllerBasedStatusBarAppearance": true,
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

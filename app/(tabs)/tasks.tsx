@@ -18,7 +18,6 @@ import {
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
@@ -114,49 +113,8 @@ export default function TasksScreen() {
 
     setTasks(resolvedTasks)
     setSubjects(cachedSubjs)
-
-    if (!user) return
-
-    try {
-      const [tasksRes, subjRes] = await Promise.all([
-        supabase
-          .from('tasks')
-          .select('*, subject:subjects(*)')
-          .eq('user_id', user.id)
-          .order('due_date', { ascending: true }),
-        supabase
-          .from('subjects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true }),
-      ])
-
-      if (subjRes.data) {
-        const allSubjs = subjRes.data as Subject[]
-        await personalStorage.setSubjects(allSubjs)
-        setSubjects(allSubjs)
-      }
-
-      if (tasksRes.data) {
-        const allTasks = tasksRes.data as Task[]
-        const resolvedRemote = allTasks.map((t) => {
-          if (!t.subject_id) return { ...t, subject: null }
-          const foundSubj = (subjRes.data || cachedSubjs).find((s: any) => s.id === t.subject_id)
-          return {
-            ...t,
-            subject: foundSubj || null,
-            subject_id: foundSubj ? t.subject_id : null,
-          }
-        })
-        await personalStorage.setTasks(resolvedRemote)
-        setTasks(resolvedRemote)
-      }
-    } catch (err) {
-      console.log('Sync tasks info:', err)
-    } finally {
-      setRefreshing(false)
-    }
-  }, [user?.id])
+    setRefreshing(false)
+  }, [])
 
   // Recargar datos cada vez que la pestaña Tareas entra en pantalla
   useFocusEffect(
@@ -363,15 +321,6 @@ export default function TasksScreen() {
       setTasks(updated)
       await personalStorage.setTasks(updated)
     }
-
-    try {
-      await supabase
-        .from('tasks')
-        .update({ status: nextStatus, updated_at: new Date().toISOString() })
-        .eq('id', taskId)
-    } catch {
-      // Offline fallback
-    }
   }
 
   const handleDeleteTask = async (taskId: string) => {
@@ -383,7 +332,6 @@ export default function TasksScreen() {
     })
     const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
-    supabase.from('tasks').delete().eq('id', taskId).then(() => {})
   }
 
   const filteredTasks = useMemo(() => {

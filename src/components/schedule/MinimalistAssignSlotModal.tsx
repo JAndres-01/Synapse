@@ -17,7 +17,6 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { X, Check, Trash2 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
-import { supabase } from '@/lib/personalSupabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -191,8 +190,8 @@ export function MinimalistAssignSlotModal({
 
     try {
       const slotData: Schedule = {
-        id: existingSchedule?.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-        user_id: userId,
+        id: existingSchedule?.id || `sched_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        user_id: userId || 'local_user',
         day_of_week: dayOfWeek,
         block_number: blockNumber,
         subject_id: selectedSubjectId,
@@ -205,24 +204,6 @@ export function MinimalistAssignSlotModal({
       triggerHaptic('success')
       onScheduleSaved()
       handleSmoothClose()
-
-      supabase
-        .from('schedules')
-        .upsert(
-          {
-            id: slotData.id,
-            user_id: userId,
-            day_of_week: slotData.day_of_week,
-            block_number: slotData.block_number,
-            subject_id: slotData.subject_id,
-            start_time: slotData.start_time,
-            end_time: slotData.end_time,
-          },
-          { onConflict: 'user_id,day_of_week,block_number' }
-        )
-        .then(({ error }) => {
-          if (error) console.log('Supabase sync slot info:', error.message)
-        })
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudo guardar la clase.')
       triggerHaptic('error')
@@ -238,14 +219,6 @@ export function MinimalistAssignSlotModal({
       triggerHaptic('success')
       onScheduleSaved()
       handleSmoothClose()
-
-      supabase
-        .from('schedules')
-        .delete()
-        .eq('user_id', userId)
-        .eq('day_of_week', dayOfWeek)
-        .eq('block_number', blockNumber)
-        .then(() => {})
     } catch (err) {
       console.error('Error limpiando bloque:', err)
     } finally {

@@ -8,7 +8,6 @@ import {
   StyleSheet,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { Schedule, Task, Subject } from '@/types/personal'
 import { MinimalistLiveHero } from '@/components/today/MinimalistLiveHero'
@@ -86,42 +85,7 @@ export default function TodayScreen() {
     setSchedulesToday(resolvedScheds.filter((s) => s.day_of_week === todayNum))
     setTasks(resolvedTasks)
     setSubjects(cachedSubjs)
-
-    if (!user?.id) return
-
-    try {
-      const [schedRes, tasksRes, subjRes] = await Promise.all([
-        supabase.from('schedules').select('*, subject:subjects(*)').eq('user_id', user.id),
-        supabase.from('tasks').select('*, subject:subjects(*)').eq('user_id', user.id),
-        supabase.from('subjects').select('*').eq('user_id', user.id),
-      ])
-
-      if (subjRes.data) {
-        setSubjects(subjRes.data)
-        await personalStorage.setSubjects(subjRes.data)
-      }
-
-      if (schedRes.data) {
-        const remoteScheds = schedRes.data.map((s: any) => {
-          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === s.subject_id)
-          return { ...s, subject: foundSubj || null }
-        }).filter((s: any) => Boolean(s.subject))
-        setSchedulesToday(remoteScheds.filter((s: any) => s.day_of_week === todayNum))
-        await personalStorage.setSchedules(remoteScheds)
-      }
-
-      if (tasksRes.data) {
-        const remoteTasks = tasksRes.data.map((t: any) => {
-          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === t.subject_id)
-          return { ...t, subject: foundSubj || null, subject_id: foundSubj ? t.subject_id : null }
-        })
-        setTasks(remoteTasks)
-        await personalStorage.setTasks(remoteTasks)
-      }
-    } catch (err) {
-      console.warn('Sync background offline:', err)
-    }
-  }, [user?.id])
+  }, [])
 
   useFocusEffect(
     useCallback(() => {

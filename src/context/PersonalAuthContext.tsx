@@ -1,209 +1,75 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
-import type { User, Session } from '@supabase/supabase-js'
-import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { PersonalProfile } from '@/types/personal'
 
 interface PersonalAuthContextType {
-  user: User | null
-  session: Session | null
+  user: { id: string } | null
   profile: PersonalProfile | null
   loading: boolean
-  signInWithEmail: (email: string, pass: string) => Promise<void>
-  signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>
-  signOut: () => Promise<void>
+  updateProfile: (fullName: string, email?: string) => Promise<void>
   refreshProfile: () => Promise<void>
+  clearData: () => Promise<void>
 }
 
 const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(undefined)
 
 export function PersonalAuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const loadLocalProfile = async () => {
+    try {
+      const p = await personalStorage.getProfile()
+      setProfile(p)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    let mounted = true
-
-    async function initAuth() {
-      try {
-        const { data } = await supabase.auth.getSession()
-        if (data.session && mounted) {
-          setSession(data.session)
-          setUser(data.session.user)
-
-          let fullName = data.session.user.user_metadata?.full_name || 'Estudiante'
-          try {
-            const { data: pRow } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', data.session.user.id)
-              .single()
-            if (pRow?.full_name) fullName = pRow.full_name
-          } catch {}
-
-          const profileData: PersonalProfile = {
-            id: data.session.user.id,
-            full_name: fullName,
-            email: data.session.user.email || '',
-            theme: 'dark',
-            created_at: data.session.user.created_at,
-          }
-          setProfile(profileData)
-          await personalStorage.setProfile(profileData)
-        } else if (mounted) {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-        }
-      } catch (e) {
-        if (mounted) {
-          setSession(null)
-          setUser(null)
-          setProfile(null)
-        }
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
-
-    initAuth()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      if (!mounted) return
-      setSession(newSession)
-      if (newSession) {
-        setUser(newSession.user)
-        let fullName = newSession.user.user_metadata?.full_name || 'Estudiante'
-        try {
-          const { data: pRow } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', newSession.user.id)
-            .single()
-          if (pRow?.full_name) fullName = pRow.full_name
-        } catch {}
-
-        const profileData: PersonalProfile = {
-          id: newSession.user.id,
-          full_name: fullName,
-          email: newSession.user.email || '',
-          theme: 'dark',
-          created_at: newSession.user.created_at,
-        }
-        setProfile(profileData)
-        await personalStorage.setProfile(profileData)
-      } else {
-        setUser(null)
-        setProfile(null)
-      }
-    })
-
-    return () => {
-      mounted = false
-      authListener?.subscription.unsubscribe()
-    }
+    loadLocalProfile()
   }, [])
 
-  const signInWithEmail = async (email: string, pass: string) => {
-    const cleanEmail = email.trim().toLowerCase()
-    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass })
-    if (error) throw error
-    if (data.session) {
-      setSession(data.session)
-      setUser(data.session.user)
-      let profileName = data.session.user.user_metadata?.full_name || 'Estudiante'
-      try {
-        const { data: profileRow } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', data.session.user.id)
-          .single()
-        if (profileRow?.full_name) {
-          profileName = profileRow.full_name
-        }
-      } catch {}
-
-      const profileData: PersonalProfile = {
-        id: data.session.user.id,
-        full_name: profileName,
-        email: data.session.user.email || cleanEmail,
-        theme: 'dark',
-        created_at: data.session.user.created_at,
-      }
-      setProfile(profileData)
-      await personalStorage.setProfile(profileData)
+  const updateProfile = async (fullName: string, email?: string) => {
+    const current = profile || (await personalStorage.getProfile())
+    const updated: PersonalProfile = {
+      ...current,
+      full_name: fullName.trim() || 'Estudiante',
+      email: email ? email.trim() : current.email,
+      updated_at: new Date().toISOString(),
     }
-  }
-
-  const signUpWithEmail = async (email: string, pass: string, name: string) => {
-    const cleanEmail = email.trim().toLowerCase()
-    const cleanName = name.trim()
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: pass,
-      options: { data: { full_name: cleanName } },
-    })
-    if (error) throw error
-    if (data.session) {
-      setSession(data.session)
-      setUser(data.session.user)
-
-      // Guardar también en tabla profiles si existe
-      try {
-        await supabase.from('profiles').upsert({
-          id: data.session.user.id,
-          full_name: cleanName,
-          email: cleanEmail,
-          updated_at: new Date().toISOString(),
-        })
-      } catch {}
-
-      const profileData: PersonalProfile = {
-        id: data.session.user.id,
-        full_name: cleanName,
-        email: data.session.user.email || cleanEmail,
-        theme: 'dark',
-        created_at: data.session.user.created_at,
-      }
-      setProfile(profileData)
-      await personalStorage.setProfile(profileData)
-    }
-  }
-
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut()
-    } catch {}
-    await personalStorage.clearAll()
-    setSession(null)
-    setUser(null)
-    setProfile(null)
+    await personalStorage.setProfile(updated)
+    setProfile(updated)
   }
 
   const refreshProfile = async () => {
-    if (user?.id) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (data) {
-        setProfile(data)
-        await personalStorage.setProfile(data)
-      }
+    const p = await personalStorage.getProfile()
+    setProfile(p)
+  }
+
+  const clearData = async () => {
+    await personalStorage.clearAll()
+    const defaultProfile: PersonalProfile = {
+      id: 'local_user',
+      full_name: 'Estudiante',
+      email: '',
+      theme: 'dark',
+      created_at: new Date().toISOString(),
     }
+    await personalStorage.setProfile(defaultProfile)
+    setProfile(defaultProfile)
   }
 
   const value = useMemo(
     () => ({
-      user,
-      session,
+      user: { id: profile?.id || 'local_user' },
       profile,
       loading,
-      signInWithEmail,
-      signUpWithEmail,
-      signOut,
+      updateProfile,
       refreshProfile,
+      clearData,
     }),
-    [user, session, profile, loading]
+    [profile, loading]
   )
 
   return (

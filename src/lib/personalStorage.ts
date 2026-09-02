@@ -188,15 +188,22 @@ export const personalStorage = {
   },
 
   // ==========================================
-  // PERFIL (PROFILE)
+  // PERFIL LOCAL (PROFILE)
   // ==========================================
-  async getProfile(): Promise<PersonalProfile | null> {
+  async getProfile(): Promise<PersonalProfile> {
     try {
       const data = await AsyncStorage.getItem(KEYS.PROFILE)
-      return data ? JSON.parse(data) : null
-    } catch {
-      return null
+      if (data) return JSON.parse(data)
+    } catch {}
+    const defaultProfile: PersonalProfile = {
+      id: 'local_user',
+      full_name: 'Estudiante',
+      email: '',
+      theme: 'dark',
+      created_at: new Date().toISOString(),
     }
+    await this.setProfile(defaultProfile)
+    return defaultProfile
   },
 
   async setProfile(profile: PersonalProfile): Promise<void> {
@@ -238,5 +245,58 @@ export const personalStorage = {
     } catch (err) {
       console.error('Error guardando preferencias en storage:', err)
     }
+  },
+
+  // ==========================================
+  // COPIAS DE SEGURIDAD (BACKUP / RESTORE)
+  // ==========================================
+  async exportBackup(): Promise<string> {
+    const [subjects, schedules, tasks, profile, preferences] = await Promise.all([
+      this.getSubjects(),
+      this.getSchedules(),
+      this.getTasks(),
+      this.getProfile(),
+      this.getPreferences(),
+    ])
+    return JSON.stringify(
+      {
+        app: 'Synapse',
+        version: '2.0-local',
+        exported_at: new Date().toISOString(),
+        subjects,
+        schedules,
+        tasks,
+        profile,
+        preferences,
+      },
+      null,
+      2
+    )
+  },
+
+  async importBackup(jsonString: string): Promise<boolean> {
+    try {
+      const data = JSON.parse(jsonString)
+      if (Array.isArray(data.subjects)) await this.setSubjects(data.subjects)
+      if (Array.isArray(data.schedules)) await this.setSchedules(data.schedules)
+      if (Array.isArray(data.tasks)) await this.setTasks(data.tasks)
+      if (data.profile) await this.setProfile(data.profile)
+      if (data.preferences) await this.setPreferences(data.preferences)
+      return true
+    } catch {
+      return false
+    }
+  },
+
+  async clearAll(): Promise<void> {
+    try {
+      await AsyncStorage.multiRemove([
+        KEYS.SUBJECTS,
+        KEYS.SCHEDULES,
+        KEYS.TASKS,
+        KEYS.PROFILE,
+        KEYS.PREFERENCES,
+      ])
+    } catch {}
   },
 }

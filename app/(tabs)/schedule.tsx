@@ -13,7 +13,6 @@ import {
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { supabase } from '@/lib/personalSupabase'
 import { personalStorage } from '@/lib/personalStorage'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
@@ -117,67 +116,8 @@ export default function ScheduleScreen() {
     setSchedules(resolvedScheds)
     setSubjects(cachedSubjs)
     setTasks(resolvedTasks)
-
-    if (!user) return
-
-    try {
-      const [schedRes, subjRes, taskRes] = await Promise.all([
-        supabase
-          .from('schedules')
-          .select('*, subject:subjects(*)')
-          .eq('user_id', user.id)
-          .order('block_number', { ascending: true }),
-        supabase
-          .from('subjects')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true }),
-        supabase
-          .from('tasks')
-          .select('*, subject:subjects(*)')
-          .eq('user_id', user.id)
-          .order('due_date', { ascending: true }),
-      ])
-
-      if (subjRes.data) {
-        const allSubjs = subjRes.data as Subject[]
-        await personalStorage.setSubjects(allSubjs)
-        setSubjects(allSubjs)
-      }
-
-      if (schedRes.data) {
-        const allScheds = schedRes.data as Schedule[]
-        const resolvedRemoteScheds = allScheds.map((s) => {
-          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === s.subject_id)
-          return {
-            ...s,
-            subject: foundSubj || null,
-          }
-        }).filter((s) => Boolean(s.subject))
-
-        await personalStorage.setSchedules(resolvedRemoteScheds)
-        setSchedules(resolvedRemoteScheds)
-      }
-
-      if (taskRes.data) {
-        const allTasks = taskRes.data as Task[]
-        const resolvedRemoteTasks = allTasks.map((t) => {
-          const foundSubj = (subjRes.data || cachedSubjs).find((subj: any) => subj.id === t.subject_id)
-          return {
-            ...t,
-            subject: foundSubj || null,
-            subject_id: foundSubj ? t.subject_id : null,
-          }
-        })
-        await personalStorage.setTasks(resolvedRemoteTasks)
-        setTasks(resolvedRemoteTasks)
-      }
-    } catch (err) {
-      console.log('Sync info:', err)
-    } finally {
-      setRefreshing(false)
-    }
-  }, [user?.id])
+    setRefreshing(false)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {

@@ -17,7 +17,6 @@ import type { Subject } from '@/types/personal'
 import { X, Plus, Trash2, BookOpen, Check, User, Pencil, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
-import { supabase } from '@/lib/personalSupabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -210,26 +209,10 @@ export function MinimalistSubjectModal({
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
-
-        if (userId) {
-          try {
-            await supabase
-              .from('subjects')
-              .upsert({
-                id: updated.id,
-                user_id: userId,
-                name: updated.name,
-                teacher_name: updated.teacher_name || '',
-                color: updated.color,
-              })
-          } catch (supaErr) {
-            console.log('Supabase update subject error:', supaErr)
-          }
-        }
       } else {
         const newSubject: Subject = {
           id: `subj_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-          user_id: userId,
+          user_id: userId || 'local_user',
           name: name.trim(),
           teacher_name: teacher.trim() || undefined,
           color: selectedColor,
@@ -239,23 +222,6 @@ export function MinimalistSubjectModal({
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
-
-        if (userId) {
-          try {
-            await supabase
-              .from('subjects')
-              .upsert({
-                id: newSubject.id,
-                user_id: userId,
-                name: newSubject.name,
-                teacher_name: newSubject.teacher_name || '',
-                color: newSubject.color,
-                created_at: new Date().toISOString(),
-              })
-          } catch (supaErr) {
-            console.log('Supabase insert subject error:', supaErr)
-          }
-        }
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'No se pudo guardar la materia.')
@@ -283,19 +249,6 @@ export function MinimalistSubjectModal({
               }
 
               await personalStorage.removeSubject(subjectId)
-
-              if (userId) {
-                try {
-                  await Promise.all([
-                    supabase.from('subjects').delete().eq('id', subjectId),
-                    supabase.from('schedules').delete().eq('subject_id', subjectId),
-                    supabase.from('tasks').update({ subject_id: null }).eq('subject_id', subjectId),
-                  ])
-                } catch (supaErr) {
-                  console.log('Supabase delete subject error:', supaErr)
-                }
-              }
-
               onSubjectsUpdated()
             } catch (err) {
               console.error('Error eliminando materia:', err)

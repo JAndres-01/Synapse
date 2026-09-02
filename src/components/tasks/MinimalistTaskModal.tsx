@@ -46,7 +46,6 @@ import * as Linking from 'expo-linking'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
-import { supabase } from '@/lib/personalSupabase'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -479,15 +478,8 @@ export function MinimalistTaskModal({
           subject: selectedSubj || null,
         }
         await personalStorage.saveTask(fullTask)
-        if (userId) {
-          try {
-            await supabase.from('tasks').update(payload).eq('id', task.id)
-          } catch (e) {
-            console.log('Supabase sync update error:', e)
-          }
-        }
       } else {
-        const newId = `task_${Date.now()}_${Math.random().toString(36).substring(7)}`
+        const newId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
         const fullTask: Task = {
           id: newId,
           ...payload,
@@ -495,13 +487,6 @@ export function MinimalistTaskModal({
           created_at: new Date().toISOString(),
         }
         await personalStorage.saveTask(fullTask)
-        if (userId) {
-          try {
-            await supabase.from('tasks').insert({ id: newId, ...payload })
-          } catch (e) {
-            console.log('Supabase sync insert error:', e)
-          }
-        }
       }
 
       triggerHaptic('success')

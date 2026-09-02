@@ -11,19 +11,16 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Share,
   Platform,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
-import { supabase } from '@/lib/personalSupabase'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   User,
-  LogOut,
   Sparkles,
   Smartphone,
-  RefreshCw,
   Edit3,
   X,
   Check,
@@ -31,13 +28,16 @@ import {
   Bell,
   Clock,
   BookOpen,
+  Download,
+  Upload,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
   syncAllNotifications,
   requestNotificationPermissions,
 } from '@/lib/personalNotifications'
-import { syncUserData } from '@/lib/personalSync'
 import { useRouter, useFocusEffect } from 'expo-router'
 
 const PRESET_HOURS = [
@@ -51,9 +51,8 @@ const PRESET_HOURS = [
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { user, profile, signOut, refreshProfile } = usePersonalAuth()
+  const { profile, updateProfile, clearData } = usePersonalAuth()
 
-  const [syncing, setSyncing] = useState(false)
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [confettiEnabled, setConfettiEnabled] = useState(true)
   const [advanceReminderEnabled, setAdvanceReminderEnabled] = useState(true)
@@ -71,6 +70,13 @@ export default function SettingsScreen() {
   const [savingProfile, setSavingProfile] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(300)).current
+
+  // Modal de Importar Copia de Seguridad
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importJsonText, setImportJsonText] = useState('')
+  const [importing, setImporting] = useState(false)
+  const importFadeAnim = useRef(new Animated.Value(0)).current
+  const importSlideAnim = useRef(new Animated.Value(300)).current
 
   const loadData = useCallback(async () => {
     const prefs = await personalStorage.getPreferences()
@@ -91,25 +97,6 @@ export default function SettingsScreen() {
   useEffect(() => {
     loadData()
   }, [loadData])
-
-  const handleManualSync = async () => {
-    triggerHaptic('medium')
-    setSyncing(true)
-    try {
-      const result = await syncUserData(user?.id)
-      triggerHaptic('success')
-      if (result.offline) {
-        Alert.alert('Modo Local', 'Trabajando con tus datos locales guardados en el dispositivo.')
-      } else {
-        Alert.alert('Sincronizado', 'Tus materias, horarios, tareas y recordatorios están al día con la nube.')
-      }
-    } catch (err: any) {
-      triggerHaptic('error')
-      Alert.alert('Error', err.message || 'No se pudo sincronizar.')
-    } finally {
-      setSyncing(false)
-    }
-  }
 
   const handleOpenEditProfile = () => {
     triggerHaptic('light')
@@ -141,15 +128,7 @@ export default function SettingsScreen() {
     setSavingProfile(true)
     triggerHaptic('medium')
     try {
-      if (user?.id) {
-        await supabase
-          .from('profiles')
-          .update({ full_name: editName.trim() })
-          .eq('id', user.id)
-      }
-      if (refreshProfile) {
-        await refreshProfile()
-      }
+      await updateProfile(editName.trim())
       triggerHaptic('success')
       handleCloseEditProfile()
     } catch (err: any) {
@@ -240,6 +219,88 @@ export default function SettingsScreen() {
     handleCloseTimeModal()
   }
 
+  const handleExportBackup = async () => {
+    triggerHaptic('medium')
+    try {
+      const jsonStr = await personalStorage.exportBackup()
+      triggerHaptic('success')
+      await Share.share({
+        title: 'Copia de Seguridad - Synapse',
+        message: jsonStr,
+      })
+    } catch {
+      Alert.alert('Error', 'No se pudo exportar la copia de seguridad.')
+    }
+  }
+
+  const handleOpenImportModal = () => {
+    triggerHaptic('light')
+    setImportJsonText('')
+    setShowImportModal(true)
+    Animated.parallel([
+      Animated.timing(importFadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.spring(importSlideAnim, { toValue: 0, stiffness: 450, damping: 28, useNativeDriver: true }),
+    ]).start()
+  }
+
+  const handleCloseImportModal = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(importFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(importSlideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
+    ]).start(() => {
+      setShowImportModal(false)
+    })
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importJsonText.trim()) {
+      triggerHaptic('error')
+      Alert.alert('Datos requeridos', 'Pega el texto JSON de tu respaldo.')
+      return
+    }
+
+    setImporting(true)
+    try {
+      const success = await personalStorage.importBackup(importJsonText.trim())
+      if (success) {
+        triggerHaptic('success')
+        Alert.alert('Restaurado', 'Tus materias, horarios y tareas se han restaurado con éxito.')
+        handleCloseImportModal()
+        loadData()
+      } else {
+        triggerHaptic('error')
+        Alert.alert('Error', 'El formato del archivo JSON no es válido.')
+      }
+    } catch {
+      triggerHaptic('error')
+      Alert.alert('Error', 'Ocurrió un error al procesar el respaldo.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleClearAllData = () => {
+    triggerHaptic('warning')
+    Alert.alert(
+      'Restablecer App',
+      '¿Deseas eliminar todas las materias, horarios y tareas del dispositivo? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Restablecer Todo',
+          style: 'destructive',
+          onPress: async () => {
+            triggerHaptic('error')
+            await clearData()
+            loadData()
+            Alert.alert('Restablecido', 'La app ha quedado limpia como en su primer uso.')
+          },
+        },
+      ]
+    )
+  }
+
   const formatTimeDisplay = (timeStr: string) => {
     const found = PRESET_HOURS.find((p) => p.time === timeStr)
     if (found) return found.label
@@ -252,26 +313,6 @@ export default function SettingsScreen() {
     } catch {
       return timeStr
     }
-  }
-
-  const handleSignOut = () => {
-    triggerHaptic('warning')
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Deseas salir de tu cuenta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            triggerHaptic('error')
-            await signOut()
-            router.replace('/auth')
-          },
-        },
-      ]
-    )
   }
 
   const getInitials = (name?: string) => {
@@ -296,10 +337,10 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>Preferencias y cuenta personal</Text>
+          <Text style={styles.subtitle}>Preferencias y datos locales</Text>
         </View>
 
-        {/* Tarjeta de Perfil Compacta */}
+        {/* Tarjeta de Perfil */}
         <Pressable onPress={handleOpenEditProfile} style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(profile?.full_name)}</Text>
@@ -311,9 +352,10 @@ export default function SettingsScreen() {
               </Text>
               <Edit3 size={13} color="#71717A" />
             </View>
-            <Text style={styles.profileEmail} numberOfLines={1}>
-              {profile?.email || user?.email || 'Sin correo vinculado'}
-            </Text>
+            <View style={styles.badgeRow}>
+              <ShieldCheck size={12} color="#10B981" />
+              <Text style={styles.badgeText}>Almacenamiento 100% Local</Text>
+            </View>
           </View>
           <ChevronRight size={16} color="#52525B" />
         </Pressable>
@@ -342,14 +384,11 @@ export default function SettingsScreen() {
             />
           </View>
 
-          {/* Selector de Hora para el Recordatorio de Entregas */}
+          {/* Selector de Hora */}
           {advanceReminderEnabled && (
             <>
               <View style={styles.rowDivider} />
-              <Pressable
-                onPress={handleOpenTimeModal}
-                style={styles.groupRow}
-              >
+              <Pressable onPress={handleOpenTimeModal} style={styles.groupRow}>
                 <View style={styles.rowIconContainer}>
                   <Clock size={16} color="#A1A1AA" />
                 </View>
@@ -431,44 +470,49 @@ export default function SettingsScreen() {
               ios_backgroundColor="#27272A"
             />
           </View>
+        </View>
+
+        {/* Sección de Copias de Seguridad */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Copias de Seguridad y Datos</Text>
+        </View>
+
+        <View style={styles.groupCard}>
+          {/* Exportar Respaldo */}
+          <Pressable onPress={handleExportBackup} style={styles.groupRow}>
+            <View style={styles.rowIconContainer}>
+              <Download size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Exportar Respaldo</Text>
+              <Text style={styles.rowSubtitle}>Guardar copia en Archivos o compartir por WhatsApp</Text>
+            </View>
+            <ChevronRight size={16} color="#52525B" />
+          </Pressable>
 
           <View style={styles.rowDivider} />
 
-          {/* Sincronización Manual */}
-          <Pressable
-            onPress={handleManualSync}
-            disabled={syncing}
-            style={styles.groupRow}
-          >
+          {/* Restaurar Respaldo */}
+          <Pressable onPress={handleOpenImportModal} style={styles.groupRow}>
             <View style={styles.rowIconContainer}>
-              <RefreshCw
-                size={16}
-                color="#FFFFFF"
-                style={syncing ? { transform: [{ rotate: '45deg' }] } : undefined}
-              />
+              <Upload size={16} color="#A1A1AA" />
             </View>
             <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Sincronizar ahora</Text>
-              <Text style={styles.rowSubtitle}>
-                {syncing ? 'Sincronizando...' : 'Actualizar nube y recordatorios'}
-              </Text>
+              <Text style={styles.rowTitle}>Restaurar Respaldo</Text>
+              <Text style={styles.rowSubtitle}>Cargar materias, horarios y tareas previas</Text>
             </View>
-            {syncing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <ChevronRight size={16} color="#52525B" />
-            )}
+            <ChevronRight size={16} color="#52525B" />
           </Pressable>
         </View>
 
-        {/* Botón de Cerrar Sesión */}
-        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
-          <LogOut size={16} color="#EF4444" />
-          <Text style={styles.signOutText}>Cerrar Sesión</Text>
+        {/* Botón de Restablecer Todo */}
+        <Pressable onPress={handleClearAllData} style={styles.clearBtn}>
+          <Trash2 size={15} color="#EF4444" />
+          <Text style={styles.clearBtnText}>Restablecer Datos Locales</Text>
         </Pressable>
 
         {/* Versión */}
-        <Text style={styles.versionText}>Synapse v2.0 • Offline-First Native</Text>
+        <Text style={styles.versionText}>Synapse v2.0 • 100% Local & Privado</Text>
       </ScrollView>
 
       {/* Modal de Selección de Hora de Recordatorio */}
@@ -499,26 +543,25 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.hoursList}>
-              {PRESET_HOURS.map((item) => {
-                const isSelected = advanceReminderTime === item.time
+              {PRESET_HOURS.map((preset) => {
+                const isSelected = advanceReminderTime === preset.time
                 return (
                   <Pressable
-                    key={item.time}
-                    onPress={() => handleSelectHour(item.time)}
-                    style={[styles.hourRow, isSelected && styles.hourRowActive]}
+                    key={preset.time}
+                    onPress={() => handleSelectHour(preset.time)}
+                    style={[styles.hourRow, isSelected && styles.hourRowSelected]}
                   >
-                    <View style={styles.hourRowLeft}>
-                      <Clock size={15} color={isSelected ? '#09090B' : '#71717A'} />
-                      <View>
-                        <Text style={[styles.hourLabel, isSelected && styles.hourLabelActive]}>
-                          {item.label}
-                        </Text>
-                        <Text style={[styles.hourDesc, isSelected && styles.hourDescActive]}>
-                          {item.desc}
-                        </Text>
-                      </View>
+                    <View style={styles.hourInfo}>
+                      <Text style={[styles.hourLabel, isSelected && styles.hourLabelSelected]}>
+                        {preset.label}
+                      </Text>
+                      <Text style={styles.hourDesc}>{preset.desc}</Text>
                     </View>
-                    {isSelected && <Check size={16} color="#09090B" strokeWidth={3} />}
+                    {isSelected && (
+                      <View style={styles.hourCheckPill}>
+                        <Check size={14} color="#09090B" />
+                      </View>
+                    )}
                   </Pressable>
                 )
               })}
@@ -527,24 +570,16 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Edición de Perfil Elevado */}
-      <Modal
-        visible={showEditProfileModal}
-        transparent
-        animationType="none"
-        onRequestClose={handleCloseEditProfile}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalBackdrop}
-        >
+      {/* Modal de Edición de Perfil */}
+      <Modal visible={showEditProfileModal} transparent animationType="none" onRequestClose={handleCloseEditProfile}>
+        <View style={styles.modalBackdrop}>
           <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseEditProfile} />
           </Animated.View>
 
           <Animated.View
             style={[
-              styles.modalSheetContainer,
+              styles.sheetContainer,
               {
                 paddingBottom: Math.max(insets.bottom, 20) + 12,
                 transform: [{ translateY: slideAnim }],
@@ -552,15 +587,18 @@ export default function SettingsScreen() {
             ]}
           >
             <View style={styles.dragHandle} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Editar Nombre</Text>
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Editar Nombre</Text>
+                <Text style={styles.modalSubtitle}>Cómo te saluda la app</Text>
+              </View>
               <Pressable onPress={handleCloseEditProfile} hitSlop={12} style={styles.modalCloseBtn}>
                 <X size={18} color="#A1A1AA" />
               </Pressable>
             </View>
 
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>NOMBRE COMPLETO</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>NOMBRE</Text>
               <TextInput
                 value={editName}
                 onChangeText={setEditName}
@@ -568,28 +606,83 @@ export default function SettingsScreen() {
                 placeholderTextColor="#52525B"
                 style={styles.textInput}
                 autoFocus
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={handleSaveProfile}
               />
+            </View>
 
-              <Pressable
-                onPress={handleSaveProfile}
-                disabled={savingProfile}
-                style={styles.saveProfileBtn}
-              >
-                {savingProfile ? (
-                  <ActivityIndicator size="small" color="#09090B" />
-                ) : (
-                  <>
-                    <Check size={16} color="#09090B" strokeWidth={2.5} />
-                    <Text style={styles.saveProfileBtnText}>Guardar Cambios</Text>
-                  </>
-                )}
+            <Pressable
+              onPress={handleSaveProfile}
+              disabled={savingProfile}
+              style={styles.saveBtn}
+            >
+              {savingProfile ? (
+                <ActivityIndicator size="small" color="#09090B" />
+              ) : (
+                <>
+                  <Check size={16} color="#09090B" />
+                  <Text style={styles.saveBtnText}>Guardar</Text>
+                </>
+              )}
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Modal de Importar Copia de Seguridad */}
+      <Modal visible={showImportModal} transparent animationType="none" onRequestClose={handleCloseImportModal}>
+        <View style={styles.modalBackdrop}>
+          <Animated.View style={[styles.backdropTouch, { opacity: importFadeAnim }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseImportModal} />
+          </Animated.View>
+
+          <Animated.View
+            style={[
+              styles.sheetContainer,
+              {
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+                transform: [{ translateY: importSlideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.dragHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Restaurar Respaldo</Text>
+                <Text style={styles.modalSubtitle}>Pega el contenido JSON de tu copia</Text>
+              </View>
+              <Pressable onPress={handleCloseImportModal} hitSlop={12} style={styles.modalCloseBtn}>
+                <X size={18} color="#A1A1AA" />
               </Pressable>
             </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>DATOS EN FORMATO JSON</Text>
+              <TextInput
+                value={importJsonText}
+                onChangeText={setImportJsonText}
+                placeholder='{"version": "2.0-local", "subjects": [...]}'
+                placeholderTextColor="#52525B"
+                style={[styles.textInput, styles.jsonInput]}
+                multiline
+                numberOfLines={6}
+              />
+            </View>
+
+            <Pressable
+              onPress={handleConfirmImport}
+              disabled={importing}
+              style={styles.saveBtn}
+            >
+              {importing ? (
+                <ActivityIndicator size="small" color="#09090B" />
+              ) : (
+                <>
+                  <Upload size={16} color="#09090B" />
+                  <Text style={styles.saveBtnText}>Restaurar Datos</Text>
+                </>
+              )}
+            </Pressable>
           </Animated.View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   )
@@ -604,31 +697,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
-    gap: 16,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   header: {
-    marginBottom: 4,
+    marginBottom: 8,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   subtitle: {
-    color: '#71717A',
     fontSize: 13,
-    fontWeight: '500',
+    color: '#71717A',
     marginTop: 2,
+    fontWeight: '500',
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: 18,
+    backgroundColor: '#121215',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
     padding: 14,
     gap: 12,
   },
@@ -636,18 +729,20 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#27272A',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#09090B',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
   },
   profileInfo: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   nameWithEditRow: {
     flexDirection: 'row',
@@ -656,16 +751,22 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: '#FFFFFF',
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  profileEmail: {
-    color: '#71717A',
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  badgeText: {
+    color: '#10B981',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   sectionHeader: {
-    marginTop: 6,
+    marginTop: 10,
     paddingHorizontal: 4,
   },
   sectionTitle: {
@@ -673,112 +774,116 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   groupCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderRadius: 18,
+    backgroundColor: '#121215',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
     overflow: 'hidden',
   },
   groupRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 13,
-    paddingHorizontal: 16,
     gap: 12,
   },
   rowIconContainer: {
     width: 32,
     height: 32,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowContent: {
     flex: 1,
-    gap: 2,
   },
   rowTitle: {
     color: '#FFFFFF',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '600',
   },
   rowSubtitle: {
     color: '#71717A',
     fontSize: 11.5,
-    fontWeight: '500',
+    marginTop: 1,
+  },
+  rowDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginLeft: 58,
   },
   timeValuePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 10,
   },
   timeValueText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  rowDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginLeft: 58,
-  },
-  signOutBtn: {
+  clearBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
     backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 16,
     marginTop: 8,
   },
-  signOutText: {
+  clearBtnText: {
     color: '#EF4444',
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   versionText: {
+    textAlign: 'center',
     color: '#52525B',
     fontSize: 11.5,
     fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 4,
+    marginTop: 6,
+    marginBottom: 8,
   },
   modalBackdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
   backdropTouch: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
-  modalSheetContainer: {
-    backgroundColor: '#0E0E11',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+  sheetContainer: {
+    backgroundColor: '#121215',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    gap: 16,
   },
   timeSheetContainer: {
-    backgroundColor: '#0E0E11',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: '#121215',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    gap: 14,
   },
   dragHandle: {
     width: 36,
@@ -786,67 +891,75 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#3F3F46',
     alignSelf: 'center',
-    marginBottom: 14,
+    marginBottom: 4,
   },
-  modalHeader: {
+  sheetHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    alignItems: 'center',
   },
   timeSheetHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    alignItems: 'center',
   },
   modalTitle: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
   },
   modalSubtitle: {
     color: '#71717A',
-    fontSize: 11.5,
-    fontWeight: '500',
+    fontSize: 12,
     marginTop: 2,
   },
   modalCloseBtn: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalBody: {
-    gap: 12,
+  inputGroup: {
+    gap: 6,
   },
   inputLabel: {
     color: '#71717A',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   textInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 13,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  saveProfileBtn: {
+  jsonInput: {
+    height: 120,
+    textAlignVertical: 'top',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 13,
-    paddingVertical: 13,
     gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 16,
     marginTop: 4,
   },
-  saveProfileBtnText: {
+  saveBtnText: {
     color: '#09090B',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '800',
   },
   hoursList: {
@@ -856,38 +969,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
   },
-  hourRowActive: {
-    backgroundColor: '#FFFFFF',
+  hourRowSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
     borderColor: '#FFFFFF',
   },
-  hourRowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  hourInfo: {
+    gap: 1,
   },
   hourLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: '#E4E4E7',
+    fontSize: 15,
     fontWeight: '700',
   },
-  hourLabelActive: {
-    color: '#09090B',
+  hourLabelSelected: {
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   hourDesc: {
     color: '#71717A',
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 11.5,
   },
-  hourDescActive: {
-    color: '#52525B',
-    fontWeight: '600',
+  hourCheckPill: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })

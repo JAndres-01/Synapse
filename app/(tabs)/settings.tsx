@@ -37,6 +37,7 @@ import {
   syncAllNotifications,
   requestNotificationPermissions,
 } from '@/lib/personalNotifications'
+import { syncUserData } from '@/lib/personalSync'
 import { useRouter, useFocusEffect } from 'expo-router'
 
 const PRESET_HOURS = [
@@ -95,21 +96,13 @@ export default function SettingsScreen() {
     triggerHaptic('medium')
     setSyncing(true)
     try {
-      if (user?.id) {
-        const [schedRes, taskRes, subjRes] = await Promise.all([
-          supabase.from('schedules').select('*, subject:subjects(*)').eq('user_id', user.id),
-          supabase.from('tasks').select('*, subject:subjects(*)').eq('user_id', user.id),
-          supabase.from('subjects').select('*').eq('user_id', user.id),
-        ])
-
-        if (subjRes.data) await personalStorage.setSubjects(subjRes.data)
-        if (schedRes.data) await personalStorage.setSchedules(schedRes.data)
-        if (taskRes.data) await personalStorage.setTasks(taskRes.data)
-
-        await syncAllNotifications(taskRes.data || undefined, schedRes.data || undefined)
-      }
+      const result = await syncUserData(user?.id)
       triggerHaptic('success')
-      Alert.alert('Sincronizado', 'Tus datos y recordatorios están actualizados.')
+      if (result.offline) {
+        Alert.alert('Modo Local', 'Trabajando con tus datos locales guardados en el dispositivo.')
+      } else {
+        Alert.alert('Sincronizado', 'Tus materias, horarios, tareas y recordatorios están al día con la nube.')
+      }
     } catch (err: any) {
       triggerHaptic('error')
       Alert.alert('Error', err.message || 'No se pudo sincronizar.')

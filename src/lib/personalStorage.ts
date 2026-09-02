@@ -1,15 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import type { Subject, Schedule, Task, PersonalProfile } from '@/types/personal'
+import type { Subject, Schedule, Task, PersonalProfile, AppPreferences } from '@/types/personal'
 
 const KEYS = {
   SUBJECTS: 'synapse_personal_subjects_v2',
   SCHEDULES: 'synapse_personal_schedules_v2',
   TASKS: 'synapse_personal_tasks_v2',
   PROFILE: 'synapse_personal_profile_v2',
+  PREFERENCES: 'synapse_personal_prefs_v2',
 }
 
 export const personalStorage = {
-  // Materias
+  // ==========================================
+  // MATERIAS (SUBJECTS)
+  // ==========================================
   async getSubjects(): Promise<Subject[]> {
     try {
       const data = await AsyncStorage.getItem(KEYS.SUBJECTS)
@@ -39,6 +42,14 @@ export const personalStorage = {
     return list
   },
 
+  async addSubject(subject: Subject): Promise<Subject[]> {
+    return this.saveSubject(subject)
+  },
+
+  async updateSubject(subject: Subject): Promise<Subject[]> {
+    return this.saveSubject(subject)
+  },
+
   async removeSubject(subjectId: string): Promise<Subject[]> {
     const list = await this.getSubjects()
     const updated = list.filter((s) => s.id !== subjectId)
@@ -66,7 +77,13 @@ export const personalStorage = {
     return updated
   },
 
-  // Horarios
+  async deleteSubject(subjectId: string): Promise<Subject[]> {
+    return this.removeSubject(subjectId)
+  },
+
+  // ==========================================
+  // HORARIOS (SCHEDULES)
+  // ==========================================
   async getSchedules(): Promise<Schedule[]> {
     try {
       const data = await AsyncStorage.getItem(KEYS.SCHEDULES)
@@ -98,6 +115,10 @@ export const personalStorage = {
     return list
   },
 
+  async setScheduleSlot(schedule: Schedule): Promise<Schedule[]> {
+    return this.saveScheduleSlot(schedule)
+  },
+
   async clearScheduleSlot(dayOfWeek: number, blockNumber: number): Promise<Schedule[]> {
     const list = await this.getSchedules()
     const updated = list.filter(
@@ -107,7 +128,13 @@ export const personalStorage = {
     return updated
   },
 
-  // Tareas
+  async deleteScheduleSlot(dayOfWeek: number, blockNumber: number): Promise<Schedule[]> {
+    return this.clearScheduleSlot(dayOfWeek, blockNumber)
+  },
+
+  // ==========================================
+  // TAREAS (TASKS)
+  // ==========================================
   async getTasks(): Promise<Task[]> {
     try {
       const data = await AsyncStorage.getItem(KEYS.TASKS)
@@ -141,6 +168,14 @@ export const personalStorage = {
     return list
   },
 
+  async addTask(task: Task): Promise<Task[]> {
+    return this.saveTask(task)
+  },
+
+  async updateTask(task: Task): Promise<Task[]> {
+    return this.saveTask(task)
+  },
+
   async removeTask(taskId: string): Promise<Task[]> {
     const list = await this.getTasks()
     const updated = list.filter((t) => t.id !== taskId)
@@ -148,7 +183,13 @@ export const personalStorage = {
     return updated
   },
 
-  // Perfil
+  async deleteTask(taskId: string): Promise<Task[]> {
+    return this.removeTask(taskId)
+  },
+
+  // ==========================================
+  // PERFIL (PROFILE)
+  // ==========================================
   async getProfile(): Promise<PersonalProfile | null> {
     try {
       const data = await AsyncStorage.getItem(KEYS.PROFILE)
@@ -166,10 +207,12 @@ export const personalStorage = {
     }
   },
 
-  // Preferencias
+  // ==========================================
+  // PREFERENCIAS (PREFERENCES)
+  // ==========================================
   async getPreferences(): Promise<AppPreferences> {
     try {
-      const data = await AsyncStorage.getItem('synapse_personal_prefs_v2')
+      const data = await AsyncStorage.getItem(KEYS.PREFERENCES)
       const parsed = data ? JSON.parse(data) : {}
       return {
         haptics_enabled: parsed.haptics_enabled ?? true,
@@ -191,7 +234,7 @@ export const personalStorage = {
 
   async setPreferences(prefs: AppPreferences): Promise<void> {
     try {
-      await AsyncStorage.setItem('synapse_personal_prefs_v2', JSON.stringify(prefs))
+      await AsyncStorage.setItem(KEYS.PREFERENCES, JSON.stringify(prefs))
     } catch (err) {
       console.error('Error guardando preferencias en storage:', err)
     }

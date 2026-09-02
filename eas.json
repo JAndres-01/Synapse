@@ -8,9 +8,8 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
       "ios": {
-        "simulator": false
+        "simulator": true
       }
     },
     "production": {

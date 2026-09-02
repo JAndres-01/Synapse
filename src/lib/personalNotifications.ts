@@ -3,7 +3,7 @@ import { Platform } from 'react-native'
 import type { Task, Schedule, AppPreferences } from '@/types/personal'
 import { personalStorage } from './personalStorage'
 
-// Configurar comportamiento de notificaciones
+// Configurar comportamiento de notificaciones para iOS y Android
 try {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -87,7 +87,7 @@ export async function scheduleTaskReminder(
 
     const subjName = task.subject?.name || 'General'
 
-    // Programar notificación
+    // Programar notificación limpia
     await Notifications.scheduleNotificationAsync({
       identifier: `task_adv_${task.id}`,
       content: {
@@ -107,13 +107,13 @@ export async function scheduleTaskReminder(
 }
 
 /**
- * Programa los avisos de próximas clases (10 minutos antes con aula y materia)
+ * Programa los avisos de próximas clases (10 minutos antes con la materia correspondiente)
  */
 export async function scheduleClassReminders(
   schedules: Schedule[],
   prefs: AppPreferences
 ): Promise<void> {
-  // Primero cancelamos todas las alertas de clases previas
+  // Cancelar todas las alertas de clases previas para evitar duplicados
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync()
     for (const notif of scheduled) {
@@ -135,7 +135,7 @@ export async function scheduleClassReminders(
 
       if (isNaN(startHour) || isNaN(startMin)) continue
 
-      // Calcular 10 minutos antes
+      // Calcular 10 minutos antes de la clase
       let notifMin = startMin - 10
       let notifHour = startHour
       if (notifMin < 0) {
@@ -148,8 +148,9 @@ export async function scheduleClassReminders(
       // Nuestro day_of_week va de 1 (Lunes) a 5 (Viernes) -> weekday = day_of_week + 1
       const expoWeekday = item.day_of_week + 1
 
-      const roomText = item.classroom_room ? ` • Aula ${item.classroom_room}` : ''
-      const bodyText = `${item.subject.name}${roomText}`
+      // Mensaje limpio: muestra el nombre de la materia (y aula únicamente si está definida)
+      const roomSuffix = item.classroom_room?.trim() ? ` • Aula ${item.classroom_room.trim()}` : ''
+      const bodyText = `${item.subject.name}${roomSuffix}`
 
       await Notifications.scheduleNotificationAsync({
         identifier: `class_sched_${item.id || `${item.day_of_week}_${item.block_number}`}`,
@@ -201,46 +202,5 @@ export async function syncAllNotifications(
     await scheduleClassReminders(currentSchedules, prefs)
   } catch (err) {
     console.log('Error sincronizando notificaciones:', err)
-  }
-}
-
-// ==========================================
-// [DEV_TEST_NOTIFICATION] - Fácil de eliminar después
-// ==========================================
-export async function sendTestNotification(type: 'task' | 'class' = 'task'): Promise<void> {
-  try {
-    const granted = await requestNotificationPermissions()
-    if (!granted) {
-      alert('Activa los permisos de notificación en los Ajustes de tu iPhone.')
-      return
-    }
-
-    if (type === 'task') {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Mañana tienes entrega',
-          body: '"Taller de Matrices" • Matemáticas Discretas',
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 2,
-        },
-      })
-    } else {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Próxima clase en 10 min',
-          body: 'Física Mecánica • Aula 201',
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 2,
-        },
-      })
-    }
-  } catch (err) {
-    console.log('Error enviando notificación de prueba:', err)
   }
 }

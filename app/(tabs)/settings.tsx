@@ -31,13 +31,11 @@ import {
   Bell,
   Clock,
   BookOpen,
-  Send,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
   syncAllNotifications,
   requestNotificationPermissions,
-  sendTestNotification, // [DEV_TEST_BUTTON]
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 
@@ -385,7 +383,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.rowContent}>
               <Text style={styles.rowTitle}>Aviso de próxima clase</Text>
-              <Text style={styles.rowSubtitle}>10 min antes con aula y materia</Text>
+              <Text style={styles.rowSubtitle}>10 min antes con el nombre de la materia</Text>
             </View>
             <Switch
               value={classReminderEnabled}
@@ -395,52 +393,6 @@ export default function SettingsScreen() {
               ios_backgroundColor="#27272A"
             />
           </View>
-
-          {/* [DEV_TEST_BUTTON] Botón de Notificación de Prueba (Fácil de eliminar) */}
-          <View style={styles.rowDivider} />
-          <Pressable
-            onPress={async () => {
-              triggerHaptic('success')
-              await sendTestNotification('task')
-              Alert.alert(
-                'Prueba Enviada',
-                'Recibirás la notificación en 2 segundos.\n\n(Bloquea la pantalla o sal de la app si quieres ver el banner nativo de iOS).'
-              )
-            }}
-            style={styles.groupRow}
-          >
-            <View style={[styles.rowIconContainer, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-              <Send size={15} color="#F59E0B" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowTitle, { color: '#F59E0B' }]}>Probar notificación de entrega</Text>
-              <Text style={styles.rowSubtitle}>Dispara un aviso en 2 seg para testear</Text>
-            </View>
-            <ChevronRight size={16} color="#52525B" />
-          </Pressable>
-
-          {/* [DEV_TEST_BUTTON] Botón de Notificación de Prueba de Clase (Fácil de eliminar) */}
-          <View style={styles.rowDivider} />
-          <Pressable
-            onPress={async () => {
-              triggerHaptic('success')
-              await sendTestNotification('class')
-              Alert.alert(
-                'Prueba Enviada',
-                'Recibirás la notificación de clase en 2 segundos.\n\n(Bloquea la pantalla o sal de la app si quieres ver el banner nativo de iOS).'
-              )
-            }}
-            style={styles.groupRow}
-          >
-            <View style={[styles.rowIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
-              <Send size={15} color="#60A5FA" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowTitle, { color: '#60A5FA' }]}>Probar notificación de clase</Text>
-              <Text style={styles.rowSubtitle}>Dispara aviso de 10 min antes para testear</Text>
-            </View>
-            <ChevronRight size={16} color="#52525B" />
-          </Pressable>
         </View>
 
         {/* Sección de Experiencia */}

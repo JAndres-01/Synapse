@@ -7,7 +7,8 @@
     "start": "expo start -c",
     "ios": "expo run:ios",
     "android": "expo run:android",
-    "export": "expo export -p ios"
+    "export": "expo export -p ios",
+    "build:ios": "eas build -p ios --profile preview"
   },
   "dependencies": {
     "@expo/metro-runtime": "^57.0.15",
@@ -43,6 +44,7 @@
     "@types/react": "~19.1.10",
     "@types/react-dom": "~19.1.7",
     "babel-preset-expo": "^54.0.12",
+    "eas-cli": "^23.2.0",
     "typescript": "^5.6.3"
   }
 }

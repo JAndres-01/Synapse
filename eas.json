@@ -10,7 +10,8 @@
     "preview": {
       "ios": {
         "simulator": true
-      }
+      },
+      "npmInstallArgs": ["--legacy-peer-deps"]
     },
     "production": {
       "autoIncrement": true

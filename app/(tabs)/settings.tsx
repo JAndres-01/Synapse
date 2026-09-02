@@ -11,14 +11,13 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
-  Share,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
-  User,
   Sparkles,
   Smartphone,
   Edit3,
@@ -28,10 +27,7 @@ import {
   Bell,
   Clock,
   BookOpen,
-  Download,
-  Upload,
   Trash2,
-  ShieldCheck,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
@@ -70,13 +66,6 @@ export default function SettingsScreen() {
   const [savingProfile, setSavingProfile] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(300)).current
-
-  // Modal de Importar Copia de Seguridad
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [importJsonText, setImportJsonText] = useState('')
-  const [importing, setImporting] = useState(false)
-  const importFadeAnim = useRef(new Animated.Value(0)).current
-  const importSlideAnim = useRef(new Animated.Value(300)).current
 
   const loadData = useCallback(async () => {
     const prefs = await personalStorage.getPreferences()
@@ -219,67 +208,6 @@ export default function SettingsScreen() {
     handleCloseTimeModal()
   }
 
-  const handleExportBackup = async () => {
-    triggerHaptic('medium')
-    try {
-      const jsonStr = await personalStorage.exportBackup()
-      triggerHaptic('success')
-      await Share.share({
-        title: 'Copia de Seguridad - Synapse',
-        message: jsonStr,
-      })
-    } catch {
-      Alert.alert('Error', 'No se pudo exportar la copia de seguridad.')
-    }
-  }
-
-  const handleOpenImportModal = () => {
-    triggerHaptic('light')
-    setImportJsonText('')
-    setShowImportModal(true)
-    Animated.parallel([
-      Animated.timing(importFadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.spring(importSlideAnim, { toValue: 0, stiffness: 450, damping: 28, useNativeDriver: true }),
-    ]).start()
-  }
-
-  const handleCloseImportModal = () => {
-    triggerHaptic('light')
-    Animated.parallel([
-      Animated.timing(importFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(importSlideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
-    ]).start(() => {
-      setShowImportModal(false)
-    })
-  }
-
-  const handleConfirmImport = async () => {
-    if (!importJsonText.trim()) {
-      triggerHaptic('error')
-      Alert.alert('Datos requeridos', 'Pega el texto JSON de tu respaldo.')
-      return
-    }
-
-    setImporting(true)
-    try {
-      const success = await personalStorage.importBackup(importJsonText.trim())
-      if (success) {
-        triggerHaptic('success')
-        Alert.alert('Restaurado', 'Tus materias, horarios y tareas se han restaurado con éxito.')
-        handleCloseImportModal()
-        loadData()
-      } else {
-        triggerHaptic('error')
-        Alert.alert('Error', 'El formato del archivo JSON no es válido.')
-      }
-    } catch {
-      triggerHaptic('error')
-      Alert.alert('Error', 'Ocurrió un error al procesar el respaldo.')
-    } finally {
-      setImporting(false)
-    }
-  }
-
   const handleClearAllData = () => {
     triggerHaptic('warning')
     Alert.alert(
@@ -337,7 +265,7 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>Preferencias y datos locales</Text>
+          <Text style={styles.subtitle}>Preferencias personales</Text>
         </View>
 
         {/* Tarjeta de Perfil */}
@@ -352,10 +280,7 @@ export default function SettingsScreen() {
               </Text>
               <Edit3 size={13} color="#71717A" />
             </View>
-            <View style={styles.badgeRow}>
-              <ShieldCheck size={12} color="#10B981" />
-              <Text style={styles.badgeText}>Almacenamiento 100% Local</Text>
-            </View>
+            <Text style={styles.profileSubtitle}>Toca para cambiar tu nombre</Text>
           </View>
           <ChevronRight size={16} color="#52525B" />
         </Pressable>
@@ -472,47 +397,14 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Sección de Copias de Seguridad */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Copias de Seguridad y Datos</Text>
-        </View>
-
-        <View style={styles.groupCard}>
-          {/* Exportar Respaldo */}
-          <Pressable onPress={handleExportBackup} style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <Download size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Exportar Respaldo</Text>
-              <Text style={styles.rowSubtitle}>Guardar copia en Archivos o compartir por WhatsApp</Text>
-            </View>
-            <ChevronRight size={16} color="#52525B" />
-          </Pressable>
-
-          <View style={styles.rowDivider} />
-
-          {/* Restaurar Respaldo */}
-          <Pressable onPress={handleOpenImportModal} style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <Upload size={16} color="#A1A1AA" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Restaurar Respaldo</Text>
-              <Text style={styles.rowSubtitle}>Cargar materias, horarios y tareas previas</Text>
-            </View>
-            <ChevronRight size={16} color="#52525B" />
-          </Pressable>
-        </View>
-
         {/* Botón de Restablecer Todo */}
         <Pressable onPress={handleClearAllData} style={styles.clearBtn}>
           <Trash2 size={15} color="#EF4444" />
-          <Text style={styles.clearBtnText}>Restablecer Datos Locales</Text>
+          <Text style={styles.clearBtnText}>Restablecer Datos</Text>
         </Pressable>
 
         {/* Versión */}
-        <Text style={styles.versionText}>Synapse v2.0 • 100% Local & Privado</Text>
+        <Text style={styles.versionText}>Synapse v2.0</Text>
       </ScrollView>
 
       {/* Modal de Selección de Hora de Recordatorio */}
@@ -570,9 +462,12 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Edición de Perfil */}
+      {/* Modal de Edición de Perfil con soporte de teclado nativo iOS */}
       <Modal visible={showEditProfileModal} transparent animationType="none" onRequestClose={handleCloseEditProfile}>
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalBackdrop}
+        >
           <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseEditProfile} />
           </Animated.View>
@@ -581,7 +476,7 @@ export default function SettingsScreen() {
             style={[
               styles.sheetContainer,
               {
-                paddingBottom: Math.max(insets.bottom, 20) + 12,
+                paddingBottom: Math.max(insets.bottom, 20) + 16,
                 transform: [{ translateY: slideAnim }],
               },
             ]}
@@ -606,6 +501,8 @@ export default function SettingsScreen() {
                 placeholderTextColor="#52525B"
                 style={styles.textInput}
                 autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleSaveProfile}
               />
             </View>
 
@@ -624,65 +521,7 @@ export default function SettingsScreen() {
               )}
             </Pressable>
           </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Modal de Importar Copia de Seguridad */}
-      <Modal visible={showImportModal} transparent animationType="none" onRequestClose={handleCloseImportModal}>
-        <View style={styles.modalBackdrop}>
-          <Animated.View style={[styles.backdropTouch, { opacity: importFadeAnim }]}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseImportModal} />
-          </Animated.View>
-
-          <Animated.View
-            style={[
-              styles.sheetContainer,
-              {
-                paddingBottom: Math.max(insets.bottom, 20) + 12,
-                transform: [{ translateY: importSlideAnim }],
-              },
-            ]}
-          >
-            <View style={styles.dragHandle} />
-            <View style={styles.sheetHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Restaurar Respaldo</Text>
-                <Text style={styles.modalSubtitle}>Pega el contenido JSON de tu copia</Text>
-              </View>
-              <Pressable onPress={handleCloseImportModal} hitSlop={12} style={styles.modalCloseBtn}>
-                <X size={18} color="#A1A1AA" />
-              </Pressable>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>DATOS EN FORMATO JSON</Text>
-              <TextInput
-                value={importJsonText}
-                onChangeText={setImportJsonText}
-                placeholder='{"version": "2.0-local", "subjects": [...]}'
-                placeholderTextColor="#52525B"
-                style={[styles.textInput, styles.jsonInput]}
-                multiline
-                numberOfLines={6}
-              />
-            </View>
-
-            <Pressable
-              onPress={handleConfirmImport}
-              disabled={importing}
-              style={styles.saveBtn}
-            >
-              {importing ? (
-                <ActivityIndicator size="small" color="#09090B" />
-              ) : (
-                <>
-                  <Upload size={16} color="#09090B" />
-                  <Text style={styles.saveBtnText}>Restaurar Datos</Text>
-                </>
-              )}
-            </Pressable>
-          </Animated.View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   )
@@ -755,15 +594,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  badgeText: {
-    color: '#10B981',
+  profileSubtitle: {
+    color: '#71717A',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   sectionHeader: {
     marginTop: 10,
@@ -842,7 +676,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.2)',
     paddingVertical: 13,
     borderRadius: 16,
-    marginTop: 8,
+    marginTop: 12,
   },
   clearBtnText: {
     color: '#EF4444',
@@ -854,7 +688,7 @@ const styles = StyleSheet.create({
     color: '#52525B',
     fontSize: 11.5,
     fontWeight: '500',
-    marginTop: 6,
+    marginTop: 10,
     marginBottom: 8,
   },
   modalBackdrop: {
@@ -940,12 +774,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '500',
-  },
-  jsonInput: {
-    height: 120,
-    textAlignVertical: 'top',
-    fontSize: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   saveBtn: {
     flexDirection: 'row',

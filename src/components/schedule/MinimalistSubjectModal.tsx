@@ -206,49 +206,55 @@ export function MinimalistSubjectModal({
           color: selectedColor,
         }
 
-        await personalStorage.updateSubject(updated)
+        await personalStorage.saveSubject(updated)
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
 
         if (userId) {
-          supabase
-            .from('subjects')
-            .update({
-              name: updated.name,
-              teacher_name: updated.teacher_name,
-              color: updated.color,
-            })
-            .eq('id', updated.id)
-            .then(() => {})
+          try {
+            await supabase
+              .from('subjects')
+              .upsert({
+                id: updated.id,
+                user_id: userId,
+                name: updated.name,
+                teacher_name: updated.teacher_name || '',
+                color: updated.color,
+              })
+          } catch (supaErr) {
+            console.log('Supabase update subject error:', supaErr)
+          }
         }
       } else {
         const newSubject: Subject = {
-          id: `subj_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          id: `subj_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
           user_id: userId,
           name: name.trim(),
           teacher_name: teacher.trim() || undefined,
           color: selectedColor,
-          credits: 3,
         }
 
-        await personalStorage.addSubject(newSubject)
+        await personalStorage.saveSubject(newSubject)
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
 
         if (userId) {
-          supabase
-            .from('subjects')
-            .insert({
-              id: newSubject.id,
-              user_id: userId,
-              name: newSubject.name,
-              teacher_name: newSubject.teacher_name,
-              color: newSubject.color,
-              credits: newSubject.credits,
-            })
-            .then(() => {})
+          try {
+            await supabase
+              .from('subjects')
+              .upsert({
+                id: newSubject.id,
+                user_id: userId,
+                name: newSubject.name,
+                teacher_name: newSubject.teacher_name || '',
+                color: newSubject.color,
+                created_at: new Date().toISOString(),
+              })
+          } catch (supaErr) {
+            console.log('Supabase insert subject error:', supaErr)
+          }
         }
       }
     } catch (err: any) {

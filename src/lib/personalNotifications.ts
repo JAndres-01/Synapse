@@ -203,3 +203,44 @@ export async function syncAllNotifications(
     console.log('Error sincronizando notificaciones:', err)
   }
 }
+
+// ==========================================
+// [DEV_TEST_NOTIFICATION] - Fácil de eliminar después
+// ==========================================
+export async function sendTestNotification(type: 'task' | 'class' = 'task'): Promise<void> {
+  try {
+    const granted = await requestNotificationPermissions()
+    if (!granted) {
+      alert('Activa los permisos de notificación en los Ajustes de tu iPhone.')
+      return
+    }
+
+    if (type === 'task') {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Mañana tienes entrega',
+          body: '"Taller de Matrices" • Matemáticas Discretas',
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 2,
+        },
+      })
+    } else {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Próxima clase en 10 min',
+          body: 'Física Mecánica • Aula 201',
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 2,
+        },
+      })
+    }
+  } catch (err) {
+    console.log('Error enviando notificación de prueba:', err)
+  }
+}

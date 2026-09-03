@@ -82,18 +82,26 @@ export default function ScheduleScreen() {
   useEffect(() => {
     Animated.spring(viewModeAnim, {
       toValue: viewMode === 'day' ? 0 : segmentWidth,
-      stiffness: 450,
-      damping: 32,
-      mass: 0.8,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
   }, [viewMode, segmentWidth, viewModeAnim])
 
   const handleViewModeChange = (mode: 'day' | 'week') => {
     if (mode === viewMode) return
+    Animated.spring(viewModeAnim, {
+      toValue: mode === 'day' ? 0 : segmentWidth,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
+      useNativeDriver: true,
+    }).start()
+
     LayoutAnimation.configureNext({
-      duration: 260,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+      duration: 220,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
     })
     setViewMode(mode)
   }
@@ -271,7 +279,7 @@ export default function ScheduleScreen() {
           />
 
           <Pressable
-            onPress={() => handleViewModeChange('day')}
+            onPressIn={() => handleViewModeChange('day')}
             style={styles.segmentButton}
           >
             <CalendarDays
@@ -289,7 +297,7 @@ export default function ScheduleScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => handleViewModeChange('week')}
+            onPressIn={() => handleViewModeChange('week')}
             style={styles.segmentButton}
           >
             <LayoutGrid

@@ -232,17 +232,27 @@ export default function TasksScreen() {
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: statusIndex * segmentWidth,
-      stiffness: 500,
-      damping: 32,
-      mass: 0.8,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
   }, [statusIndex, segmentWidth, slideAnim])
 
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
+    if (newStatus === statusFilter) return
+    const targetIdx = newStatus === 'pending' ? 0 : newStatus === 'completed' ? 1 : 2
+    Animated.spring(slideAnim, {
+      toValue: targetIdx * segmentWidth,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
+      useNativeDriver: true,
+    }).start()
+
     LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      duration: 220,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
     })
     setStatusFilter(newStatus)
   }
@@ -597,7 +607,7 @@ export default function TasksScreen() {
           />
 
           <Pressable
-            onPress={() => handleStatusChange('pending')}
+            onPressIn={() => handleStatusChange('pending')}
             style={styles.segmentButton}
           >
             <Text
@@ -611,7 +621,7 @@ export default function TasksScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => handleStatusChange('completed')}
+            onPressIn={() => handleStatusChange('completed')}
             style={styles.segmentButton}
           >
             <Text
@@ -625,7 +635,7 @@ export default function TasksScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => handleStatusChange('all')}
+            onPressIn={() => handleStatusChange('all')}
             style={styles.segmentButton}
           >
             <Text

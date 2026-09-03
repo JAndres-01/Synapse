@@ -46,9 +46,9 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
     const idx = Math.max(0, TABS.findIndex((t) => t.key === activeTab))
     Animated.spring(slideAnim, {
       toValue: idx * TAB_WIDTH,
-      stiffness: 450,
-      damping: 32,
-      mass: 0.8,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
   }, [activeTab, slideAnim])
@@ -58,9 +58,9 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
     if (idx !== -1) {
       Animated.spring(slideAnim, {
         toValue: idx * TAB_WIDTH,
-        stiffness: 450,
-        damping: 32,
-        mass: 0.8,
+        stiffness: 750,
+        damping: 28,
+        mass: 0.5,
         useNativeDriver: true,
       }).start()
     }
@@ -110,7 +110,7 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
           ]}
         />
 
-        {/* Botones de navegación */}
+        {/* Botones de navegación con respuesta táctil instantánea a 0ms */}
         {TABS.map((tab) => {
           const IconComponent = tab.icon
           const isActive = tab.key === activeTab
@@ -118,7 +118,7 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
           return (
             <Pressable
               key={tab.key}
-              onPress={() => handleTabPress(tab.key)}
+              onPressIn={() => handleTabPress(tab.key)}
               style={styles.tabButton}
             >
               <View style={styles.iconContainer}>

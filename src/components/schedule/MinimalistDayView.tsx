@@ -210,18 +210,29 @@ export function MinimalistDayView({
   useEffect(() => {
     Animated.spring(daySlideAnim, {
       toValue: activeDayIndex * pillWidth,
-      stiffness: 450,
-      damping: 32,
-      mass: 0.8,
+      stiffness: 750,
+      damping: 28,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
   }, [activeDayIndex, pillWidth, daySlideAnim])
 
   const handleDayPress = (dayNum: number) => {
     if (dayNum === selectedDay) return
+    const idx = DAYS.findIndex((d) => d.num === dayNum)
+    if (idx !== -1) {
+      Animated.spring(daySlideAnim, {
+        toValue: idx * pillWidth,
+        stiffness: 750,
+        damping: 28,
+        mass: 0.5,
+        useNativeDriver: true,
+      }).start()
+    }
+
     LayoutAnimation.configureNext({
-      duration: 240,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+      duration: 220,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
     })
     onSelectDay(dayNum)
   }
@@ -258,7 +269,7 @@ export function MinimalistDayView({
           return (
             <Pressable
               key={d.num}
-              onPress={() => handleDayPress(d.num)}
+              onPressIn={() => handleDayPress(d.num)}
               style={styles.dayPill}
             >
               <Text

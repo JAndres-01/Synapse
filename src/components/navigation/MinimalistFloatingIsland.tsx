@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, memo } from 'react'
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ const TABS: Array<{ key: TabKey; label: string; icon: any }> = [
 
 const TAB_WIDTH = 78.5
 
-export function MinimalistFloatingIsland({
+export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
   activeTab,
   onSelectTab,
   pendingTasksCount = 0,
@@ -140,7 +140,7 @@ export function MinimalistFloatingIsland({
       </BlurView>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   wrapper: {

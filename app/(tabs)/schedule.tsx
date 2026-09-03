@@ -133,7 +133,7 @@ export default function ScheduleScreen() {
     return unsubscribe
   }, [loadData])
 
-  const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule | null) => {
+  const handleOpenAssign = useCallback((day: number, block: number, existingSchedule?: Schedule | null) => {
     triggerHaptic('light')
     setAssignModalData({
       visible: true,
@@ -141,18 +141,18 @@ export default function ScheduleScreen() {
       block,
       existingSchedule: existingSchedule || null,
     })
-  }
+  }, [])
 
-  const handleOpenDayTasks = (day: number, subjectId?: string | null) => {
+  const handleOpenDayTasks = useCallback((day: number, subjectId?: string | null) => {
     triggerHaptic('light')
     setDayTasksModalData({
       visible: true,
       day,
       subjectId: subjectId || null,
     })
-  }
+  }, [])
 
-  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
+  const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: string) => {
     const nextStatus: 'pending' | 'completed' = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (nextStatus === 'completed') {
@@ -179,14 +179,12 @@ export default function ScheduleScreen() {
     } catch (err) {
       console.error('Error toggling status:', err)
     }
-  }
+  }, [tasks])
 
-  const handleOpenTaskInTasksTab = (task: Task) => {
+  const handleOpenTaskInTasksTab = useCallback((task: Task) => {
     triggerHaptic('light')
-    // Cerrar el modal del día primero de forma suave
     setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))
 
-    // Navegar fluidamente a la pestaña Tareas y resaltar la tarea
     setTimeout(() => {
       router.navigate({
         pathname: '/(tabs)/tasks',
@@ -196,7 +194,7 @@ export default function ScheduleScreen() {
         },
       })
     }, 120)
-  }
+  }, [router])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -312,19 +310,21 @@ export default function ScheduleScreen() {
       </ScrollView>
 
       {/* Modal de Tareas del Día */}
-      <MinimalistDayTasksModal
-        visible={dayTasksModalData.visible}
-        day={dayTasksModalData.day}
-        subjectId={dayTasksModalData.subjectId}
-        schedules={schedules}
-        tasks={tasks}
-        onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
-        onToggleTaskStatus={handleToggleTaskStatus}
-        onOpenTaskDetail={handleOpenTaskInTasksTab}
-      />
+      {dayTasksModalData.visible && (
+        <MinimalistDayTasksModal
+          visible={dayTasksModalData.visible}
+          day={dayTasksModalData.day}
+          subjectId={dayTasksModalData.subjectId}
+          schedules={schedules}
+          tasks={tasks}
+          onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
+          onToggleTaskStatus={handleToggleTaskStatus}
+          onOpenTaskDetail={handleOpenTaskInTasksTab}
+        />
+      )}
 
       {/* Modal de Asignar Bloque (Desde Vista Diaria) */}
-      {user && (
+      {user && assignModalData.visible && (
         <MinimalistAssignSlotModal
           visible={assignModalData.visible}
           onClose={() => setAssignModalData((prev) => ({ ...prev, visible: false }))}
@@ -338,7 +338,7 @@ export default function ScheduleScreen() {
       )}
 
       {/* Modal de Administrar Materias */}
-      {user && (
+      {user && showSubjectModal && (
         <MinimalistSubjectModal
           visible={showSubjectModal}
           onClose={() => setShowSubjectModal(false)}

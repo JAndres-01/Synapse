@@ -107,7 +107,7 @@ export default function TodayScreen() {
     setRefreshing(false)
   }
 
-  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
+  const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (newStatus === 'completed') {
@@ -134,14 +134,14 @@ export default function TodayScreen() {
     if (activeTask && activeTask.id === taskId) {
       setActiveTask({ ...activeTask, status: newStatus as 'pending' | 'completed' })
     }
-  }
+  }, [tasks, activeTask])
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = useCallback(async (taskId: string) => {
     cancelTaskReminder(taskId)
     const updatedTasks = tasks.filter((t) => t.id !== taskId)
     setTasks(updatedTasks)
     await personalStorage.setTasks(updatedTasks)
-  }
+  }, [tasks])
 
   return (
     <View style={styles.screenWrapper}>
@@ -214,7 +214,7 @@ export default function TodayScreen() {
       </ScrollView>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
-      {user && (
+      {user && taskModalMode !== 'none' && (
         <MinimalistTaskModal
           mode={taskModalMode}
           task={activeTask}

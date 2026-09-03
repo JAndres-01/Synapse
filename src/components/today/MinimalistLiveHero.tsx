@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, memo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { calculateLiveClassStatus } from '@/lib/scheduleEngine'
@@ -8,7 +8,7 @@ interface MinimalistLiveHeroProps {
   schedulesToday: Schedule[]
 }
 
-export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroProps) {
+export const MinimalistLiveHero = memo(function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroProps) {
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -25,7 +25,6 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
   )
 
   const isLive = liveData.status === 'active'
-  const isBreak = (liveData as any).status === 'break'
   const activeSched = liveData.activeSchedule
   const subjColor = activeSched?.subject?.color || '#FFFFFF'
   const isWhite = subjColor === '#FFFFFF'
@@ -35,7 +34,6 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
       style={[
         styles.heroContainer,
         isLive && styles.heroContainerLive,
-        isBreak && styles.heroContainerBreak,
       ]}
     >
       {/* Cabecera del Hero: Estado en Vivo + Horario */}
@@ -44,13 +42,13 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
           <View
             style={[
               styles.pulseDot,
-              isLive ? styles.pulseDotLive : isBreak ? styles.pulseDotBreak : styles.pulseDotDefault,
+              isLive ? styles.pulseDotLive : styles.pulseDotDefault,
             ]}
           />
           <Text
             style={[
               styles.badgeText,
-              isLive ? styles.badgeTextLive : isBreak ? styles.badgeTextBreak : styles.badgeTextDefault,
+              isLive ? styles.badgeTextLive : styles.badgeTextDefault,
             ]}
           >
             {liveData.badgeText.toUpperCase()}
@@ -103,20 +101,19 @@ export function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroPr
       </View>
 
       {/* Barra de Progreso Fina Integrada */}
-      {(isLive || isBreak) && (
+      {isLive && (
         <View style={styles.progressBarBg}>
           <View
             style={[
               styles.progressBarFill,
               { width: `${liveData.progressPercentage}%` },
-              isBreak && styles.progressBarFillBreak,
             ]}
           />
         </View>
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   heroContainer: {

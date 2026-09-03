@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, memo } from 'react'
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ const DAYS = [
   { num: 5, name: 'Viernes', short: 'VIE' },
 ]
 
-function MatrixSlotCard({
+const MatrixSlotCard = memo(function MatrixSlotCard({
   dayNum,
   blockNum,
   schedule,
@@ -128,9 +128,9 @@ function MatrixSlotCard({
       </Pressable>
     </Animated.View>
   )
-}
+})
 
-export function MinimalistWeeklyMatrix({
+export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
   schedules = [],
   subjects = [],
   tasks = [],
@@ -230,7 +230,7 @@ export function MinimalistWeeklyMatrix({
       </ScrollView>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {

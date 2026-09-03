@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
@@ -12,7 +12,7 @@ interface MinimalistDayTimelineProps {
   onOpenTaskDetail?: (task: Task) => void
 }
 
-function TimelineTaskLine({
+const TimelineTaskLine = memo(function TimelineTaskLine({
   task,
   onToggle,
   onOpenDetail,
@@ -77,9 +77,9 @@ function TimelineTaskLine({
       </Text>
     </Pressable>
   )
-}
+})
 
-export function MinimalistDayTimeline({
+export const MinimalistDayTimeline = memo(function MinimalistDayTimeline({
   schedulesToday = [],
   tasks = [],
   onToggleTask,
@@ -236,7 +236,7 @@ export function MinimalistDayTimeline({
       </View>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {

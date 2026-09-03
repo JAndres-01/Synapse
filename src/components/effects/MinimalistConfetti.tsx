@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, memo } from 'react'
 import { View, StyleSheet, Animated, Dimensions } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -39,7 +39,7 @@ interface SingleBurst {
   }[]
 }
 
-export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
+export const MinimalistConfetti = memo(function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
   const [bursts, setBursts] = useState<SingleBurst[]>([])
 
   useEffect(() => {
@@ -48,8 +48,8 @@ export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
     const burstId = Date.now() + Math.random()
     const particles = []
 
-    // 36 micro-partículas estéticas que suben desde abajo en abanico
-    for (let i = 0; i < 36; i++) {
+    // 24 micro-partículas estéticas balanceadas en abanico (alta fidelidad y 60 FPS)
+    for (let i = 0; i < 24; i++) {
       const angle = -Math.PI / 2 + (Math.random() * 1.4 - 0.7) // Abanico hacia arriba
       const launchPower = Math.random() * (SCREEN_HEIGHT * 0.52) + SCREEN_HEIGHT * 0.32
 
@@ -156,7 +156,7 @@ export function MinimalistConfetti({ burstTrigger }: MinimalistConfettiProps) {
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   overlay: {

@@ -214,7 +214,7 @@ export default function TodayScreen() {
       </ScrollView>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
-      {user && taskModalMode !== 'none' && (
+      {user && (
         <MinimalistTaskModal
           mode={taskModalMode}
           task={activeTask}

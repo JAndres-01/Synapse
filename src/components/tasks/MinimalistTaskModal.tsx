@@ -1824,7 +1824,6 @@ const styles = StyleSheet.create({
     color: '#D4D4D8',
     fontSize: 12.5,
     fontWeight: '600',
-    textTransform: 'capitalize',
   },
   attrPillTextActive: {
     color: '#FFFFFF',

@@ -310,21 +310,19 @@ export default function ScheduleScreen() {
       </ScrollView>
 
       {/* Modal de Tareas del Día */}
-      {dayTasksModalData.visible && (
-        <MinimalistDayTasksModal
-          visible={dayTasksModalData.visible}
-          day={dayTasksModalData.day}
-          subjectId={dayTasksModalData.subjectId}
-          schedules={schedules}
-          tasks={tasks}
-          onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
-          onToggleTaskStatus={handleToggleTaskStatus}
-          onOpenTaskDetail={handleOpenTaskInTasksTab}
-        />
-      )}
+      <MinimalistDayTasksModal
+        visible={dayTasksModalData.visible}
+        day={dayTasksModalData.day}
+        subjectId={dayTasksModalData.subjectId}
+        schedules={schedules}
+        tasks={tasks}
+        onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
+        onToggleTaskStatus={handleToggleTaskStatus}
+        onOpenTaskDetail={handleOpenTaskInTasksTab}
+      />
 
       {/* Modal de Asignar Bloque (Desde Vista Diaria) */}
-      {user && assignModalData.visible && (
+      {user && (
         <MinimalistAssignSlotModal
           visible={assignModalData.visible}
           onClose={() => setAssignModalData((prev) => ({ ...prev, visible: false }))}
@@ -338,7 +336,7 @@ export default function ScheduleScreen() {
       )}
 
       {/* Modal de Administrar Materias */}
-      {user && showSubjectModal && (
+      {user && (
         <MinimalistSubjectModal
           visible={showSubjectModal}
           onClose={() => setShowSubjectModal(false)}

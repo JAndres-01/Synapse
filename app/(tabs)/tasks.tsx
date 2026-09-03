@@ -92,6 +92,9 @@ export default function TasksScreen() {
   const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
+  // IDs de tareas en transición animada
+  const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
+
   // Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
   const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 3)
@@ -303,16 +306,65 @@ export default function TasksScreen() {
       }
     }
 
-    const updated = tasks.map((t) => {
-      if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-      return t
-    })
-    setTasks(updated)
-    await personalStorage.setTasks(updated)
+    if (statusFilter === 'pending' && nextStatus === 'completed') {
+      setTransitioningTaskIds((prev) => [...prev, taskId])
+
+      const updated = tasks.map((t) => {
+        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
+        return t
+      })
+      setTasks(updated)
+      await personalStorage.setTasks(updated)
+
+      setTimeout(() => {
+        LayoutAnimation.configureNext({
+          duration: 320,
+          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        })
+        setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
+      }, 380)
+    } else if (statusFilter === 'completed' && nextStatus === 'pending') {
+      setTransitioningTaskIds((prev) => [...prev, taskId])
+
+      const updated = tasks.map((t) => {
+        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
+        return t
+      })
+      setTasks(updated)
+      await personalStorage.setTasks(updated)
+
+      setTimeout(() => {
+        LayoutAnimation.configureNext({
+          duration: 320,
+          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        })
+        setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
+      }, 380)
+    } else {
+      LayoutAnimation.configureNext({
+        duration: 280,
+        update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      })
+      const updated = tasks.map((t) => {
+        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
+        return t
+      })
+      setTasks(updated)
+      await personalStorage.setTasks(updated)
+    }
   }, [tasks, statusFilter])
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     cancelTaskReminder(taskId)
+    LayoutAnimation.configureNext({
+      duration: 300,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    })
     const updated = await personalStorage.removeTask(taskId)
     setTasks(updated)
   }, [])
@@ -330,8 +382,13 @@ export default function TasksScreen() {
         if (!matchTitle && !matchSubj) return false
       }
 
-      if (statusFilter === 'pending' && task.status === 'completed') return false
-      if (statusFilter === 'completed' && task.status !== 'completed') return false
+      const isTransitioning = transitioningTaskIds.includes(task.id)
+      if (statusFilter === 'pending') {
+        if (task.status === 'completed' && !isTransitioning) return false
+      }
+      if (statusFilter === 'completed') {
+        if (task.status !== 'completed' && !isTransitioning) return false
+      }
 
       return true
     }).sort((a, b) => {
@@ -342,7 +399,7 @@ export default function TasksScreen() {
       if (!a.due_date && b.due_date) return 1
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
-  }, [tasks, selectedSubjectId, debouncedQuery, statusFilter])
+  }, [tasks, selectedSubjectId, debouncedQuery, statusFilter, transitioningTaskIds])
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -737,7 +794,7 @@ export default function TasksScreen() {
       </Animated.View>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
-      {user && taskModalMode !== 'none' && (
+      {user && (
         <MinimalistTaskModal
           mode={taskModalMode}
           task={activeTask}

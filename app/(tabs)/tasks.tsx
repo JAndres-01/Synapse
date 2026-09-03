@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  RefreshControl,
   TextInput,
   Pressable,
   StyleSheet,
@@ -444,6 +443,9 @@ export default function TasksScreen() {
       <ScrollView
         style={styles.scrollView}
         scrollEnabled={isScrollEnabled}
+        bounces={false}
+        alwaysBounceVertical={false}
+        overScrollMode="never"
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },
@@ -451,9 +453,6 @@ export default function TasksScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={() => Keyboard.dismiss()}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
-        }
       >
         {!isSearchActive ? (
           <View style={styles.header}>

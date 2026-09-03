@@ -54,6 +54,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
   const translateX = useRef(new Animated.Value(0)).current
   const rightSwipeDistance = useRef(new Animated.Value(0)).current
   const isOpen = useRef(false)
+  const isSwiping = useRef(false)
   const isGreenTriggered = useRef(false)
 
   useEffect(() => {
@@ -123,6 +124,13 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         )
       },
       onPanResponderGrant: () => {
+        isSwiping.current = true
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          stiffness: 600,
+          damping: 28,
+          useNativeDriver: true,
+        }).start()
         onSwipeActiveChange?.(false)
         isGreenTriggered.current = false
       },
@@ -152,6 +160,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
+        isSwiping.current = false
         onSwipeActiveChange?.(true)
         let dx = gestureState.dx
         if (isOpen.current) {
@@ -174,7 +183,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
             onToggleStatus(task.id, task.status)
           })
         } else if (dx <= -48) {
-          // Desplegar y anclar botones de Editar y Borrar (sin rebote que exponga el fondo)
+          // Desplegar y anclar botones de Editar y Borrar
           triggerHaptic('selection')
           isOpen.current = true
           Animated.timing(translateX, {
@@ -198,6 +207,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         }
       },
       onPanResponderTerminate: () => {
+        isSwiping.current = false
         onSwipeActiveChange?.(true)
         isOpen.current = false
         isGreenTriggered.current = false
@@ -214,7 +224,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
   ).current
 
   const handlePressIn = () => {
-    if (isOpen.current) return
+    if (isOpen.current || isSwiping.current) return
     Animated.spring(scaleAnim, {
       toValue: 0.985,
       stiffness: 600,
@@ -324,7 +334,6 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
 
   const dueInfo = formatDue(task.due_date)
   const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
-  const isWhite = task.subject?.color === '#FFFFFF'
 
   return (
     <Animated.View
@@ -340,7 +349,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         },
       ]}
     >
-      {/* 1. Capa de Fondo para Gestos estilo Spotify */}
+      {/* 1. Capa de Fondo para Gestos estilo Spotify (Aislada: 100% invisible en reposo) */}
       <View style={styles.swipeBackgroundContainer}>
         {/* Fondo Base Gris Neutro (Inicial) */}
         <Animated.View
@@ -399,8 +408,19 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
           )}
         </Animated.View>
 
-        {/* Bloques Azul y Rojo Pegados a la Derecha (Editar y Borrar SOLO ICONOS) */}
-        <View style={styles.swipeRightActionsContainer}>
+        {/* Bloques Azul y Rojo Pegados a la Derecha (Opacidad 0 en reposo) */}
+        <Animated.View
+          style={[
+            styles.swipeRightActionsContainer,
+            {
+              opacity: translateX.interpolate({
+                inputRange: [-TOTAL_ACTIONS_WIDTH, -15, 0],
+                outputRange: [1, 0.7, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}
+        >
           {/* Botón Editar Azul */}
           <Pressable
             onPress={handleEditPress}
@@ -418,7 +438,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
           >
             <Trash2 size={19} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
 
       {/* 2. Capa Frontal Deslizable (La Tarjeta de la Tarea) */}

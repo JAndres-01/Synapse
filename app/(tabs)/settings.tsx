@@ -11,9 +11,12 @@ import {
   Modal,
   Animated,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  Easing,
 } from 'react-native'
+
+const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -66,6 +69,44 @@ export default function SettingsScreen() {
   const [savingProfile, setSavingProfile] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(300)).current
+  const keyboardTranslateY = useRef(new Animated.Value(0)).current
+
+  // Sincronización instantánea a 120Hz con el teclado de iOS (igual que MinimalistTaskModal)
+  useEffect(() => {
+    if (!showEditProfileModal) return
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      const kbHeight = e.endCoordinates.height
+      const duration = e.duration && e.duration > 0 ? e.duration : 220
+      const targetOffset = -Math.max(0, kbHeight - insets.bottom)
+
+      Animated.timing(keyboardTranslateY, {
+        toValue: targetOffset,
+        duration: duration,
+        easing: APPLE_EASING,
+        useNativeDriver: true,
+      }).start()
+    })
+
+    const hideSub = Keyboard.addListener(hideEvent, (e) => {
+      const duration = e.duration && e.duration > 0 ? e.duration : 200
+
+      Animated.timing(keyboardTranslateY, {
+        toValue: 0,
+        duration: duration,
+        easing: APPLE_EASING,
+        useNativeDriver: true,
+      }).start()
+    })
+
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [showEditProfileModal, insets.bottom, keyboardTranslateY])
 
   const loadData = useCallback(async () => {
     const prefs = await personalStorage.getPreferences()
@@ -91,6 +132,7 @@ export default function SettingsScreen() {
     triggerHaptic('light')
     setEditName(profile?.full_name || '')
     setShowEditProfileModal(true)
+    keyboardTranslateY.setValue(0)
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, stiffness: 450, damping: 28, useNativeDriver: true }),
@@ -99,9 +141,11 @@ export default function SettingsScreen() {
 
   const handleCloseEditProfile = () => {
     triggerHaptic('light')
+    Keyboard.dismiss()
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
+      Animated.timing(keyboardTranslateY, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start(() => {
       setShowEditProfileModal(false)
     })
@@ -462,12 +506,9 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Edición de Perfil con soporte de teclado nativo iOS */}
+      {/* Modal de Edición de Perfil con sincronización nativa ultra rápida (igual que MinimalistTaskModal) */}
       <Modal visible={showEditProfileModal} transparent animationType="none" onRequestClose={handleCloseEditProfile}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalBackdrop}
-        >
+        <View style={styles.modalBackdrop}>
           <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseEditProfile} />
           </Animated.View>
@@ -477,7 +518,7 @@ export default function SettingsScreen() {
               styles.sheetContainer,
               {
                 paddingBottom: Math.max(insets.bottom, 20) + 16,
-                transform: [{ translateY: slideAnim }],
+                transform: [{ translateY: slideAnim }, { translateY: keyboardTranslateY }],
               },
             ]}
           >
@@ -521,7 +562,7 @@ export default function SettingsScreen() {
               )}
             </Pressable>
           </Animated.View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   )

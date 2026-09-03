@@ -48,6 +48,7 @@ import * as Linking from 'expo-linking'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
+import { MinimalistPdfViewerModal } from '@/components/common/MinimalistPdfViewerModal'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -128,6 +129,7 @@ export function MinimalistTaskModal({
   const insets = useSafeAreaInsets()
   const [currentView, setCurrentView] = useState<'detail' | 'form'>('detail')
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
+  const [viewingPdf, setViewingPdf] = useState<{ uri: string; title: string } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
 
@@ -850,6 +852,11 @@ export function MinimalistTaskModal({
 
                       const handleOpenAttachment = async () => {
                         triggerHaptic('light')
+                        if (isPdf && att.file_url) {
+                          setViewingPdf({ uri: att.file_url, title: att.file_name })
+                          return
+                        }
+
                         if (att.file_url?.startsWith('http://') || att.file_url?.startsWith('https://')) {
                           Linking.openURL(att.file_url)
                         } else {
@@ -1510,6 +1517,14 @@ export function MinimalistTaskModal({
             </Pressable>
           </Modal>
         )}
+
+        {/* Visor Nativo Integrado para Documentos PDF */}
+        <MinimalistPdfViewerModal
+          visible={Boolean(viewingPdf)}
+          pdfUri={viewingPdf?.uri || null}
+          pdfTitle={viewingPdf?.title || ''}
+          onClose={() => setViewingPdf(null)}
+        />
       </View>
     </Modal>
   )

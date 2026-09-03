@@ -58,8 +58,16 @@ export default function TasksScreen() {
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery)
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Estado del Buscador Dinámico
   const [isSearchActive, setIsSearchActive] = useState(false)
@@ -344,8 +352,8 @@ export default function TasksScreen() {
         return false
       }
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
+      if (debouncedQuery.trim()) {
+        const q = debouncedQuery.toLowerCase()
         const matchTitle = task.title?.toLowerCase().includes(q)
         const matchSubj = task.subject?.name?.toLowerCase().includes(q)
         if (!matchTitle && !matchSubj) return false
@@ -366,7 +374,7 @@ export default function TasksScreen() {
       if (!a.due_date && b.due_date) return 1
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
-  }, [tasks, selectedSubjectId, searchQuery, statusFilter, transitioningTaskIds])
+  }, [tasks, selectedSubjectId, debouncedQuery, statusFilter, transitioningTaskIds])
 
   const onRefresh = () => {
     setRefreshing(true)

@@ -133,9 +133,10 @@ export function MinimalistTaskModal({
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
 
-  // Form State
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  // Form State (Refs nativos de 0ms para tecleo instantáneo a 60 FPS sin re-renderizados)
+  const titleRef = useRef('')
+  const descRef = useRef('')
+  const [inputKey, setInputKey] = useState(0)
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [taskType, setTaskType] = useState<TaskType>('individual')
   const [dueDate, setDueDate] = useState<string>('')
@@ -243,15 +244,17 @@ export function MinimalistTaskModal({
       setCurrentView(mode === 'detail' ? 'detail' : 'form')
 
       if (mode === 'create') {
-        setTitle('')
-        setDescription('')
+        titleRef.current = ''
+        descRef.current = ''
+        setInputKey((k) => k + 1)
         setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
         setTaskType('individual')
         setDueDate('')
         setAttachments([])
       } else if (task && (mode === 'edit' || mode === 'detail')) {
-        setTitle(task.title || '')
-        setDescription(task.description || '')
+        titleRef.current = task.title || ''
+        descRef.current = task.description || ''
+        setInputKey((k) => k + 1)
         setSelectedSubjectId(task.subject_id || null)
         setTaskType(task.type || 'individual')
         setDueDate(task.due_date || '')
@@ -441,8 +444,9 @@ export function MinimalistTaskModal({
     triggerHaptic('light')
     Keyboard.dismiss()
     if (task) {
-      setTitle(task.title || '')
-      setDescription(task.description || '')
+      titleRef.current = task.title || ''
+      descRef.current = task.description || ''
+      setInputKey((k) => k + 1)
       setSelectedSubjectId(task.subject_id || null)
       setTaskType(task.type || 'individual')
       setDueDate(task.due_date || '')
@@ -452,7 +456,10 @@ export function MinimalistTaskModal({
   }
 
   const handleSave = async () => {
-    if (!title.trim()) {
+    const finalTitle = titleRef.current.trim()
+    const finalDesc = descRef.current.trim()
+
+    if (!finalTitle) {
       Alert.alert('Título requerido', 'Por favor escribe el nombre de la tarea.')
       return
     }
@@ -463,8 +470,8 @@ export function MinimalistTaskModal({
       const selectedSubj = subjects.find((s) => s.id === selectedSubjectId)
 
       const payload = {
-        title: title.trim(),
-        description: description.trim() || null,
+        title: finalTitle,
+        description: finalDesc || null,
         subject_id: selectedSubjectId || null,
         type: taskType,
         due_date: dueDate || null,
@@ -953,22 +960,28 @@ export function MinimalistTaskModal({
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
               >
-                {/* Input de Título Grande y Limpio */}
+                {/* Input de Título Grande y Limpio (Tecleo Nativo 0ms) */}
                 <TextInput
+                  key={`title_input_${inputKey}`}
                   ref={titleInputRef}
                   placeholder="¿Qué tienes que hacer?"
                   placeholderTextColor="#52525B"
-                  value={title}
-                  onChangeText={setTitle}
+                  defaultValue={titleRef.current}
+                  onChangeText={(text) => {
+                    titleRef.current = text
+                  }}
                   style={styles.cleanTitleInput}
                 />
 
-                {/* Input de Descripción Limpio */}
+                {/* Input de Descripción Limpio (Tecleo Nativo 0ms) */}
                 <TextInput
+                  key={`desc_input_${inputKey}`}
                   placeholder="Añadir notas, detalles o páginas..."
                   placeholderTextColor="#52525B"
-                  value={description}
-                  onChangeText={setDescription}
+                  defaultValue={descRef.current}
+                  onChangeText={(text) => {
+                    descRef.current = text
+                  }}
                   multiline
                   style={styles.cleanDescInput}
                 />

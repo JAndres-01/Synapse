@@ -16,6 +16,7 @@ import {
   Keyboard,
   Easing,
   PanResponder,
+  InteractionManager,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Subject, TaskType, TaskAttachment, Schedule } from '@/types/personal'
@@ -188,14 +189,17 @@ export function MinimalistTaskModal({
     }
   }, [activePicker, datePickerTab, showNativeDatePicker, showNativeTimePicker])
 
-  // Cargar horarios del usuario para el selector de clases
+  // Cargar horarios del usuario para el selector de clases (después de interacciones para no bloquear FPS)
   useEffect(() => {
     if (modalVisible) {
-      personalStorage.getSchedules().then((list) => {
-        if (list && Array.isArray(list)) {
-          setSchedules(list)
-        }
+      const handle = InteractionManager.runAfterInteractions(() => {
+        personalStorage.getSchedules().then((list) => {
+          if (list && Array.isArray(list)) {
+            setSchedules(list)
+          }
+        })
       })
+      return () => handle.cancel()
     }
   }, [modalVisible])
 
@@ -261,28 +265,30 @@ export function MinimalistTaskModal({
       setShowNativeDatePicker(false)
       setShowNativeTimePicker(false)
       panY.setValue(0)
+      keyboardTranslateY.setValue(0)
+      slideAnim.setValue(SCREEN_HEIGHT)
+      fadeAnim.setValue(0)
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 180,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
+        Animated.timing(slideAnim, {
           toValue: 0,
-          stiffness: 450,
-          damping: 30,
-          mass: 0.8,
+          duration: 220,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }),
-      ]).start()
-
-      if (mode === 'create') {
-        const timer = setTimeout(() => {
-          titleInputRef.current?.focus()
-        }, 260)
-        return () => clearTimeout(timer)
-      }
+      ]).start(({ finished }) => {
+        if (finished && mode === 'create') {
+          requestAnimationFrame(() => {
+            titleInputRef.current?.focus()
+          })
+        }
+      })
     } else {
       Keyboard.dismiss()
       Animated.parallel([

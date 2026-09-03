@@ -138,13 +138,15 @@ export default function SettingsScreen() {
     keyboardTranslateY.setValue(0)
 
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, stiffness: 450, damping: 28, mass: 0.8, useNativeDriver: true }),
-    ]).start()
-
-    setTimeout(() => {
-      nameInputRef.current?.focus()
-    }, 260)
+      Animated.timing(fadeAnim, { toValue: 1, duration: 180, easing: APPLE_EASING, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 220, easing: APPLE_EASING, useNativeDriver: true }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        requestAnimationFrame(() => {
+          nameInputRef.current?.focus()
+        })
+      }
+    })
   }
 
   const handleCloseEditProfile = () => {

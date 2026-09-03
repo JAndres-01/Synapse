@@ -10,6 +10,7 @@ import {
   LayoutChangeEvent,
   Dimensions,
   Platform,
+  InteractionManager,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
@@ -120,7 +121,10 @@ export default function ScheduleScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData()
+      const task = InteractionManager.runAfterInteractions(() => {
+        loadData()
+      })
+      return () => task.cancel()
     }, [loadData])
   )
 

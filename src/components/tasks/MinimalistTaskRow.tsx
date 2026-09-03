@@ -1,4 +1,4 @@
-﻿import React, { useRef, useEffect, memo } from 'react'
+import React, { useRef, useEffect, memo } from 'react'
 import {
   View,
   Text,
@@ -388,7 +388,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
           )}
         </Animated.View>
 
-        {/* Bloques Azul y Rojo Pegados a la Derecha (Opacidad 0 en reposo) */}
+        {/* Bloques Rojo y Azul Pegados a la Derecha (Opacidad 0 en reposo) */}
         <Animated.View
           style={[
             styles.swipeRightActionsContainer,
@@ -401,15 +401,6 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
             },
           ]}
         >
-          {/* Botón Editar Azul */}
-          <Pressable
-            onPress={handleEditPress}
-            style={styles.swipeEditBtn}
-            hitSlop={6}
-          >
-            <Edit2 size={19} color="#FFFFFF" strokeWidth={2.4} />
-          </Pressable>
-
           {/* Botón Borrar Rojo */}
           <Pressable
             onPress={handleDeletePress}
@@ -417,6 +408,15 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
             hitSlop={6}
           >
             <Trash2 size={19} color="#FFFFFF" strokeWidth={2.4} />
+          </Pressable>
+
+          {/* Botón Editar Azul */}
+          <Pressable
+            onPress={handleEditPress}
+            style={styles.swipeEditBtn}
+            hitSlop={6}
+          >
+            <Edit2 size={19} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
         </Animated.View>
       </View>

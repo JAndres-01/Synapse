@@ -9,13 +9,19 @@ export default function TabLayout() {
   const router = useRouter()
   const [pendingCount, setPendingCount] = useState(0)
 
-  const activeTab: TabKey = pathname.includes('schedule')
+  const pathnameTab: TabKey = pathname.includes('schedule')
     ? 'schedule'
     : pathname.includes('tasks')
     ? 'tasks'
     : pathname.includes('settings')
     ? 'settings'
     : 'today'
+
+  const [activeTab, setActiveTab] = useState<TabKey>(pathnameTab)
+
+  useEffect(() => {
+    setActiveTab(pathnameTab)
+  }, [pathnameTab])
 
   useEffect(() => {
     const updatePending = () => {
@@ -30,6 +36,8 @@ export default function TabLayout() {
   }, [])
 
   const handleSelectTab = (tab: TabKey) => {
+    if (tab === activeTab) return
+    setActiveTab(tab)
     if (tab === 'today') router.navigate('/(tabs)/today')
     if (tab === 'schedule') router.navigate('/(tabs)/schedule')
     if (tab === 'tasks') router.navigate('/(tabs)/tasks')

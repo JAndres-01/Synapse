@@ -6,6 +6,7 @@ import {
   RefreshControl,
   Pressable,
   StyleSheet,
+  InteractionManager,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
@@ -89,7 +90,10 @@ export default function TodayScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData()
+      const task = InteractionManager.runAfterInteractions(() => {
+        loadData()
+      })
+      return () => task.cancel()
     }, [loadData])
   )
 

@@ -63,6 +63,10 @@ export default function TasksScreen() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
 
   useEffect(() => {
+    if (!searchQuery) {
+      setDebouncedQuery('')
+      return
+    }
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery)
     }, 120)

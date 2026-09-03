@@ -18,17 +18,22 @@ export default function TabLayout() {
     : 'today'
 
   useEffect(() => {
-    personalStorage.getTasks().then((tasks) => {
-      const pending = tasks.filter((t) => t.status === 'pending').length
-      setPendingCount(pending)
-    })
-  }, [pathname])
+    const updatePending = () => {
+      personalStorage.getTasks().then((tasks) => {
+        const pending = tasks.filter((t) => t.status === 'pending').length
+        setPendingCount(pending)
+      })
+    }
+    updatePending()
+    const unsubscribe = subscribeToPersonalStorage(updatePending)
+    return unsubscribe
+  }, [])
 
   const handleSelectTab = (tab: TabKey) => {
-    if (tab === 'today') router.replace('/(tabs)/today')
-    if (tab === 'schedule') router.replace('/(tabs)/schedule')
-    if (tab === 'tasks') router.replace('/(tabs)/tasks')
-    if (tab === 'settings') router.replace('/(tabs)/settings')
+    if (tab === 'today') router.navigate('/(tabs)/today')
+    if (tab === 'schedule') router.navigate('/(tabs)/schedule')
+    if (tab === 'tasks') router.navigate('/(tabs)/tasks')
+    if (tab === 'settings') router.navigate('/(tabs)/settings')
   }
 
   return (

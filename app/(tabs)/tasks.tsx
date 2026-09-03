@@ -240,12 +240,10 @@ export default function TasksScreen() {
       duration: 300,
       update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
     })
-    triggerHaptic('selection')
     setStatusFilter(newStatus)
   }
 
   const handleOpenSearch = () => {
-    triggerHaptic('light')
     setIsSearchActive(true)
     searchScaleAnim.setValue(0.88)
     searchOpacityAnim.setValue(0)
@@ -269,7 +267,6 @@ export default function TasksScreen() {
   }
 
   const handleCloseSearch = () => {
-    triggerHaptic('light')
     Keyboard.dismiss()
     setSearchQuery('')
 
@@ -524,7 +521,6 @@ export default function TasksScreen() {
         <View style={styles.filterButtonRow}>
           <Pressable
             onPress={() => {
-              triggerHaptic('light')
               setShowSubjectMenu(true)
             }}
             style={[
@@ -565,7 +561,6 @@ export default function TasksScreen() {
           {selectedSubjectId !== 'all' && (
             <Pressable
               onPress={() => {
-                triggerHaptic('selection')
                 setSelectedSubjectId('all')
               }}
               style={styles.resetFilterBtn}
@@ -578,12 +573,16 @@ export default function TasksScreen() {
         {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
         <BlurView
           intensity={Platform.OS === 'ios' ? 55 : 90}
-          tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
+          tint="dark"
           style={styles.segmentedContainer}
           onLayout={(e: LayoutChangeEvent) => {
-            setSegmentContainerWidth(e.nativeEvent.layout.width)
+            const w = e.nativeEvent.layout.width
+            if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
+              setSegmentContainerWidth(w)
+            }
           }}
         >
+          {/* Indicador Deslizante Suave */}
           <Animated.View
             style={[
               styles.activeSegmentPill,
@@ -645,16 +644,15 @@ export default function TasksScreen() {
                 <MinimalistTaskRow
                   key={task.id}
                   task={task}
+                  statusFilter={statusFilter}
                   isLast={idx === filteredTasks.length - 1}
                   isHighlighted={highlightedTaskId === task.id}
                   onToggleStatus={handleToggleStatus}
                   onOpenDetail={(t) => {
-                    triggerHaptic('light')
                     setActiveTask(t)
                     setTaskModalMode('detail')
                   }}
                   onEdit={(t) => {
-                    triggerHaptic('light')
                     setActiveTask(t)
                     setTaskModalMode('edit')
                   }}

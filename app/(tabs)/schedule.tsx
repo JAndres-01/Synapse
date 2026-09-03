@@ -77,7 +77,6 @@ export default function ScheduleScreen() {
   const viewModeAnim = useRef(new Animated.Value(0)).current
 
   const handleViewModeChange = (mode: 'day' | 'week') => {
-    triggerHaptic('selection')
     setViewMode(mode)
     Animated.spring(viewModeAnim, {
       toValue: mode === 'day' ? 0 : segmentWidth,

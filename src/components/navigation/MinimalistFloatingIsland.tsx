@@ -104,10 +104,7 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
           return (
             <Pressable
               key={tab.key}
-              onPress={() => {
-                triggerHaptic('light')
-                onSelectTab(tab.key)
-              }}
+              onPress={() => onSelectTab(tab.key)}
               style={styles.tabButton}
             >
               <View style={styles.iconContainer}>

@@ -19,6 +19,7 @@ const SWIPE_THRESHOLD = 75
 
 interface MinimalistTaskRowProps {
   task: Task
+  statusFilter?: 'pending' | 'completed' | 'all'
   isLast?: boolean
   isHighlighted?: boolean
   onToggleStatus: (taskId: string, currentStatus: string) => void
@@ -30,6 +31,7 @@ interface MinimalistTaskRowProps {
 
 export const MinimalistTaskRow = memo(function MinimalistTaskRow({
   task,
+  statusFilter,
   isLast = false,
   isHighlighted = false,
   onToggleStatus,
@@ -39,10 +41,13 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
   onSwipeActiveChange,
 }: MinimalistTaskRowProps) {
   const isDone = task.status === 'completed'
+  // Si estamos en la pestaña "Completadas", mientras la tarea realiza su animación de salida
+  // debe mantenerse tachada y atenuada (nunca iluminarse en blanco antes de desaparecer)
+  const isVisuallyDone = isDone || statusFilter === 'completed'
 
   // Microinteracciones de escala y atenuación de la fila
   const scaleAnim = useRef(new Animated.Value(1)).current
-  const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
+  const rowFadeAnim = useRef(new Animated.Value(isVisuallyDone ? 0.65 : 1)).current
   const rowSlideAnim = useRef(new Animated.Value(0)).current
 
   // Animación de Brillo Blanco y Elevación al Resaltar
@@ -58,11 +63,11 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
 
   useEffect(() => {
     Animated.timing(rowFadeAnim, {
-      toValue: isDone ? 0.6 : 1,
+      toValue: isVisuallyDone ? 0.6 : 1,
       duration: 180,
       useNativeDriver: true,
     }).start()
-  }, [isDone])
+  }, [isVisuallyDone])
 
   useEffect(() => {
     if (isHighlighted) {
@@ -300,7 +305,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
       const formattedH = hours % 12 || 12
 
       if (isToday) return { text: `Hoy ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: true }
-      if (isPast && !isDone) return { text: `Venció ${dayName}`, isPast: true, isToday: false }
+      if (isPast && !isVisuallyDone) return { text: `Venció ${dayName}`, isPast: true, isToday: false }
       return { text: `${dayName} ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: false }
     } catch {
       return null
@@ -439,7 +444,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
             style={styles.contentArea}
           >
             <Text
-              style={[styles.title, isDone && styles.titleDone]}
+              style={[styles.title, isVisuallyDone && styles.titleDone]}
               numberOfLines={2}
             >
               {task.title}
@@ -465,7 +470,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
                     styles.dueText,
                     dueInfo.isPast && styles.dueTextPast,
                     dueInfo.isToday && styles.dueTextToday,
-                    isDone && styles.dueTextDone,
+                    isVisuallyDone && styles.dueTextDone,
                   ]}
                 >
                   {dueInfo.text}

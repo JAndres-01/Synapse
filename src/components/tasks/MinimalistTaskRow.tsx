@@ -6,15 +6,16 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
-  Dimensions,
+  Easing,
 } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, Paperclip, Edit2, Trash2, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const ACTION_BUTTON_WIDTH = 70
-const TOTAL_ACTIONS_WIDTH = 140
+const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+const ACTION_BUTTON_WIDTH = 56
+const TOTAL_ACTIONS_WIDTH = 112
+const SWIPE_THRESHOLD = 75
 
 interface MinimalistTaskRowProps {
   task: Task
@@ -39,21 +40,21 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
 }: MinimalistTaskRowProps) {
   const isDone = task.status === 'completed'
 
-  // Animaciones de escala tactil, rebote y opacidad
+  // Microinteracciones de escala y atenuación de la fila
   const scaleAnim = useRef(new Animated.Value(1)).current
   const checkBounceAnim = useRef(new Animated.Value(1)).current
   const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
   const rowSlideAnim = useRef(new Animated.Value(0)).current
 
-  // Animacion de Brillo Blanco y Elevacion al Resaltar
+  // Animación de Brillo Blanco y Elevación al Resaltar
   const highlightAnim = useRef(new Animated.Value(0)).current
   const liftAnim = useRef(new Animated.Value(0)).current
 
-  // Animacion de Desplazamiento Horizontal (Gestos estilo Spotify)
+  // Animación de Desplazamiento Horizontal (Gestos estilo Spotify)
   const translateX = useRef(new Animated.Value(0)).current
-  const rightSwipeProgress = useRef(new Animated.Value(0)).current
+  const rightSwipeDistance = useRef(new Animated.Value(0)).current
   const isOpen = useRef(false)
-  const hasTriggeredHaptic = useRef(false)
+  const isGreenTriggered = useRef(false)
 
   useEffect(() => {
     Animated.timing(rowFadeAnim, {
@@ -105,7 +106,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     }
   }, [isHighlighted])
 
-  // Gesto PanResponder con bloqueo estricto de scroll vertical mientras se desliza horizontalmente
+  // Gesto PanResponder con bloqueo estricto de scroll vertical durante el deslizamiento
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -123,7 +124,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
       },
       onPanResponderGrant: () => {
         onSwipeActiveChange?.(false)
-        hasTriggeredHaptic.current = false
+        isGreenTriggered.current = false
       },
       onPanResponderMove: (_, gestureState) => {
         let dx = gestureState.dx
@@ -132,22 +133,22 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         }
 
         if (dx > 0) {
-          // Deslizar hacia la derecha (Spotify estilo Verde: Marcar completada/pendiente)
-          const dampedDx = dx > 120 ? 120 + (dx - 120) * 0.35 : dx
+          // Deslizar hacia la derecha (Spotify estilo: gris -> verde en rango)
+          const dampedDx = dx > 110 ? 110 + (dx - 110) * 0.35 : dx
           translateX.setValue(dampedDx)
-          rightSwipeProgress.setValue(dampedDx)
+          rightSwipeDistance.setValue(dampedDx)
 
-          if (dampedDx >= 75 && !hasTriggeredHaptic.current) {
+          if (dampedDx >= SWIPE_THRESHOLD && !isGreenTriggered.current) {
             triggerHaptic('medium')
-            hasTriggeredHaptic.current = true
-          } else if (dampedDx < 75 && hasTriggeredHaptic.current) {
-            hasTriggeredHaptic.current = false
+            isGreenTriggered.current = true
+          } else if (dampedDx < SWIPE_THRESHOLD && isGreenTriggered.current) {
+            isGreenTriggered.current = false
           }
         } else {
-          // Deslizar hacia la izquierda (Revelar Editar Azul y Borrar Rojo)
-          const clampedDx = Math.max(-170, dx)
+          // Deslizar hacia la izquierda (Revelar Editar Azul y Borrar Rojo sin texto)
+          const clampedDx = Math.max(-150, dx)
           translateX.setValue(clampedDx)
-          rightSwipeProgress.setValue(0)
+          rightSwipeDistance.setValue(0)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -157,39 +158,41 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
           dx = dx - TOTAL_ACTIONS_WIDTH
         }
 
-        if (dx >= 75) {
-          // Completar / Descompletar disparado con animacion de salida fluida
+        if (dx >= SWIPE_THRESHOLD) {
+          // Completar / Descompletar disparado: regresar suavemente a 0 y ejecutar acción
           triggerHaptic('success')
+          isOpen.current = false
+          isGreenTriggered.current = false
+          rightSwipeDistance.setValue(0)
+
           Animated.timing(translateX, {
-            toValue: SCREEN_WIDTH,
-            duration: 160,
+            toValue: 0,
+            duration: 140,
+            easing: APPLE_EASING,
             useNativeDriver: true,
           }).start(() => {
-            translateX.setValue(0)
-            rightSwipeProgress.setValue(0)
-            isOpen.current = false
             onToggleStatus(task.id, task.status)
           })
-        } else if (dx <= -55) {
-          // Desplegar y anclar botones de Editar y Borrar
+        } else if (dx <= -48) {
+          // Desplegar y anclar botones de Editar y Borrar (sin rebote que exponga el fondo)
           triggerHaptic('selection')
           isOpen.current = true
-          Animated.spring(translateX, {
+          Animated.timing(translateX, {
             toValue: -TOTAL_ACTIONS_WIDTH,
-            stiffness: 500,
-            damping: 28,
-            mass: 0.8,
+            duration: 180,
+            easing: APPLE_EASING,
             useNativeDriver: true,
           }).start()
         } else {
-          // Restaurar a posicion cerrada
+          // Restaurar a posición cerrada exactamente en 0 (sin rebote elástico)
           isOpen.current = false
-          rightSwipeProgress.setValue(0)
-          Animated.spring(translateX, {
+          isGreenTriggered.current = false
+          rightSwipeDistance.setValue(0)
+
+          Animated.timing(translateX, {
             toValue: 0,
-            stiffness: 500,
-            damping: 28,
-            mass: 0.8,
+            duration: 160,
+            easing: APPLE_EASING,
             useNativeDriver: true,
           }).start()
         }
@@ -197,12 +200,13 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
       onPanResponderTerminate: () => {
         onSwipeActiveChange?.(true)
         isOpen.current = false
-        rightSwipeProgress.setValue(0)
-        Animated.spring(translateX, {
+        isGreenTriggered.current = false
+        rightSwipeDistance.setValue(0)
+
+        Animated.timing(translateX, {
           toValue: 0,
-          stiffness: 500,
-          damping: 28,
-          mass: 0.8,
+          duration: 160,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }).start()
       },
@@ -256,11 +260,10 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     if (isOpen.current) {
       triggerHaptic('light')
       isOpen.current = false
-      Animated.spring(translateX, {
+      Animated.timing(translateX, {
         toValue: 0,
-        stiffness: 500,
-        damping: 28,
-        mass: 0.8,
+        duration: 160,
+        easing: APPLE_EASING,
         useNativeDriver: true,
       }).start()
       return
@@ -275,6 +278,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     Animated.timing(translateX, {
       toValue: 0,
       duration: 140,
+      easing: APPLE_EASING,
       useNativeDriver: true,
     }).start(() => {
       onEdit?.(task)
@@ -287,6 +291,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     Animated.timing(translateX, {
       toValue: 0,
       duration: 140,
+      easing: APPLE_EASING,
       useNativeDriver: true,
     }).start(() => {
       onDelete?.(task.id)
@@ -337,58 +342,81 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     >
       {/* 1. Capa de Fondo para Gestos estilo Spotify */}
       <View style={styles.swipeBackgroundContainer}>
-        {/* Fondo Verde Completo Izquierda (Completar / Descompletar) */}
+        {/* Fondo Base Gris Neutro (Inicial) */}
         <Animated.View
           style={[
-            styles.swipeLeftBackground,
+            styles.swipeLeftBackgroundGrey,
             {
-              opacity: rightSwipeProgress.interpolate({
-                inputRange: [0, 15, 75],
-                outputRange: [0, 0.6, 1],
+              opacity: rightSwipeDistance.interpolate({
+                inputRange: [0, 10, 30],
+                outputRange: [0, 0.7, 1],
                 extrapolate: 'clamp',
               }),
             },
           ]}
+        />
+
+        {/* Fondo Verde de Rango Activo (Al alcanzar el umbral de 75px) */}
+        <Animated.View
+          style={[
+            styles.swipeLeftBackgroundGreen,
+            {
+              opacity: rightSwipeDistance.interpolate({
+                inputRange: [0, 68, SWIPE_THRESHOLD],
+                outputRange: [0, 0, 1],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}
+        />
+
+        {/* Icono de Palomita Izquierdo con escalado suave */}
+        <Animated.View
+          style={[
+            styles.swipeLeftIconWrapper,
+            {
+              opacity: rightSwipeDistance.interpolate({
+                inputRange: [0, 15, 40],
+                outputRange: [0, 0.6, 1],
+                extrapolate: 'clamp',
+              }),
+              transform: [
+                {
+                  scale: rightSwipeDistance.interpolate({
+                    inputRange: [0, 40, SWIPE_THRESHOLD, 110],
+                    outputRange: [0.7, 0.9, 1.15, 1.25],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            },
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.swipeActionLeftContent,
-              {
-                transform: [
-                  {
-                    scale: rightSwipeProgress.interpolate({
-                      inputRange: [0, 40, 75, 120],
-                      outputRange: [0.6, 0.85, 1.15, 1.25],
-                      extrapolate: 'clamp',
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            {isDone ? (
-              <RotateCcw size={20} color="#FFFFFF" strokeWidth={2.8} />
-            ) : (
-              <Check size={22} color="#FFFFFF" strokeWidth={3.2} />
-            )}
-            <Text style={styles.swipeActionLeftText}>
-              {isDone ? 'Marcar Pendiente' : 'Completar Tarea'}
-            </Text>
-          </Animated.View>
+          {isDone ? (
+            <RotateCcw size={19} color="#FFFFFF" strokeWidth={2.8} />
+          ) : (
+            <Check size={20} color="#FFFFFF" strokeWidth={3.2} />
+          )}
         </Animated.View>
 
-        {/* Bloques Azul y Rojo Pegados a la Derecha (Editar y Borrar) */}
+        {/* Bloques Azul y Rojo Pegados a la Derecha (Editar y Borrar SOLO ICONOS) */}
         <View style={styles.swipeRightActionsContainer}>
-          {/* Boton Editar Azul */}
-          <Pressable onPress={handleEditPress} style={styles.swipeEditBtn}>
-            <Edit2 size={17} color="#FFFFFF" strokeWidth={2.4} />
-            <Text style={styles.swipeActionText}>Editar</Text>
+          {/* Botón Editar Azul */}
+          <Pressable
+            onPress={handleEditPress}
+            style={styles.swipeEditBtn}
+            hitSlop={6}
+          >
+            <Edit2 size={19} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
 
-          {/* Boton Borrar Rojo */}
-          <Pressable onPress={handleDeletePress} style={styles.swipeDeleteBtn}>
-            <Trash2 size={17} color="#FFFFFF" strokeWidth={2.4} />
-            <Text style={styles.swipeActionText}>Borrar</Text>
+          {/* Botón Borrar Rojo */}
+          <Pressable
+            onPress={handleDeletePress}
+            style={styles.swipeDeleteBtn}
+            hitSlop={6}
+          >
+            <Trash2 size={19} color="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
         </View>
       </View>
@@ -501,23 +529,23 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
   },
-  swipeLeftBackground: {
+  swipeLeftBackgroundGrey: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#27272A',
+    borderRadius: 14,
+  },
+  swipeLeftBackgroundGreen: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#10B981',
     borderRadius: 14,
+  },
+  swipeLeftIconWrapper: {
+    position: 'absolute',
+    left: 20,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
-    paddingLeft: 18,
-  },
-  swipeActionLeftContent: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  swipeActionLeftText: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '800',
-    letterSpacing: -0.2,
   },
   swipeRightActionsContainer: {
     position: 'absolute',
@@ -536,7 +564,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
   },
   swipeDeleteBtn: {
     width: ACTION_BUTTON_WIDTH,
@@ -544,13 +571,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
-  },
-  swipeActionText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: -0.2,
   },
   glowWrapper: {
     backgroundColor: '#09090B',

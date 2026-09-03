@@ -95,6 +95,8 @@ export default function TasksScreen() {
   // IDs de tareas en transición animada
   const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
   const [isScrollEnabled, setIsScrollEnabled] = useState(true)
+  const tasksRef = useRef(tasks)
+  tasksRef.current = tasks
 
   // Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
@@ -294,12 +296,13 @@ export default function TasksScreen() {
 
     if (nextStatus === 'completed') {
       cancelTaskReminder(taskId)
-      const prefs = await personalStorage.getPreferences()
-      if (prefs.confetti_enabled) {
-        setConfettiBurstTrigger((prev) => prev + 1)
-      }
+      personalStorage.getPreferences().then((prefs) => {
+        if (prefs.confetti_enabled) {
+          setConfettiBurstTrigger((prev) => prev + 1)
+        }
+      })
     } else {
-      const taskObj = tasks.find((t) => t.id === taskId)
+      const taskObj = tasksRef.current.find((t) => t.id === taskId)
       if (taskObj) {
         personalStorage.getPreferences().then((p) =>
           scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
@@ -310,12 +313,13 @@ export default function TasksScreen() {
     if (statusFilter === 'pending' && nextStatus === 'completed') {
       setTransitioningTaskIds((prev) => [...prev, taskId])
 
-      const updated = tasks.map((t) => {
-        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-        return t
+      setTasks((prevTasks) => {
+        const updated = prevTasks.map((t) =>
+          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
+        )
+        personalStorage.setTasks(updated)
+        return updated
       })
-      setTasks(updated)
-      await personalStorage.setTasks(updated)
 
       setTimeout(() => {
         LayoutAnimation.configureNext({
@@ -329,12 +333,13 @@ export default function TasksScreen() {
     } else if (statusFilter === 'completed' && nextStatus === 'pending') {
       setTransitioningTaskIds((prev) => [...prev, taskId])
 
-      const updated = tasks.map((t) => {
-        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-        return t
+      setTasks((prevTasks) => {
+        const updated = prevTasks.map((t) =>
+          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
+        )
+        personalStorage.setTasks(updated)
+        return updated
       })
-      setTasks(updated)
-      await personalStorage.setTasks(updated)
 
       setTimeout(() => {
         LayoutAnimation.configureNext({
@@ -350,24 +355,28 @@ export default function TasksScreen() {
         duration: 200,
         update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
       })
-      const updated = tasks.map((t) => {
-        if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }
-        return t
+      setTasks((prevTasks) => {
+        const updated = prevTasks.map((t) =>
+          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
+        )
+        personalStorage.setTasks(updated)
+        return updated
       })
-      setTasks(updated)
-      await personalStorage.setTasks(updated)
     }
-  }, [tasks, statusFilter])
+  }, [statusFilter])
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     cancelTaskReminder(taskId)
     LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+      duration: 260,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
       delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
     })
-    const updated = await personalStorage.removeTask(taskId)
-    setTasks(updated)
+    setTasks((prevTasks) => {
+      const updated = prevTasks.filter((t) => t.id !== taskId)
+      personalStorage.setTasks(updated)
+      return updated
+    })
   }, [])
 
   const filteredTasks = useMemo(() => {

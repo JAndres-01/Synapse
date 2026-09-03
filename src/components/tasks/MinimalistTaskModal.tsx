@@ -42,6 +42,8 @@ import {
   GraduationCap,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
+import * as DocumentPicker from 'expo-document-picker'
+import * as Sharing from 'expo-sharing'
 import * as Linking from 'expo-linking'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -152,8 +154,7 @@ export function MinimalistTaskModal({
   const titleInputRef = useRef<TextInput>(null)
 
   // Menús desplegables en formulario con animación fluida
-  const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | 'link' | null>(null)
-  const [linkUrl, setLinkUrl] = useState('')
+  const [activePicker, setActivePicker] = useState<'subject' | 'type' | 'date' | null>(null)
   const pickerFadeAnim = useRef(new Animated.Value(0)).current
   const pickerSlideAnim = useRef(new Animated.Value(-6)).current
 
@@ -569,24 +570,42 @@ export function MinimalistTaskModal({
     }
   }
 
-  const handleAddLink = () => {
-    if (!linkUrl.trim()) return
-    let formatted = linkUrl.trim()
-    if (!formatted.startsWith('http://') && !formatted.startsWith('https://')) {
-      formatted = `https://${formatted}`
-    }
+  const handlePickDocument = async () => {
+    triggerHaptic('light')
+    Keyboard.dismiss()
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'text/plain',
+          '*/*',
+        ],
+        copyToCacheDirectory: true,
+      })
 
-    const newAttachment: TaskAttachment = {
-      id: Math.random().toString(36).substring(7),
-      file_name: formatted.replace(/^https?:\/\/(www\.)?/, '').slice(0, 24),
-      file_url: formatted,
-      file_type: 'link',
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0]
+        const newAttachment: TaskAttachment = {
+          id: Math.random().toString(36).substring(7),
+          file_name: asset.name || 'Documento',
+          file_url: asset.uri,
+          file_type: 'document',
+          size_bytes: asset.size,
+        }
+        setAttachments((prev) => [...prev, newAttachment])
+        triggerHaptic('success')
+      }
+    } catch (err: any) {
+      console.error('Error al seleccionar documento:', err)
+      Alert.alert('Error', 'No se pudo seleccionar el archivo.')
+      triggerHaptic('error')
     }
-
-    setAttachments((prev) => [...prev, newAttachment])
-    setLinkUrl('')
-    setActivePicker(null)
-    triggerHaptic('success')
   }
 
   const formatDueDateLabel = (dateStr?: string) => {
@@ -805,21 +824,73 @@ export function MinimalistTaskModal({
                         )
                       }
 
+                      // Documentos (PDF, Word, Excel, etc.) o Enlaces
+                      const isPdf = att.file_name?.toLowerCase().endsWith('.pdf')
+                      const isWord = Boolean(att.file_name?.toLowerCase().match(/\.(doc|docx)$/))
+                      const isExcel = Boolean(att.file_name?.toLowerCase().match(/\.(xls|xlsx)$/))
+                      const isPpt = Boolean(att.file_name?.toLowerCase().match(/\.(ppt|pptx)$/))
+
+                      const getBadgeInfo = () => {
+                        if (isPdf) return { label: 'PDF', bg: 'rgba(239, 68, 68, 0.15)', text: '#F87171' }
+                        if (isWord) return { label: 'DOC', bg: 'rgba(59, 130, 246, 0.15)', text: '#60A5FA' }
+                        if (isExcel) return { label: 'XLS', bg: 'rgba(34, 197, 94, 0.15)', text: '#4ADE80' }
+                        if (isPpt) return { label: 'PPT', bg: 'rgba(249, 115, 22, 0.15)', text: '#FB923C' }
+                        if (att.file_type === 'link' || att.file_url?.startsWith('http')) {
+                          return { label: 'LINK', bg: 'rgba(129, 140, 248, 0.15)', text: '#818CF8' }
+                        }
+                        return { label: 'FILE', bg: 'rgba(255, 255, 255, 0.1)', text: '#D4D4D8' }
+                      }
+                      const badge = getBadgeInfo()
+
+                      const formatFileSize = (bytes?: number) => {
+                        if (!bytes || bytes <= 0) return 'Toca para abrir o compartir'
+                        if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB • Toca para abrir`
+                        return `${(bytes / 1024).toFixed(0)} KB • Toca para abrir`
+                      }
+
+                      const handleOpenAttachment = async () => {
+                        triggerHaptic('light')
+                        if (att.file_url?.startsWith('http://') || att.file_url?.startsWith('https://')) {
+                          Linking.openURL(att.file_url)
+                        } else {
+                          try {
+                            const isAvailable = await Sharing.isAvailableAsync()
+                            if (isAvailable) {
+                              await Sharing.shareAsync(att.file_url, {
+                                dialogTitle: att.file_name,
+                                mimeType: isPdf ? 'application/pdf' : undefined,
+                                UTI: isPdf ? 'com.adobe.pdf' : undefined,
+                              })
+                            } else {
+                              Linking.openURL(att.file_url)
+                            }
+                          } catch (err) {
+                            console.error('Error al abrir archivo:', err)
+                            Alert.alert('Aviso', 'No se pudo abrir el archivo.')
+                          }
+                        }
+                      }
+
                       return (
                         <Pressable
                           key={idx}
-                          onPress={() => {
-                            if (att.file_url) Linking.openURL(att.file_url)
-                          }}
-                          style={styles.detailLinkCard}
+                          onPress={handleOpenAttachment}
+                          style={styles.detailDocCard}
                         >
-                          <Link2 size={15} color="#818CF8" />
-                          <View style={styles.detailLinkInfo}>
-                            <Text style={styles.detailLinkTitle} numberOfLines={1}>
-                              {att.file_name || 'Enlace adjunto'}
+                          <View style={[styles.docTypeBadge, { backgroundColor: badge.bg }]}>
+                            <Text style={[styles.docTypeBadgeText, { color: badge.text }]}>
+                              {badge.label}
                             </Text>
                           </View>
-                          <ExternalLink size={13} color="#71717A" />
+                          <View style={styles.detailDocInfo}>
+                            <Text style={styles.detailDocTitle} numberOfLines={1}>
+                              {att.file_name || 'Archivo adjunto'}
+                            </Text>
+                            <Text style={styles.detailDocSubtitle}>
+                              {formatFileSize(att.size_bytes)}
+                            </Text>
+                          </View>
+                          <ExternalLink size={14} color="#71717A" />
                         </Pressable>
                       )
                     })}
@@ -991,14 +1062,8 @@ export function MinimalistTaskModal({
                     <ImageIcon size={15} color="#A1A1AA" />
                   </Pressable>
 
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setActivePicker(activePicker === 'link' ? null : 'link')
-                    }}
-                    style={styles.attrIconPill}
-                  >
-                    <Link2 size={15} color="#A1A1AA" />
+                  <Pressable onPress={handlePickDocument} style={styles.attrIconPill}>
+                    <FileText size={15} color="#A1A1AA" />
                   </Pressable>
                 </ScrollView>
 
@@ -1392,52 +1457,36 @@ export function MinimalistTaskModal({
                   </Animated.View>
                 )}
 
-                {activePicker === 'link' && (
-                  <Animated.View
-                    style={{
-                      opacity: pickerFadeAnim,
-                      transform: [{ translateY: pickerSlideAnim }],
-                    }}
-                  >
-                    <View style={styles.inlineMenu}>
-                      <Text style={styles.inlineMenuHeader}>Pegar enlace</Text>
-                      <View style={styles.linkRow}>
-                        <TextInput
-                          placeholder="https://..."
-                          placeholderTextColor="#71717A"
-                          value={linkUrl}
-                          onChangeText={setLinkUrl}
-                          style={styles.cleanLinkInput}
-                          autoCapitalize="none"
-                        />
-                        <Pressable onPress={handleAddLink} style={styles.linkConfirmBtn}>
-                          <Text style={styles.linkConfirmBtnText}>Añadir</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  </Animated.View>
-                )}
-
                 {/* Adjuntos Cargados */}
                 {attachments.length > 0 && (
                   <View style={styles.attachmentsSection}>
-                    {attachments.map((a) => (
-                      <View key={a.id} style={styles.attachedPill}>
-                        <Paperclip size={12} color="#A1A1AA" />
-                        <Text style={styles.attachedPillText} numberOfLines={1}>
-                          {a.file_name}
-                        </Text>
-                        <Pressable
-                          onPress={() => {
-                            triggerHaptic('light')
-                            setAttachments((prev) => prev.filter((item) => item.id !== a.id))
-                          }}
-                          hitSlop={10}
-                        >
-                          <X size={12} color="#71717A" />
-                        </Pressable>
-                      </View>
-                    ))}
+                    {attachments.map((a) => {
+                      const isImg = a.file_type === 'image' || a.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
+                      const isPdf = a.file_name?.toLowerCase().endsWith('.pdf')
+                      const isWord = Boolean(a.file_name?.toLowerCase().match(/\.(doc|docx)$/))
+
+                      return (
+                        <View key={a.id} style={styles.attachedPill}>
+                          {isImg ? (
+                            <ImageIcon size={12} color="#A1A1AA" />
+                          ) : (
+                            <FileText size={12} color={isPdf ? '#F87171' : isWord ? '#60A5FA' : '#A1A1AA'} />
+                          )}
+                          <Text style={styles.attachedPillText} numberOfLines={1}>
+                            {a.file_name}
+                          </Text>
+                          <Pressable
+                            onPress={() => {
+                              triggerHaptic('light')
+                              setAttachments((prev) => prev.filter((item) => item.id !== a.id))
+                            }}
+                            hitSlop={10}
+                          >
+                            <X size={12} color="#71717A" />
+                          </Pressable>
+                        </View>
+                      )
+                    })}
                   </View>
                 )}
               </ScrollView>
@@ -1630,24 +1679,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
   },
-  detailLinkCard: {
+  detailDocCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 12,
-    padding: 11,
-    gap: 10,
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
     alignSelf: 'stretch',
   },
-  detailLinkInfo: {
-    flex: 1,
+  docTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  detailLinkTitle: {
+  docTypeBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  detailDocInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  detailDocTitle: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
+  },
+  detailDocSubtitle: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '500',
   },
   sheetHeader: {
     alignItems: 'center',

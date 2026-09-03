@@ -9,37 +9,81 @@ const KEYS = {
   PREFERENCES: 'synapse_personal_prefs_v2',
 }
 
+// ==========================================
+// CACHÉ EN MEMORIA (REACTIVA Y SIN LATENCIA)
+// ==========================================
+let _subjectsCache: Subject[] | null = null
+let _schedulesCache: Schedule[] | null = null
+let _tasksCache: Task[] | null = null
+let _profileCache: PersonalProfile | null = null
+let _preferencesCache: AppPreferences | null = null
+
+const listeners = new Set<() => void>()
+
+export function subscribeToPersonalStorage(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+function notifyListeners() {
+  listeners.forEach((cb) => {
+    try {
+      cb()
+    } catch (e) {
+      console.error('[personalStorage] Error en listener:', e)
+    }
+  })
+}
+
 export const personalStorage = {
   // ==========================================
   // MATERIAS (SUBJECTS)
   // ==========================================
   async getSubjects(): Promise<Subject[]> {
+    if (_subjectsCache !== null) {
+      return [..._subjectsCache]
+    }
     try {
       const data = await AsyncStorage.getItem(KEYS.SUBJECTS)
-      return data ? JSON.parse(data) : []
-    } catch {
-      return []
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (Array.isArray(parsed)) {
+          _subjectsCache = parsed
+          return [...parsed]
+        }
+      }
+    } catch (err) {
+      console.error('[personalStorage] Error leyendo materias:', err)
     }
+    _subjectsCache = []
+    return []
   },
 
   async setSubjects(subjects: Subject[]): Promise<void> {
+    const safeList = Array.isArray(subjects) ? subjects : []
+    _subjectsCache = [...safeList]
+    notifyListeners()
     try {
-      await AsyncStorage.setItem(KEYS.SUBJECTS, JSON.stringify(subjects))
+      await AsyncStorage.setItem(KEYS.SUBJECTS, JSON.stringify(safeList))
     } catch (err) {
-      console.error('Error guardando materias en storage:', err)
+      console.error('[personalStorage] Error guardando materias:', err)
     }
   },
 
   async saveSubject(subject: Subject): Promise<Subject[]> {
     const list = await this.getSubjects()
     const index = list.findIndex((s) => s.id === subject.id)
+    let updated: Subject[]
     if (index >= 0) {
-      list[index] = subject
+      updated = [...list]
+      updated[index] = subject
     } else {
-      list.push(subject)
+      updated = [...list, subject]
     }
-    await this.setSubjects(list)
-    return list
+    await this.setSubjects(updated)
+    return updated
   },
 
   async addSubject(subject: Subject): Promise<Subject[]> {
@@ -85,19 +129,33 @@ export const personalStorage = {
   // HORARIOS (SCHEDULES)
   // ==========================================
   async getSchedules(): Promise<Schedule[]> {
+    if (_schedulesCache !== null) {
+      return [..._schedulesCache]
+    }
     try {
       const data = await AsyncStorage.getItem(KEYS.SCHEDULES)
-      return data ? JSON.parse(data) : []
-    } catch {
-      return []
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (Array.isArray(parsed)) {
+          _schedulesCache = parsed
+          return [...parsed]
+        }
+      }
+    } catch (err) {
+      console.error('[personalStorage] Error leyendo horarios:', err)
     }
+    _schedulesCache = []
+    return []
   },
 
   async setSchedules(schedules: Schedule[]): Promise<void> {
+    const safeList = Array.isArray(schedules) ? schedules : []
+    _schedulesCache = [...safeList]
+    notifyListeners()
     try {
-      await AsyncStorage.setItem(KEYS.SCHEDULES, JSON.stringify(schedules))
+      await AsyncStorage.setItem(KEYS.SCHEDULES, JSON.stringify(safeList))
     } catch (err) {
-      console.error('Error guardando horarios en storage:', err)
+      console.error('[personalStorage] Error guardando horarios:', err)
     }
   },
 
@@ -106,13 +164,15 @@ export const personalStorage = {
     const index = list.findIndex(
       (s) => s.day_of_week === schedule.day_of_week && s.block_number === schedule.block_number
     )
+    let updated: Schedule[]
     if (index >= 0) {
-      list[index] = schedule
+      updated = [...list]
+      updated[index] = schedule
     } else {
-      list.push(schedule)
+      updated = [...list, schedule]
     }
-    await this.setSchedules(list)
-    return list
+    await this.setSchedules(updated)
+    return updated
   },
 
   async setScheduleSlot(schedule: Schedule): Promise<Schedule[]> {
@@ -136,19 +196,33 @@ export const personalStorage = {
   // TAREAS (TASKS)
   // ==========================================
   async getTasks(): Promise<Task[]> {
+    if (_tasksCache !== null) {
+      return [..._tasksCache]
+    }
     try {
       const data = await AsyncStorage.getItem(KEYS.TASKS)
-      return data ? JSON.parse(data) : []
-    } catch {
-      return []
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (Array.isArray(parsed)) {
+          _tasksCache = parsed
+          return [...parsed]
+        }
+      }
+    } catch (err) {
+      console.error('[personalStorage] Error leyendo tareas:', err)
     }
+    _tasksCache = []
+    return []
   },
 
   async setTasks(tasks: Task[]): Promise<void> {
+    const safeList = Array.isArray(tasks) ? tasks : []
+    _tasksCache = [...safeList]
+    notifyListeners()
     try {
-      await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(tasks))
+      await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(safeList))
     } catch (err) {
-      console.error('Error guardando tareas en storage:', err)
+      console.error('[personalStorage] Error guardando tareas:', err)
     }
   },
 
@@ -159,13 +233,15 @@ export const personalStorage = {
   async saveTask(task: Task): Promise<Task[]> {
     const list = await this.getTasks()
     const index = list.findIndex((t) => t.id === task.id)
+    let updated: Task[]
     if (index >= 0) {
-      list[index] = task
+      updated = [...list]
+      updated[index] = task
     } else {
-      list.unshift(task)
+      updated = [task, ...list]
     }
-    await this.setTasks(list)
-    return list
+    await this.setTasks(updated)
+    return updated
   },
 
   async addTask(task: Task): Promise<Task[]> {
@@ -191,9 +267,18 @@ export const personalStorage = {
   // PERFIL LOCAL (PROFILE)
   // ==========================================
   async getProfile(): Promise<PersonalProfile> {
+    if (_profileCache !== null) {
+      return { ..._profileCache }
+    }
     try {
       const data = await AsyncStorage.getItem(KEYS.PROFILE)
-      if (data) return JSON.parse(data)
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (parsed && typeof parsed === 'object') {
+          _profileCache = parsed
+          return { ...parsed }
+        }
+      }
     } catch {}
     const defaultProfile: PersonalProfile = {
       id: 'local_user',
@@ -207,10 +292,12 @@ export const personalStorage = {
   },
 
   async setProfile(profile: PersonalProfile): Promise<void> {
+    _profileCache = { ...profile }
+    notifyListeners()
     try {
       await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile))
     } catch (err) {
-      console.error('Error guardando perfil en storage:', err)
+      console.error('[personalStorage] Error guardando perfil:', err)
     }
   },
 
@@ -218,32 +305,41 @@ export const personalStorage = {
   // PREFERENCIAS (PREFERENCES)
   // ==========================================
   async getPreferences(): Promise<AppPreferences> {
+    if (_preferencesCache !== null) {
+      return { ..._preferencesCache }
+    }
     try {
       const data = await AsyncStorage.getItem(KEYS.PREFERENCES)
       const parsed = data ? JSON.parse(data) : {}
-      return {
+      const prefs: AppPreferences = {
         haptics_enabled: parsed.haptics_enabled ?? true,
         confetti_enabled: parsed.confetti_enabled ?? true,
         advance_reminder_enabled: parsed.advance_reminder_enabled ?? true,
         advance_reminder_time: parsed.advance_reminder_time || '20:00',
         class_reminder_enabled: parsed.class_reminder_enabled ?? true,
       }
+      _preferencesCache = prefs
+      return prefs
     } catch {
-      return {
+      const defaultPrefs: AppPreferences = {
         haptics_enabled: true,
         confetti_enabled: true,
         advance_reminder_enabled: true,
         advance_reminder_time: '20:00',
         class_reminder_enabled: true,
       }
+      _preferencesCache = defaultPrefs
+      return defaultPrefs
     }
   },
 
   async setPreferences(prefs: AppPreferences): Promise<void> {
+    _preferencesCache = { ...prefs }
+    notifyListeners()
     try {
       await AsyncStorage.setItem(KEYS.PREFERENCES, JSON.stringify(prefs))
     } catch (err) {
-      console.error('Error guardando preferencias en storage:', err)
+      console.error('[personalStorage] Error guardando preferencias:', err)
     }
   },
 
@@ -289,6 +385,12 @@ export const personalStorage = {
   },
 
   async clearAll(): Promise<void> {
+    _subjectsCache = []
+    _schedulesCache = []
+    _tasksCache = []
+    _profileCache = null
+    _preferencesCache = null
+    notifyListeners()
     try {
       await AsyncStorage.multiRemove([
         KEYS.SUBJECTS,
@@ -297,6 +399,8 @@ export const personalStorage = {
         KEYS.PROFILE,
         KEYS.PREFERENCES,
       ])
-    } catch {}
+    } catch (err) {
+      console.error('[personalStorage] Error limpiando storage:', err)
+    }
   },
 }

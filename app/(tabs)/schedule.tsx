@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { personalStorage } from '@/lib/personalStorage'
+import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
 import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMatrix'
@@ -127,6 +127,10 @@ export default function ScheduleScreen() {
 
   useEffect(() => {
     loadData()
+    const unsubscribe = subscribeToPersonalStorage(() => {
+      loadData()
+    })
+    return unsubscribe
   }, [loadData])
 
   const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule) => {
@@ -300,6 +304,7 @@ export default function ScheduleScreen() {
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
             onOpenDayTasks={handleOpenDayTasks}
+            onAssignSlot={handleOpenAssign}
           />
         ) : (
           <MinimalistWeeklyMatrix

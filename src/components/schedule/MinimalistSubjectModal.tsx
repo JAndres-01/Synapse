@@ -46,6 +46,7 @@ export function MinimalistSubjectModal({
   subjects = [],
   onSubjectsUpdated,
 }: MinimalistSubjectModalProps) {
+  const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [name, setName] = useState('')
   const [teacher, setTeacher] = useState('')
@@ -56,6 +57,20 @@ export function MinimalistSubjectModal({
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(visible)
+
+  useEffect(() => {
+    setLocalSubjects(subjects)
+  }, [subjects])
+
+  useEffect(() => {
+    if (visible) {
+      personalStorage.getSubjects().then((list) => {
+        if (list && list.length > 0) {
+          setLocalSubjects(list)
+        }
+      })
+    }
+  }, [visible])
 
   useEffect(() => {
     if (visible) {
@@ -205,7 +220,8 @@ export function MinimalistSubjectModal({
           color: selectedColor,
         }
 
-        await personalStorage.saveSubject(updated)
+        const updatedList = await personalStorage.saveSubject(updated)
+        setLocalSubjects(updatedList)
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
@@ -218,7 +234,8 @@ export function MinimalistSubjectModal({
           color: selectedColor,
         }
 
-        await personalStorage.saveSubject(newSubject)
+        const updatedList = await personalStorage.saveSubject(newSubject)
+        setLocalSubjects(updatedList)
         triggerHaptic('success')
         onSubjectsUpdated()
         resetForm()
@@ -248,7 +265,8 @@ export function MinimalistSubjectModal({
                 resetForm()
               }
 
-              await personalStorage.removeSubject(subjectId)
+              const updatedList = await personalStorage.removeSubject(subjectId)
+              setLocalSubjects(updatedList)
               onSubjectsUpdated()
             } catch (err) {
               console.error('Error eliminando materia:', err)
@@ -281,7 +299,7 @@ export function MinimalistSubjectModal({
               <View>
                 <Text style={styles.sheetTitle}>Gestionar Materias</Text>
                 <Text style={styles.sheetSubtitle}>
-                  {editingSubject ? 'Editando materia' : `${subjects.length} registradas`}
+                  {editingSubject ? 'Editando materia' : `${localSubjects.length} registradas`}
                 </Text>
               </View>
 
@@ -400,15 +418,15 @@ export function MinimalistSubjectModal({
             {/* Lista Abierta de Materias Registradas */}
             <View style={styles.listSection}>
               <Text style={styles.sectionHeader}>
-                MATERIAS REGISTRADAS ({subjects.length})
+                MATERIAS REGISTRADAS ({localSubjects.length})
               </Text>
 
-              {subjects.length > 0 ? (
+              {localSubjects.length > 0 ? (
                 <View style={styles.subjectsList}>
-                  {subjects.map((s, idx) => {
+                  {localSubjects.map((s, idx) => {
                     const isEditing = editingSubject?.id === s.id
                     const isWhite = s.color === '#FFFFFF'
-                    const isLast = idx === subjects.length - 1
+                    const isLast = idx === localSubjects.length - 1
 
                     return (
                       <View

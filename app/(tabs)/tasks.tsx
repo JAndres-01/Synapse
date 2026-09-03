@@ -18,7 +18,7 @@ import {
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { personalStorage } from '@/lib/personalStorage'
+import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
@@ -130,6 +130,10 @@ export default function TasksScreen() {
 
   useEffect(() => {
     loadData()
+    const unsubscribe = subscribeToPersonalStorage(() => {
+      loadData()
+    })
+    return unsubscribe
   }, [loadData])
 
   useEffect(() => {

@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { personalStorage } from '@/lib/personalStorage'
+import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Task, Subject } from '@/types/personal'
 import { MinimalistLiveHero } from '@/components/today/MinimalistLiveHero'
 import { MinimalistTodayTasks } from '@/components/today/MinimalistTodayTasks'
@@ -95,6 +95,10 @@ export default function TodayScreen() {
 
   useEffect(() => {
     loadData()
+    const unsubscribe = subscribeToPersonalStorage(() => {
+      loadData()
+    })
+    return unsubscribe
   }, [loadData])
 
   const onRefresh = async () => {

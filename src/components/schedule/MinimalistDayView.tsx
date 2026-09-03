@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-nat
 import { BlurView } from 'expo-blur'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { User, MapPin, Clock, CheckSquare } from 'lucide-react-native'
+import { User, MapPin, Clock, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistDayViewProps {
@@ -13,6 +13,7 @@ interface MinimalistDayViewProps {
   selectedDay: number // 1: Lun ... 5: Vie
   onSelectDay: (day: number) => void
   onOpenDayTasks: (day: number, subjectId?: string | null) => void
+  onAssignSlot?: (day: number, block: number) => void
 }
 
 const DAYS = [
@@ -29,12 +30,14 @@ function DayClassRow({
   classTasks = [],
   isLast,
   onPressClass,
+  onAssignSlot,
 }: {
   blockDef: { block: number; startTime: string; endTime: string; label: string }
   schedule?: Schedule | null
   classTasks?: Task[]
   isLast: boolean
   onPressClass: () => void
+  onAssignSlot?: () => void
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current
   const isAssigned = Boolean(schedule?.subject)
@@ -43,7 +46,6 @@ function DayClassRow({
   const pendingTasks = classTasks.filter((t) => t.status === 'pending')
 
   const handlePressIn = () => {
-    if (!isAssigned) return
     Animated.spring(scaleAnim, {
       toValue: 0.985,
       stiffness: 600,
@@ -53,7 +55,6 @@ function DayClassRow({
   }
 
   const handlePressOut = () => {
-    if (!isAssigned) return
     Animated.spring(scaleAnim, {
       toValue: 1,
       stiffness: 500,
@@ -69,6 +70,9 @@ function DayClassRow({
           if (isAssigned) {
             triggerHaptic('light')
             onPressClass()
+          } else if (onAssignSlot) {
+            triggerHaptic('light')
+            onAssignSlot()
           }
         }}
         onPressIn={handlePressIn}
@@ -159,7 +163,13 @@ function DayClassRow({
             </>
           ) : (
             <View style={styles.freeSlotWrapper}>
-              <Text style={styles.freeTitle}>Hora Libre</Text>
+              <View style={styles.freeSlotRow}>
+                <Text style={styles.freeTitle}>Hora Libre</Text>
+                <View style={styles.assignSlotPill}>
+                  <Plus size={11} color="#A1A1AA" />
+                  <Text style={styles.assignSlotPillText}>Asignar materia</Text>
+                </View>
+              </View>
             </View>
           )}
         </View>
@@ -175,6 +185,7 @@ export function MinimalistDayView({
   selectedDay,
   onSelectDay,
   onOpenDayTasks,
+  onAssignSlot,
 }: MinimalistDayViewProps) {
   const currentDay = new Date().getDay()
   const daySchedules = schedules.filter((s) => s.day_of_week === selectedDay)
@@ -253,6 +264,7 @@ export function MinimalistDayView({
               classTasks={classTasks}
               isLast={idx === PERSONAL_SCHEDULE_BLOCKS.length - 1}
               onPressClass={() => onOpenDayTasks(selectedDay, item?.subject_id)}
+              onAssignSlot={() => onAssignSlot?.(selectedDay, blockDef.block)}
             />
           )
         })}
@@ -462,11 +474,33 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   freeSlotWrapper: {
-    gap: 2,
+    justifyContent: 'center',
+  },
+  freeSlotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 4,
   },
   freeTitle: {
     color: '#52525B',
     fontSize: 14.5,
+    fontWeight: '600',
+  },
+  assignSlotPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+  },
+  assignSlotPillText: {
+    color: '#A1A1AA',
+    fontSize: 11,
     fontWeight: '600',
   },
 })

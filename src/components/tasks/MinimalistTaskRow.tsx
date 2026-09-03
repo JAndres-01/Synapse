@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, Paperclip } from 'lucide-react-native'
@@ -12,7 +12,7 @@ interface MinimalistTaskRowProps {
   onOpenDetail: (task: Task) => void
 }
 
-export function MinimalistTaskRow({
+export const MinimalistTaskRow = memo(function MinimalistTaskRow({
   task,
   isLast = false,
   isHighlighted = false,
@@ -27,7 +27,7 @@ export function MinimalistTaskRow({
   const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
   const rowSlideAnim = useRef(new Animated.Value(0)).current
 
-  // Animación de Brillo Blanco y Elevación al Resaltar
+  // Animación de Brillo Blanco y Elevación al Resaltar (100% Nativo en GPU)
   const highlightAnim = useRef(new Animated.Value(0)).current
   const liftAnim = useRef(new Animated.Value(0)).current
 
@@ -54,7 +54,7 @@ export function MinimalistTaskRow({
         Animated.timing(highlightAnim, {
           toValue: 1,
           duration: 350,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]).start()
 
@@ -69,7 +69,7 @@ export function MinimalistTaskRow({
           Animated.timing(highlightAnim, {
             toValue: 0,
             duration: 900,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ]).start()
       }, 1600)
@@ -152,16 +152,6 @@ export function MinimalistTaskRow({
   const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
   const isWhite = task.subject?.color === '#FFFFFF'
 
-  const interpolatedBg = highlightAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.12)'],
-  })
-
-  const interpolatedBorder = highlightAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0.35)'],
-  })
-
   return (
     <Animated.View
       style={[
@@ -175,15 +165,11 @@ export function MinimalistTaskRow({
         },
       ]}
     >
-      <Animated.View
-        style={[
-          styles.glowWrapper,
-          {
-            backgroundColor: interpolatedBg,
-            borderColor: interpolatedBorder,
-          },
-        ]}
-      >
+      <View style={styles.glowWrapper}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.highlightOverlay, { opacity: highlightAnim }]}
+        />
         <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
           {/* Checkbox Circular con animación de rebote elástico */}
           <Pressable
@@ -265,17 +251,24 @@ export function MinimalistTaskRow({
             </View>
           </Pressable>
         </View>
-      </Animated.View>
+      </View>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   glowWrapper: {
     borderRadius: 14,
-    borderWidth: 1,
     paddingHorizontal: 8,
     marginHorizontal: -8,
+    position: 'relative',
+  },
+  highlightOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderWidth: 1,
+    borderRadius: 14,
   },
   rowContainer: {
     flexDirection: 'row',

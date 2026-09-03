@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, CheckSquare, ChevronRight, Clock, Paperclip } from 'lucide-react-native'
@@ -11,7 +11,7 @@ interface MinimalistTodayTasksProps {
   onNavigateToTasks: () => void
 }
 
-function TodayTaskItem({
+const TodayTaskItem = memo(function TodayTaskItem({
   task,
   isLast,
   onToggle,
@@ -169,7 +169,7 @@ function TodayTaskItem({
       </View>
     </Animated.View>
   )
-}
+})
 
 export function MinimalistTodayTasks({
   tasks = [],

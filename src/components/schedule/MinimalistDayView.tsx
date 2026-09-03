@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native'
 import { BlurView } from 'expo-blur'
 import type { Schedule, Subject, Task } from '@/types/personal'
@@ -24,7 +24,7 @@ const DAYS = [
   { num: 5, name: 'Viernes', short: 'Vie' },
 ]
 
-function DayClassRow({
+const DayClassRow = memo(function DayClassRow({
   blockDef,
   schedule,
   classTasks = [],
@@ -176,7 +176,7 @@ function DayClassRow({
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 export function MinimalistDayView({
   schedules = [],

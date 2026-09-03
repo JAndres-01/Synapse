@@ -459,7 +459,6 @@ export default function TasksScreen() {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <View style={styles.headerTitleRow}>
-                <CheckSquare size={20} color="#FFFFFF" />
                 <Text style={styles.title}>Mis Tareas</Text>
               </View>
 
@@ -472,7 +471,7 @@ export default function TasksScreen() {
               </Pressable>
             </View>
             <Text style={styles.subtitle}>
-              Entregas, talleres, lecturas y exámenes
+              Tareas, entregas, examenes
             </Text>
           </View>
         ) : (

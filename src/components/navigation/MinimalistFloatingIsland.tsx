@@ -46,9 +46,9 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
     const idx = Math.max(0, TABS.findIndex((t) => t.key === activeTab))
     Animated.spring(slideAnim, {
       toValue: idx * TAB_WIDTH,
-      stiffness: 600,
-      damping: 34,
-      mass: 0.6,
+      stiffness: 450,
+      damping: 32,
+      mass: 0.8,
       useNativeDriver: true,
     }).start()
   }, [activeTab, slideAnim])
@@ -58,9 +58,9 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
     if (idx !== -1) {
       Animated.spring(slideAnim, {
         toValue: idx * TAB_WIDTH,
-        stiffness: 600,
-        damping: 34,
-        mass: 0.6,
+        stiffness: 450,
+        damping: 32,
+        mass: 0.8,
         useNativeDriver: true,
       }).start()
     }

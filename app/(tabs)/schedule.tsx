@@ -11,6 +11,7 @@ import {
   Dimensions,
   Platform,
   InteractionManager,
+  LayoutAnimation,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
@@ -74,18 +75,27 @@ export default function ScheduleScreen() {
   })
 
   // Animaciones del Switcher de Vista (Día / Semana)
-  const segmentWidth = (SCREEN_WIDTH - 32 - 6) / 2
+  const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
+  const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 2)
   const viewModeAnim = useRef(new Animated.Value(0)).current
 
-  const handleViewModeChange = (mode: 'day' | 'week') => {
-    setViewMode(mode)
+  useEffect(() => {
     Animated.spring(viewModeAnim, {
-      toValue: mode === 'day' ? 0 : segmentWidth,
-      stiffness: 500,
+      toValue: viewMode === 'day' ? 0 : segmentWidth,
+      stiffness: 450,
       damping: 32,
       mass: 0.8,
       useNativeDriver: true,
     }).start()
+  }, [viewMode, segmentWidth, viewModeAnim])
+
+  const handleViewModeChange = (mode: 'day' | 'week') => {
+    if (mode === viewMode) return
+    LayoutAnimation.configureNext({
+      duration: 260,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+    })
+    setViewMode(mode)
   }
 
   const loadData = useCallback(async () => {
@@ -241,8 +251,14 @@ export default function ScheduleScreen() {
         {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
         <BlurView
           intensity={Platform.OS === 'ios' ? 55 : 90}
-          tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
+          tint="dark"
           style={styles.segmentedContainer}
+          onLayout={(e: LayoutChangeEvent) => {
+            const w = e.nativeEvent.layout.width
+            if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
+              setSegmentContainerWidth(w)
+            }
+          }}
         >
           <Animated.View
             style={[

@@ -1,10 +1,22 @@
-import React, { useRef, memo } from 'react'
-import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native'
+import React, { useRef, useEffect, useState, memo } from 'react'
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+  Platform,
+  Dimensions,
+  LayoutAnimation,
+  LayoutChangeEvent,
+} from 'react-native'
 import { BlurView } from 'expo-blur'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, Clock, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 interface MinimalistDayViewProps {
   schedules: Schedule[]
@@ -190,14 +202,55 @@ export function MinimalistDayView({
   const currentDay = new Date().getDay()
   const daySchedules = schedules.filter((s) => s.day_of_week === selectedDay)
 
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 32)
+  const pillWidth = Math.max(0, (containerWidth - 6) / 5)
+  const activeDayIndex = Math.max(0, DAYS.findIndex((d) => d.num === selectedDay))
+  const daySlideAnim = useRef(new Animated.Value(activeDayIndex * pillWidth)).current
+
+  useEffect(() => {
+    Animated.spring(daySlideAnim, {
+      toValue: activeDayIndex * pillWidth,
+      stiffness: 450,
+      damping: 32,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start()
+  }, [activeDayIndex, pillWidth, daySlideAnim])
+
+  const handleDayPress = (dayNum: number) => {
+    if (dayNum === selectedDay) return
+    LayoutAnimation.configureNext({
+      duration: 240,
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+    })
+    onSelectDay(dayNum)
+  }
+
   return (
     <View style={styles.container}>
-      {/* Selector de Días Horizontal con Glassmorfismo Nativo */}
+      {/* Selector de Días Horizontal con Glassmorfismo Nativo y Pastilla Deslizante */}
       <BlurView
         intensity={Platform.OS === 'ios' ? 55 : 90}
-        tint={Platform.OS === 'ios' ? 'systemThinMaterialDark' : 'dark'}
+        tint="dark"
         style={styles.daySelectorContainer}
+        onLayout={(e: LayoutChangeEvent) => {
+          const w = e.nativeEvent.layout.width
+          if (w > 0 && Math.abs(w - containerWidth) > 1) {
+            setContainerWidth(w)
+          }
+        }}
       >
+        {/* Pastilla deslizante GPU a 120 FPS idéntica a la de tareas */}
+        <Animated.View
+          style={[
+            styles.activeDayIndicator,
+            {
+              width: pillWidth,
+              transform: [{ translateX: daySlideAnim }],
+            },
+          ]}
+        />
+
         {DAYS.map((d) => {
           const isSelected = selectedDay === d.num
           const isToday = currentDay === d.num
@@ -205,15 +258,8 @@ export function MinimalistDayView({
           return (
             <Pressable
               key={d.num}
-              onPress={() => {
-                triggerHaptic('selection')
-                onSelectDay(d.num)
-              }}
-              style={[
-                styles.dayPill,
-                isSelected && styles.dayPillActive,
-                isToday && !isSelected && styles.dayPillToday,
-              ]}
+              onPress={() => handleDayPress(d.num)}
+              style={styles.dayPill}
             >
               <Text
                 style={[
@@ -284,8 +330,21 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.14)',
-    gap: 4,
+    position: 'relative',
     overflow: 'hidden',
+  },
+  activeDayIndicator: {
+    position: 'absolute',
+    top: 3,
+    bottom: 3,
+    left: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 4,
   },
   dayPill: {
     flex: 1,
@@ -295,17 +354,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 12,
     gap: 4,
-  },
-  dayPillActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  dayPillToday: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    zIndex: 2,
   },
   dayPillText: {
     color: '#71717A',

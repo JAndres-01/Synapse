@@ -42,7 +42,6 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
 
   // Microinteracciones de escala y atenuación de la fila
   const scaleAnim = useRef(new Animated.Value(1)).current
-  const checkBounceAnim = useRef(new Animated.Value(1)).current
   const rowFadeAnim = useRef(new Animated.Value(isDone ? 0.65 : 1)).current
   const rowSlideAnim = useRef(new Animated.Value(0)).current
 
@@ -242,30 +241,6 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     }).start()
   }
 
-  const handleToggle = () => {
-    Animated.sequence([
-      Animated.timing(checkBounceAnim, {
-        toValue: 1.35,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(checkBounceAnim, {
-        toValue: 0.88,
-        duration: 70,
-        useNativeDriver: true,
-      }),
-      Animated.spring(checkBounceAnim, {
-        toValue: 1,
-        stiffness: 600,
-        damping: 18,
-        useNativeDriver: true,
-      }),
-    ]).start()
-
-    triggerHaptic(isDone ? 'selection' : 'success')
-    onToggleStatus(task.id, task.status)
-  }
-
   const handleCardPress = () => {
     if (isOpen.current) {
       triggerHaptic('light')
@@ -349,7 +324,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         },
       ]}
     >
-      {/* 1. Capa de Fondo para Gestos estilo Spotify (Aislada: 100% invisible en reposo) */}
+      {/* 1. Capa de Fondo para Gestos estilo Spotify (100% invisible en reposo) */}
       <View style={styles.swipeBackgroundContainer}>
         {/* Fondo Base Gris Neutro (Inicial) */}
         <Animated.View
@@ -456,23 +431,6 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
           style={[styles.highlightOverlay, { opacity: highlightAnim }]}
         />
         <View style={[styles.rowContainer, !isLast && styles.rowBorder]}>
-          {/* Checkbox Circular */}
-          <Pressable
-            onPress={handleToggle}
-            style={styles.checkboxTouchArea}
-            hitSlop={12}
-          >
-            <Animated.View
-              style={[
-                styles.checkbox,
-                isDone && styles.checkboxDone,
-                { transform: [{ scale: checkBounceAnim }] },
-              ]}
-            >
-              {isDone && <Check size={11} color="#09090B" strokeWidth={3.5} />}
-            </Animated.View>
-          </Pressable>
-
           {/* Contenido de la Tarea */}
           <Pressable
             onPress={handleCardPress}
@@ -609,29 +567,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: 12,
-    gap: 12,
   },
   rowBorder: {
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  checkboxTouchArea: {
-    paddingTop: 3,
-    paddingRight: 2,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#3F3F46',
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxDone: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
   },
   contentArea: {
     flex: 1,

@@ -711,4 +711,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontStyle: 'italic',
   },
+  whiteDotBorder: {
+    borderWidth: 1,
+    borderColor: '#52525B',
+  },
 })

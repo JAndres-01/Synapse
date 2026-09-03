@@ -1,8 +1,5 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+export function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
 }
 
 // 4 Clases diarias oficiales de 90 minutos

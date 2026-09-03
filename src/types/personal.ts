@@ -3,7 +3,9 @@ export interface PersonalProfile {
   email: string
   full_name: string
   avatar_url?: string | null
+  theme?: string
   created_at?: string
+  updated_at?: string
 }
 
 export interface Subject {

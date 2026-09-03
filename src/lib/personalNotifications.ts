@@ -11,6 +11,7 @@ try {
       shouldPlaySound: true,
       shouldSetBadge: false,
       shouldShowBanner: true,
+      shouldShowList: true,
       shouldPresentAlert: true,
     }),
   })

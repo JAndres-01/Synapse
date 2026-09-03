@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Tabs, usePathname, useRouter } from 'expo-router'
 import { View, StyleSheet } from 'react-native'
 import { MinimalistFloatingIsland, type TabKey } from '@/components/navigation/MinimalistFloatingIsland'
-import { personalStorage } from '@/lib/personalStorage'
+import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 
 export default function TabLayout() {
   const pathname = usePathname()

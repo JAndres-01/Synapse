@@ -134,14 +134,6 @@ export default function TodayScreen() {
     if (activeTask && activeTask.id === taskId) {
       setActiveTask({ ...activeTask, status: newStatus as 'pending' | 'completed' })
     }
-
-    if (user?.id) {
-      try {
-        await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
-      } catch (err) {
-        console.warn('Error updating task status in supabase:', err)
-      }
-    }
   }
 
   const handleDeleteTask = async (taskId: string) => {
@@ -149,13 +141,6 @@ export default function TodayScreen() {
     const updatedTasks = tasks.filter((t) => t.id !== taskId)
     setTasks(updatedTasks)
     await personalStorage.setTasks(updatedTasks)
-    if (user?.id) {
-      try {
-        await supabase.from('tasks').delete().eq('id', taskId)
-      } catch (err) {
-        console.warn('Error deleting task in supabase:', err)
-      }
-    }
   }
 
   return (
@@ -201,7 +186,7 @@ export default function TodayScreen() {
         </View>
 
         {/* Hero Card Dinámica: Clase en Vivo / Próxima */}
-        <MinimalistLiveHero schedules={schedulesToday} />
+        <MinimalistLiveHero schedulesToday={schedulesToday} />
 
         {/* Bloque de Tareas Próximas (Sólo Pendientes de los Próximos 7 Días) */}
         <MinimalistTodayTasks

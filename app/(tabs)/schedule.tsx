@@ -133,7 +133,7 @@ export default function ScheduleScreen() {
     return unsubscribe
   }, [loadData])
 
-  const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule) => {
+  const handleOpenAssign = (day: number, block: number, existingSchedule?: Schedule | null) => {
     triggerHaptic('light')
     setAssignModalData({
       visible: true,
@@ -153,7 +153,7 @@ export default function ScheduleScreen() {
   }
 
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const nextStatus: 'pending' | 'completed' = currentStatus === 'completed' ? 'pending' : 'completed'
 
     if (nextStatus === 'completed') {
       cancelTaskReminder(taskId)
@@ -173,13 +173,8 @@ export default function ScheduleScreen() {
     try {
       const task = tasks.find((t) => t.id === taskId)
       if (task) {
-        const updatedTask = { ...task, status: nextStatus }
+        const updatedTask: Task = { ...task, status: nextStatus }
         await personalStorage.saveTask(updatedTask)
-        supabase
-          .from('tasks')
-          .update({ status: nextStatus, updated_at: new Date().toISOString() })
-          .eq('id', taskId)
-          .then(() => {})
       }
     } catch (err) {
       console.error('Error toggling status:', err)

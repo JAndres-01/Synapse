@@ -725,7 +725,7 @@ export function MinimalistTaskModal({
                 )}
 
                 {/* 3. METADATOS EN UNA FILA SIMÉTRICA Y UNIFICADA (FECHA > MATERIA > TIPO) */}
-                {(Boolean(dueInfo.text) || Boolean(task?.subject) || (Boolean(task?.type) && task.type !== 'individual')) && (
+                {(Boolean(dueInfo.text) || Boolean(task?.subject) || (Boolean(task?.type) && task?.type !== 'individual')) && (
                   <View style={styles.detailUnifiedMetaRow}>
                     {/* Fecha de Entrega */}
                     {Boolean(dueInfo.text) && (
@@ -773,22 +773,22 @@ export function MinimalistTaskModal({
                       </Text>
                     </View>
 
-                    {(Boolean(dueInfo.text) || Boolean(task?.subject)) && Boolean(task?.type) && task.type !== 'individual' && (
+                    {(Boolean(dueInfo.text) || Boolean(task?.subject)) && Boolean(task?.type) && task?.type !== 'individual' && (
                       <Text style={styles.detailMetaDot}>•</Text>
                     )}
 
                     {/* Tipo de Tarea */}
-                    {Boolean(task?.type) && task.type !== 'individual' && (
+                    {Boolean(task?.type) && task?.type !== 'individual' && (
                       <View style={styles.detailMetaItem}>
-                        {task.type === 'proyecto' ? (
+                        {task?.type === 'proyecto' ? (
                           <Rocket size={11} color="#C084FC" />
-                        ) : task.type === 'examen' ? (
+                        ) : task?.type === 'examen' ? (
                           <FileText size={11} color="#FB7185" />
                         ) : (
                           <Users size={11} color="#38BDF8" />
                         )}
                         <Text style={styles.detailMetaText}>
-                          {task.type}
+                          {task?.type}
                         </Text>
                       </View>
                     )}

@@ -687,36 +687,11 @@ export function MinimalistTaskModal({
                   <View style={styles.dragHandle} />
                 </View>
 
-                {/* 1. TÍTULO DE LA TAREA + BOTONES DE ACCIÓN EN LA MISMA FILA */}
+                {/* 1. TÍTULO DE LA TAREA (SIMÉTRICO Y ELEGANTE) */}
                 <View style={styles.detailTitleInlineRow}>
                   <Text style={styles.detailHeroTitle} numberOfLines={2}>
                     {task?.title}
                   </Text>
-
-                  <View style={styles.detailInlineActions}>
-                    {/* Botón Eliminar como Icono */}
-                    <Pressable
-                      onPress={handleDelete}
-                      disabled={deleteLoading}
-                      hitSlop={10}
-                      style={styles.detailHeaderDeleteIconBtn}
-                    >
-                      {deleteLoading ? (
-                        <ActivityIndicator size="small" color="#EF4444" />
-                      ) : (
-                        <Trash2 size={15} color="#EF4444" />
-                      )}
-                    </Pressable>
-
-                    {/* Botón Editar como Icono */}
-                    <Pressable
-                      onPress={handleSwitchToEdit}
-                      hitSlop={10}
-                      style={styles.detailHeaderEditIconBtn}
-                    >
-                      <Edit2 size={15} color="#FFFFFF" />
-                    </Pressable>
-                  </View>
                 </View>
               </View>
 

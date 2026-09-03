@@ -94,6 +94,7 @@ export default function TasksScreen() {
 
   // IDs de tareas en transición animada
   const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
+  const [isScrollEnabled, setIsScrollEnabled] = useState(true)
 
   // Segmented Control
   const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
@@ -433,6 +434,7 @@ export default function TasksScreen() {
 
       <ScrollView
         style={styles.scrollView}
+        scrollEnabled={isScrollEnabled}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },
@@ -643,6 +645,13 @@ export default function TasksScreen() {
                     setActiveTask(t)
                     setTaskModalMode('detail')
                   }}
+                  onEdit={(t) => {
+                    triggerHaptic('light')
+                    setActiveTask(t)
+                    setTaskModalMode('edit')
+                  }}
+                  onDelete={handleDeleteTask}
+                  onSwipeActiveChange={setIsScrollEnabled}
                 />
               ))}
             </View>

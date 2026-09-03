@@ -318,13 +318,13 @@ export default function TasksScreen() {
 
       setTimeout(() => {
         LayoutAnimation.configureNext({
-          duration: 320,
+          duration: 220,
           create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-          update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
           delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
         })
         setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
-      }, 380)
+      }, 160)
     } else if (statusFilter === 'completed' && nextStatus === 'pending') {
       setTransitioningTaskIds((prev) => [...prev, taskId])
 
@@ -337,17 +337,17 @@ export default function TasksScreen() {
 
       setTimeout(() => {
         LayoutAnimation.configureNext({
-          duration: 320,
+          duration: 220,
           create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-          update: { type: LayoutAnimation.Types.spring, springDamping: 0.82 },
+          update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
           delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
         })
         setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
-      }, 380)
+      }, 160)
     } else {
       LayoutAnimation.configureNext({
-        duration: 280,
-        update: { type: LayoutAnimation.Types.spring, springDamping: 0.8 },
+        duration: 200,
+        update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
       })
       const updated = tasks.map((t) => {
         if (t.id === taskId) return { ...t, status: nextStatus as 'pending' | 'completed' }

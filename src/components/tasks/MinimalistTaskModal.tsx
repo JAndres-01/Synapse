@@ -268,18 +268,20 @@ export function MinimalistTaskModal({
           duration: 180,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
+        Animated.spring(slideAnim, {
           toValue: 0,
-          duration: 220,
-          easing: APPLE_EASING,
+          stiffness: 450,
+          damping: 30,
+          mass: 0.8,
           useNativeDriver: true,
         }),
       ]).start()
 
       if (mode === 'create') {
-        requestAnimationFrame(() => {
+        const timer = setTimeout(() => {
           titleInputRef.current?.focus()
-        })
+        }, 260)
+        return () => clearTimeout(timer)
       }
     } else {
       Keyboard.dismiss()

@@ -67,6 +67,7 @@ export default function SettingsScreen() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false)
   const [editName, setEditName] = useState(profile?.full_name || '')
   const [savingProfile, setSavingProfile] = useState(false)
+  const nameInputRef = useRef<TextInput>(null)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(300)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
@@ -132,11 +133,18 @@ export default function SettingsScreen() {
     triggerHaptic('light')
     setEditName(profile?.full_name || '')
     setShowEditProfileModal(true)
+    slideAnim.setValue(300)
+    fadeAnim.setValue(0)
     keyboardTranslateY.setValue(0)
+
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, stiffness: 450, damping: 28, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, stiffness: 450, damping: 28, mass: 0.8, useNativeDriver: true }),
     ]).start()
+
+    setTimeout(() => {
+      nameInputRef.current?.focus()
+    }, 260)
   }
 
   const handleCloseEditProfile = () => {
@@ -536,12 +544,12 @@ export default function SettingsScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>NOMBRE</Text>
               <TextInput
+                ref={nameInputRef}
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Tu nombre"
                 placeholderTextColor="#52525B"
                 style={styles.textInput}
-                autoFocus
                 returnKeyType="done"
                 onSubmitEditing={handleSaveProfile}
               />

@@ -42,6 +42,8 @@ export function MinimalistActivityHeatmap() {
 
   const scrollViewRef = useRef<ScrollView>(null)
   const tabSlideAnim = useRef(new Animated.Value(defaultTab === 'fall' ? 0 : 80)).current
+  const gridSlideAnim = useRef(new Animated.Value(0)).current
+  const gridOpacityAnim = useRef(new Animated.Value(1)).current
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current
 
   const updateData = useCallback(() => {
@@ -101,17 +103,16 @@ export function MinimalistActivityHeatmap() {
     if (tab === activeSemester) return
     triggerHaptic('selection')
 
-    // Animación de reorganización física con rebote (igual que en lista de tareas)
-    LayoutAnimation.configureNext({
-      duration: 320,
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.72 },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-    })
+    // Dirección del deslizamiento: si va a 'spring' (derecha), entra desde x: 30, si va a 'fall' (izquierda), entra desde x: -30
+    const slideDirection = tab === 'spring' ? 30 : -30
+
+    gridSlideAnim.setValue(slideDirection)
+    gridOpacityAnim.setValue(0.3)
 
     setActiveSemester(tab)
     setSelectedDay(null)
 
+    // Desplazamiento del selector con rebote
     Animated.spring(tabSlideAnim, {
       toValue: tab === 'fall' ? 0 : 80,
       stiffness: 450,
@@ -119,6 +120,23 @@ export function MinimalistActivityHeatmap() {
       mass: 0.6,
       useNativeDriver: true,
     }).start()
+
+    // Deslizamiento síncrono del mapa con rebote elástico
+    Animated.parallel([
+      Animated.spring(gridSlideAnim, {
+        toValue: 0,
+        stiffness: 420,
+        damping: 26,
+        mass: 0.65,
+        useNativeDriver: true,
+      }),
+      Animated.timing(gridOpacityAnim, {
+        toValue: 1,
+        duration: 200,
+        easing: APPLE_EASING,
+        useNativeDriver: true,
+      }),
+    ]).start()
 
     scrollViewRef.current?.scrollTo({ x: 0, animated: true })
   }
@@ -142,12 +160,13 @@ export function MinimalistActivityHeatmap() {
     const current = await personalStorage.getTasks()
     const year = new Date().getFullYear()
 
-    LayoutAnimation.configureNext({
-      duration: 320,
-      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.72 },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-    })
+    gridOpacityAnim.setValue(0.5)
+    Animated.timing(gridOpacityAnim, {
+      toValue: 1,
+      duration: 200,
+      easing: APPLE_EASING,
+      useNativeDriver: true,
+    }).start()
 
     if (isTestActive) {
       // Limpiar tareas de prueba
@@ -272,8 +291,16 @@ export function MinimalistActivityHeatmap() {
             ))}
           </View>
 
-          {/* Matriz de semanas */}
-          <View style={styles.matrixArea}>
+          {/* Matriz de semanas con deslizamiento sincrono y rebote */}
+          <Animated.View
+            style={[
+              styles.matrixArea,
+              {
+                opacity: gridOpacityAnim,
+                transform: [{ translateX: gridSlideAnim }],
+              },
+            ]}
+          >
             {/* Fila de etiquetas de meses */}
             <View style={styles.monthLabelsRow}>
               {heatmapData.monthLabels.map((m, mIdx) => (
@@ -289,7 +316,7 @@ export function MinimalistActivityHeatmap() {
               ))}
             </View>
 
-            {/* Columnas de Semanas con Cuadritos Animados con Layout Spring */}
+            {/* Columnas de Semanas */}
             <View style={styles.weeksContainer}>
               {heatmapData.weeks.map((week, wIdx) => (
                 <View key={`week-${wIdx}`} style={styles.weekColumn}>
@@ -317,7 +344,7 @@ export function MinimalistActivityHeatmap() {
                 </View>
               ))}
             </View>
-          </View>
+          </Animated.View>
         </ScrollView>
       </View>
 

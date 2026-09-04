@@ -196,7 +196,7 @@ export function formatTaskDueDate(
       }
     }
 
-    // 2. Vence Hoy (Today)
+    // 2. Vence Hoy (Today) - Naranja vibrante
     if (isToday) {
       return {
         text: `Hoy ${timeStr}`,
@@ -204,13 +204,13 @@ export function formatTaskDueDate(
         isToday: true,
         isTomorrow: false,
         urgency: 'today',
-        color: '#F59E0B',
-        bgColor: 'rgba(245, 158, 11, 0.12)',
-        borderColor: 'rgba(245, 158, 11, 0.28)',
+        color: '#F97316',
+        bgColor: 'rgba(249, 115, 22, 0.12)',
+        borderColor: 'rgba(249, 115, 22, 0.28)',
       }
     }
 
-    // 3. Vence Mañana (Tomorrow)
+    // 3. Vence Mañana (Tomorrow) - Azul Cielo / Cyan de alto contraste
     if (isTomorrow) {
       return {
         text: `Mañana ${timeStr}`,
@@ -218,9 +218,9 @@ export function formatTaskDueDate(
         isToday: false,
         isTomorrow: true,
         urgency: 'tomorrow',
-        color: '#EAB308',
-        bgColor: 'rgba(234, 179, 8, 0.1)',
-        borderColor: 'rgba(234, 179, 8, 0.24)',
+        color: '#38BDF8',
+        bgColor: 'rgba(56, 189, 248, 0.12)',
+        borderColor: 'rgba(56, 189, 248, 0.28)',
       }
     }
 

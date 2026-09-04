@@ -54,7 +54,6 @@ export default function TasksScreen() {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [refreshing, setRefreshing] = useState(false)
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState('')
@@ -128,7 +127,6 @@ export default function TasksScreen() {
 
     setTasks(resolvedTasks)
     setSubjects(cachedSubjs)
-    setRefreshing(false)
   }, [])
 
   // Recargar datos cada vez que la pestaña Tareas entra en pantalla
@@ -421,11 +419,6 @@ export default function TasksScreen() {
     })
   }, [tasks, selectedSubjectId, debouncedQuery, statusFilter, transitioningTaskIds])
 
-  const onRefresh = () => {
-    setRefreshing(true)
-    loadData()
-  }
-
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
   const isSelectedWhite = selectedSubject?.color === '#FFFFFF'
 
@@ -454,9 +447,8 @@ export default function TasksScreen() {
       <ScrollView
         style={styles.scrollView}
         scrollEnabled={isScrollEnabled}
-        bounces={false}
-        alwaysBounceVertical={false}
-        overScrollMode="never"
+        bounces={true}
+        alwaysBounceVertical={true}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },

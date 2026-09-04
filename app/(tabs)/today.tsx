@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  RefreshControl,
   Pressable,
   StyleSheet,
   InteractionManager,
@@ -34,7 +33,6 @@ export default function TodayScreen() {
   const [schedulesToday, setSchedulesToday] = useState<Schedule[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [refreshing, setRefreshing] = useState(false)
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modal Unificado de Tareas
@@ -105,12 +103,6 @@ export default function TodayScreen() {
     return unsubscribe
   }, [loadData])
 
-  const onRefresh = async () => {
-    setRefreshing(true)
-    await loadData()
-    setRefreshing(false)
-  }
-
   const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
@@ -158,13 +150,6 @@ export default function TodayScreen() {
           styles.content,
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#FFFFFF"
-          />
-        }
         showsVerticalScrollIndicator={false}
       >
         {/* Header Coherente con Tareas y Horario */}

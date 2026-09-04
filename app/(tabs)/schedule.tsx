@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  RefreshControl,
   Pressable,
   StyleSheet,
   Animated,
@@ -44,7 +43,6 @@ export default function ScheduleScreen() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
-  const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
   const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
@@ -135,7 +133,6 @@ export default function ScheduleScreen() {
     setSchedules(resolvedScheds)
     setSubjects(cachedSubjs)
     setTasks(resolvedTasks)
-    setRefreshing(false)
   }, [])
 
   useFocusEffect(
@@ -259,11 +256,6 @@ export default function ScheduleScreen() {
     }, 120)
   }, [router])
 
-  const onRefresh = () => {
-    setRefreshing(true)
-    loadData()
-  }
-
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
@@ -273,9 +265,6 @@ export default function ScheduleScreen() {
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
-        }
       >
         {/* Header Coherente con Tareas y Hoy */}
         <View style={styles.header}>

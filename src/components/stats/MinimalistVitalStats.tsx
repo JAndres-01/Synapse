@@ -162,16 +162,7 @@ export function MinimalistVitalStats() {
             <Text style={styles.metricValueText}>{stats.completedTasksCount}</Text>
           </View>
 
-          {/* Fila 2: Pendientes */}
-          <View style={styles.metricRow}>
-            <View style={styles.metricLeftCol}>
-              <View style={[styles.metricDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.metricLabelText}>Pendientes</Text>
-            </View>
-            <Text style={styles.metricValueText}>{stats.pendingTasksCount}</Text>
-          </View>
-
-          {/* Fila 3: Puntualidad */}
+          {/* Fila 2: Puntualidad */}
           <View style={styles.metricRow}>
             <View style={styles.metricLeftCol}>
               <View style={[styles.metricDot, { backgroundColor: '#38BDF8' }]} />
@@ -180,7 +171,7 @@ export function MinimalistVitalStats() {
             <Text style={styles.metricValueText}>{stats.punctualityRate}%</Text>
           </View>
 
-          {/* Fila 4: Materias */}
+          {/* Fila 3: Materias */}
           <View style={styles.metricRow}>
             <View style={styles.metricLeftCol}>
               <View style={[styles.metricDot, { backgroundColor: '#A78BFA' }]} />
@@ -279,7 +270,7 @@ const styles = StyleSheet.create({
   },
   metricsList: {
     flex: 1,
-    gap: 8,
+    gap: 11,
     justifyContent: 'center',
   },
   metricRow: {

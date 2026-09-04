@@ -187,17 +187,13 @@ export function MinimalistVitalStats() {
 
 const styles = StyleSheet.create({
   cardWrapper: {
-    backgroundColor: '#131316',
-    borderRadius: 18,
+    backgroundColor: '#121215',
+    borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#242429',
+    borderColor: '#1E1E24',
     gap: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 16,
   },
   headerRow: {
     flexDirection: 'row',
@@ -212,16 +208,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#F4F4F5',
+    color: '#FAFAFA',
     letterSpacing: -0.2,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#09090B',
+    backgroundColor: '#18181B',
     paddingHorizontal: 8,
     paddingVertical: 3.5,
     borderRadius: 12,

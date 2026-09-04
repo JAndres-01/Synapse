@@ -111,6 +111,10 @@ export default function ProfileScreen() {
     'fall_start' | 'fall_end' | 'spring_start' | 'spring_end' | null
   >(null)
 
+  // Microinteracciones y Efectos de Rebote (Spring Physics)
+  const heroScaleAnim = useRef(new Animated.Value(1)).current
+  const gearScaleAnim = useRef(new Animated.Value(1)).current
+
   // Modal Principal de Ajustes del Sistema (Secundario)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const settingsFadeAnim = useRef(new Animated.Value(0)).current
@@ -481,6 +485,42 @@ export default function ProfileScreen() {
     return name.slice(0, 2).toUpperCase()
   }
 
+  const handleHeroPressIn = () => {
+    Animated.spring(heroScaleAnim, {
+      toValue: 0.97,
+      stiffness: 500,
+      damping: 25,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleHeroPressOut = () => {
+    Animated.spring(heroScaleAnim, {
+      toValue: 1,
+      stiffness: 400,
+      damping: 20,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleGearPressIn = () => {
+    Animated.spring(gearScaleAnim, {
+      toValue: 0.88,
+      stiffness: 600,
+      damping: 25,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handleGearPressOut = () => {
+    Animated.spring(gearScaleAnim, {
+      toValue: 1,
+      stiffness: 450,
+      damping: 20,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
@@ -499,35 +539,47 @@ export default function ProfileScreen() {
               <Text style={styles.subtitle}>Estadísticas y cuenta</Text>
             </View>
 
-            <Pressable
-              onPress={handleOpenSettings}
-              hitSlop={10}
-              style={({ pressed }) => [styles.gearBtn, pressed && styles.rowPressed]}
-            >
-              <SettingsIcon size={18} color="#FFFFFF" strokeWidth={2.2} />
-            </Pressable>
+            <Animated.View style={{ transform: [{ scale: gearScaleAnim }] }}>
+              <Pressable
+                onPress={handleOpenSettings}
+                onPressIn={handleGearPressIn}
+                onPressOut={handleGearPressOut}
+                hitSlop={10}
+                style={styles.gearBtn}
+              >
+                <SettingsIcon size={17} color="#FFFFFF" strokeWidth={2.2} />
+              </Pressable>
+            </Animated.View>
           </View>
         </View>
 
-        {/* Hero Profile Abierto y Sofisticado */}
-        <Pressable
-          onPress={handleOpenEditProfile}
-          style={({ pressed }) => [styles.heroProfileRow, pressed && styles.rowPressed]}
-        >
-          <View style={styles.heroAvatar}>
-            <Text style={styles.heroAvatarText}>{getInitials(profile?.full_name)}</Text>
-          </View>
-
-          <View style={styles.heroProfileInfo}>
-            <View style={styles.nameWithEditRow}>
-              <Text style={styles.heroProfileName} numberOfLines={1}>
-                {profile?.full_name || 'Estudiante'}
-              </Text>
-              <Edit3 size={14} color="#71717A" />
+        {/* Hero Profile Panel Minimalista con Efecto Rebote */}
+        <Animated.View style={{ transform: [{ scale: heroScaleAnim }] }}>
+          <Pressable
+            onPress={handleOpenEditProfile}
+            onPressIn={handleHeroPressIn}
+            onPressOut={handleHeroPressOut}
+            style={styles.heroProfileCard}
+          >
+            <View style={styles.heroAvatar}>
+              <Text style={styles.heroAvatarText}>{getInitials(profile?.full_name)}</Text>
             </View>
-            <Text style={styles.heroProfileSubtitle}>Toca para editar tu nombre</Text>
-          </View>
-        </Pressable>
+
+            <View style={styles.heroProfileInfo}>
+              <View style={styles.nameWithEditRow}>
+                <Text style={styles.heroProfileName} numberOfLines={1}>
+                  {profile?.full_name || 'Estudiante'}
+                </Text>
+              </View>
+              <Text style={styles.heroProfileSubtitle}>Toca para editar tu nombre</Text>
+            </View>
+
+            <View style={styles.heroEditPill}>
+              <Edit3 size={13} color="#A1A1AA" />
+              <ChevronRight size={13} color="#71717A" />
+            </View>
+          </Pressable>
+        </Animated.View>
 
         {/* Métricas Vitales Académicas */}
         <MinimalistVitalStats />
@@ -1021,52 +1073,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroProfileRow: {
+  heroProfileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
+    backgroundColor: '#121215',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1E1E24',
+    padding: 16,
+    gap: 14,
+    marginBottom: 16,
   },
   heroAvatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#18181B',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
   },
   heroAvatarText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
   heroProfileInfo: {
     flex: 1,
-    gap: 3,
+    gap: 2,
   },
   nameWithEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   heroProfileName: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.4,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   heroProfileSubtitle: {
     color: '#71717A',
-    fontSize: 12.5,
+    fontSize: 11.5,
     fontWeight: '500',
+  },
+  heroEditPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#18181B',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#27272A',
   },
   modalBackdrop: {
     flex: 1,

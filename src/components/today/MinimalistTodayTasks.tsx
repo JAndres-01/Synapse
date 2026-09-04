@@ -1,7 +1,7 @@
 import React, { useRef, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
-import { Check, CheckSquare, ChevronRight, Clock, Paperclip } from 'lucide-react-native'
+import { Check, CheckSquare, ChevronRight, Paperclip } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
 
@@ -123,35 +123,24 @@ const TodayTaskItem = memo(function TodayTaskItem({
             {Boolean(dueInfo) && (
               <>
                 <Text style={styles.metaDot}>•</Text>
-                <View
+                <Text
                   style={[
-                    styles.dueItem,
-                    {
-                      backgroundColor: isDone ? 'transparent' : dueInfo?.bgColor,
-                      borderColor: isDone ? 'transparent' : dueInfo?.borderColor,
-                    },
+                    styles.dueText,
+                    { color: isDone ? '#52525B' : dueInfo?.color },
+                    isDone && styles.dueTextDone,
                   ]}
                 >
-                  <Clock size={10} color={isDone ? '#52525B' : dueInfo?.color} strokeWidth={2.4} />
-                  <Text
-                    style={[
-                      styles.dueText,
-                      { color: isDone ? '#52525B' : dueInfo?.color },
-                      isDone && styles.dueTextDone,
-                    ]}
-                  >
-                    {dueInfo?.text}
-                  </Text>
-                </View>
+                  {dueInfo?.text}
+                </Text>
               </>
             )}
 
             {attachCount > 0 && (
               <>
                 <Text style={styles.metaDot}>•</Text>
-                <View style={styles.dueItem}>
+                <View style={styles.attachTag}>
                   <Paperclip size={10} color="#71717A" />
-                  <Text style={styles.dueText}>{attachCount}</Text>
+                  <Text style={styles.attachText}>{attachCount}</Text>
                 </View>
               </>
             )}
@@ -344,21 +333,21 @@ const styles = StyleSheet.create({
     color: '#3F3F46',
     fontSize: 10,
   },
-  dueItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3.5,
-    paddingHorizontal: 5.5,
-    paddingVertical: 1.8,
-    borderRadius: 5,
-    borderWidth: 0.8,
-  },
   dueText: {
-    fontSize: 10.5,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     letterSpacing: -0.1,
   },
   dueTextDone: {
     color: '#52525B',
+  },
+  attachTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  attachText: {
+    color: '#71717A',
+    fontSize: 11,
   },
 })

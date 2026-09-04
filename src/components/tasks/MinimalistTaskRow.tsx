@@ -9,7 +9,7 @@ import {
   Easing,
 } from 'react-native'
 import type { Task } from '@/types/personal'
-import { Check, Paperclip, Edit2, Trash2, RotateCcw, Clock } from 'lucide-react-native'
+import { Check, Paperclip, Edit2, Trash2, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
 
@@ -428,6 +428,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
             </Text>
 
             <View style={styles.metaRow}>
+              {/* Materia con micro-dot */}
               <View style={styles.subjectTag}>
                 <View
                   style={[
@@ -439,27 +440,10 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
                 <Text style={styles.subjectName}>{task.subject?.name || 'General'}</Text>
               </View>
 
-              {dueInfo && <Text style={styles.metaDot}>•</Text>}
-
+              {/* Vencimiento / Prioridad: Texto tipográfico puro coloreado sin cards */}
               {dueInfo && (
-                <View
-                  style={[
-                    styles.dueBadge,
-                    {
-                      backgroundColor: isVisuallyDone
-                        ? 'transparent'
-                        : dueInfo.bgColor,
-                      borderColor: isVisuallyDone
-                        ? 'transparent'
-                        : dueInfo.borderColor,
-                    },
-                  ]}
-                >
-                  <Clock
-                    size={10}
-                    color={isVisuallyDone ? '#52525B' : dueInfo.color}
-                    strokeWidth={2.4}
-                  />
+                <>
+                  <Text style={styles.metaDot}>•</Text>
                   <Text
                     style={[
                       styles.dueText,
@@ -469,34 +453,27 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
                   >
                     {dueInfo.text}
                   </Text>
-                </View>
-              )}
-
-              {Boolean(task.type) && task.type !== 'individual' && (
-                <>
-                  <Text style={styles.metaDot}>•</Text>
-                  <View
-                    style={[
-                      styles.typeBadge,
-                      task.type === 'examen' && styles.typeBadgeExamen,
-                      task.type === 'proyecto' && styles.typeBadgeProyecto,
-                      task.type === 'grupal' && styles.typeBadgeGrupal,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.typeText,
-                        task.type === 'examen' && styles.typeTextExamen,
-                        task.type === 'proyecto' && styles.typeTextProyecto,
-                        task.type === 'grupal' && styles.typeTextGrupal,
-                      ]}
-                    >
-                      {task.type}
-                    </Text>
-                  </View>
                 </>
               )}
 
+              {/* Tipo de Tarea: Texto limpio coloreado sin cards */}
+              {Boolean(task.type) && task.type !== 'individual' && (
+                <>
+                  <Text style={styles.metaDot}>•</Text>
+                  <Text
+                    style={[
+                      styles.typeText,
+                      task.type === 'examen' && styles.typeTextExamen,
+                      task.type === 'proyecto' && styles.typeTextProyecto,
+                      task.type === 'grupal' && styles.typeTextGrupal,
+                    ]}
+                  >
+                    {task.type}
+                  </Text>
+                </>
+              )}
+
+              {/* Adjuntos */}
               {attachCount > 0 && (
                 <>
                   <Text style={styles.metaDot}>•</Text>
@@ -634,57 +611,31 @@ const styles = StyleSheet.create({
     color: '#3F3F46',
     fontSize: 10,
   },
-  dueBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3.5,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 0.8,
-  },
   dueText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 11.5,
+    fontWeight: '500',
     letterSpacing: -0.1,
   },
   dueTextDone: {
     color: '#52525B',
   },
-  typeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 0.8,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 5.5,
-    paddingVertical: 1.5,
-    borderRadius: 5,
-  },
-  typeBadgeExamen: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.25)',
-  },
-  typeBadgeProyecto: {
-    backgroundColor: 'rgba(168, 85, 247, 0.1)',
-    borderColor: 'rgba(168, 85, 247, 0.25)',
-  },
-  typeBadgeGrupal: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    borderColor: 'rgba(59, 130, 246, 0.25)',
-  },
   typeText: {
     color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '600',
+    fontSize: 11.5,
+    fontWeight: '500',
     textTransform: 'capitalize',
   },
   typeTextExamen: {
     color: '#EF4444',
+    fontWeight: '600',
   },
   typeTextProyecto: {
     color: '#C084FC',
+    fontWeight: '600',
   },
   typeTextGrupal: {
     color: '#60A5FA',
+    fontWeight: '600',
   },
   attachTag: {
     flexDirection: 'row',

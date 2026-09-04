@@ -1,18 +1,26 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { View, Text, StyleSheet, Animated } from 'react-native'
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native'
+import Svg, { Circle, G } from 'react-native-svg'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { calculateAcademicVitalStats } from '@/lib/academicDateUtils'
-import { CheckCircle2, Clock, BookOpen } from 'lucide-react-native'
+import { Award } from 'lucide-react-native'
+
+const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+const RING_SIZE = 88
+const STROKE_WIDTH = 7.5
+const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 export function MinimalistVitalStats() {
   const [tasks, setTasks] = useState<Task[]>(() => personalStorage.getCachedTasks())
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
 
-  // Animaciones de entrada escalonadas para las 3 tarjetas
-  const card1Anim = useRef(new Animated.Value(0)).current
-  const card2Anim = useRef(new Animated.Value(0)).current
-  const card3Anim = useRef(new Animated.Value(0)).current
+  const animProgress = useRef(new Animated.Value(0)).current
+  const cardOpacity = useRef(new Animated.Value(0)).current
+  const cardScale = useRef(new Animated.Value(0.97)).current
 
   useEffect(() => {
     const updateData = () => {
@@ -32,203 +40,275 @@ export function MinimalistVitalStats() {
     return calculateAcademicVitalStats(tasks, subjects)
   }, [tasks, subjects])
 
-  const isInitialMount = useRef(true)
+  // Determinar color y estado dinámico
+  const statusConfig = useMemo(() => {
+    if (stats.totalTasksCount === 0) {
+      return { label: 'Sin tareas', color: '#71717A', stroke: '#3F3F46' }
+    }
+    if (stats.completionRate >= 80) {
+      return { label: 'Al día', color: '#34D399', stroke: '#34D399' }
+    }
+    if (stats.completionRate >= 50) {
+      return { label: 'En progreso', color: '#38BDF8', stroke: '#38BDF8' }
+    }
+    return { label: 'Por atender', color: '#F59E0B', stroke: '#F59E0B' }
+  }, [stats.completionRate, stats.totalTasksCount])
 
   useEffect(() => {
-    if (isInitialMount.current) {
-      Animated.stagger(50, [
-        Animated.spring(card1Anim, {
-          toValue: 1,
-          stiffness: 240,
-          damping: 22,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-        Animated.spring(card2Anim, {
-          toValue: 1,
-          stiffness: 240,
-          damping: 22,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-        Animated.spring(card3Anim, {
-          toValue: 1,
-          stiffness: 240,
-          damping: 22,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        isInitialMount.current = false
-      })
-    }
-  }, [card1Anim, card2Anim, card3Anim])
+    animProgress.setValue(0)
+    cardOpacity.setValue(0)
+    cardScale.setValue(0.97)
+
+    Animated.parallel([
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 350,
+        easing: APPLE_EASING,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardScale, {
+        toValue: 1,
+        stiffness: 260,
+        damping: 24,
+        mass: 0.8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animProgress, {
+        toValue: Math.max(0.02, stats.completionRate / 100),
+        duration: 800,
+        easing: APPLE_EASING,
+        useNativeDriver: false,
+      }),
+    ]).start()
+  }, [stats.completionRate])
+
+  const strokeDashoffset = animProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CIRCUMFERENCE, 0],
+  })
 
   return (
-    <View style={styles.cardsRow}>
-      {/* Tarjeta 1: Entregadas */}
-      <Animated.View
-        style={[
-          styles.statCard,
-          {
-            opacity: card1Anim,
-            transform: [
-              {
-                translateY: card1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [10, 0],
-                }),
-              },
-              {
-                scale: card1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.96, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.iconCircleEmerald}>
-          <CheckCircle2 size={15} color="#34D399" strokeWidth={2.4} />
+    <Animated.View
+      style={[
+        styles.cardWrapper,
+        {
+          opacity: cardOpacity,
+          transform: [{ scale: cardScale }],
+        },
+      ]}
+    >
+      {/* Encabezado */}
+      <View style={styles.headerRow}>
+        <View style={styles.titleWithIconRow}>
+          <Award size={13.5} color="#FFFFFF" strokeWidth={2.2} />
+          <Text style={styles.sectionTitle} numberOfLines={1}>
+            Progreso Académico
+          </Text>
         </View>
-        <Text style={styles.statValue} numberOfLines={1}>
-          {stats.completedTasksCount}
-        </Text>
-        <Text style={styles.statLabel} numberOfLines={1}>
-          Entregadas
-        </Text>
-      </Animated.View>
 
-      {/* Tarjeta 2: Puntualidad */}
-      <Animated.View
-        style={[
-          styles.statCard,
-          {
-            opacity: card2Anim,
-            transform: [
-              {
-                translateY: card2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [10, 0],
-                }),
-              },
-              {
-                scale: card2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.96, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.iconCircleSky}>
-          <Clock size={15} color="#38BDF8" strokeWidth={2.4} />
+        <View style={[styles.statusBadge, { borderColor: `${statusConfig.color}33` }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+          <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>
+            {statusConfig.label}
+          </Text>
         </View>
-        <Text style={styles.statValue} numberOfLines={1}>
-          {stats.punctualityRate}%
-        </Text>
-        <Text style={styles.statLabel} numberOfLines={1}>
-          Puntualidad
-        </Text>
-      </Animated.View>
+      </View>
 
-      {/* Tarjeta 3: Materias */}
-      <Animated.View
-        style={[
-          styles.statCard,
-          {
-            opacity: card3Anim,
-            transform: [
-              {
-                translateY: card3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [10, 0],
-                }),
-              },
-              {
-                scale: card3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.96, 1],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.iconCircleLavender}>
-          <BookOpen size={15} color="#A78BFA" strokeWidth={2.4} />
+      {/* Cuerpo con Anillo Circular a la izquierda y Métricas a la derecha */}
+      <View style={styles.contentBody}>
+        {/* Anillo Circular */}
+        <View style={styles.ringContainer}>
+          <Svg width={RING_SIZE} height={RING_SIZE}>
+            {/* Pista de Fondo */}
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RADIUS}
+              stroke="#1C1C22"
+              strokeWidth={STROKE_WIDTH}
+              fill="none"
+            />
+            {/* Arco Animado */}
+            <G transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}>
+              <AnimatedCircle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RADIUS}
+                stroke={statusConfig.stroke}
+                strokeWidth={STROKE_WIDTH}
+                strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="none"
+              />
+            </G>
+          </Svg>
+
+          {/* Valor Central en el Anillo */}
+          <View style={styles.ringCenterTextWrapper}>
+            <Text style={styles.ringPercentageText}>{stats.completionRate}%</Text>
+            <Text style={styles.ringSubtext}>Éxito</Text>
+          </View>
         </View>
-        <Text style={styles.statValue} numberOfLines={1}>
-          {stats.activeSubjectsCount}
-        </Text>
-        <Text style={styles.statLabel} numberOfLines={1}>
-          Materias
-        </Text>
-      </Animated.View>
-    </View>
+
+        {/* Desglose de Métricas Clave */}
+        <View style={styles.metricsList}>
+          {/* Fila 1: Entregadas */}
+          <View style={styles.metricRow}>
+            <View style={styles.metricLeftCol}>
+              <View style={[styles.metricDot, { backgroundColor: '#34D399' }]} />
+              <Text style={styles.metricLabelText}>Entregadas</Text>
+            </View>
+            <Text style={styles.metricValueText}>{stats.completedTasksCount}</Text>
+          </View>
+
+          {/* Fila 2: Pendientes */}
+          <View style={styles.metricRow}>
+            <View style={styles.metricLeftCol}>
+              <View style={[styles.metricDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={styles.metricLabelText}>Pendientes</Text>
+            </View>
+            <Text style={styles.metricValueText}>{stats.pendingTasksCount}</Text>
+          </View>
+
+          {/* Fila 3: Puntualidad */}
+          <View style={styles.metricRow}>
+            <View style={styles.metricLeftCol}>
+              <View style={[styles.metricDot, { backgroundColor: '#38BDF8' }]} />
+              <Text style={styles.metricLabelText}>Puntualidad</Text>
+            </View>
+            <Text style={styles.metricValueText}>{stats.punctualityRate}%</Text>
+          </View>
+
+          {/* Fila 4: Materias */}
+          <View style={styles.metricRow}>
+            <View style={styles.metricLeftCol}>
+              <View style={[styles.metricDot, { backgroundColor: '#A78BFA' }]} />
+              <Text style={styles.metricLabelText}>Materias</Text>
+            </View>
+            <Text style={styles.metricValueText}>{stats.activeSubjectsCount}</Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  cardsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
+  cardWrapper: {
     backgroundColor: '#131316',
     borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 16,
     borderWidth: 1,
     borderColor: '#242429',
-    gap: 6,
+    gap: 14,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
   },
-  iconCircleEmerald: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  titleWithIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6.5,
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#F4F4F5',
+    letterSpacing: -0.2,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#09090B',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+  },
+  contentBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  ringContainer: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  ringCenterTextWrapper: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconCircleSky: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleLavender: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(167, 139, 250, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: {
+  ringPercentageText: {
     fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
   },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+  ringSubtext: {
+    fontSize: 9.5,
+    fontWeight: '600',
     color: '#71717A',
+    letterSpacing: -0.1,
+    marginTop: -2,
+  },
+  metricsList: {
+    flex: 1,
+    gap: 8,
+    justifyContent: 'center',
+  },
+  metricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metricLeftCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  metricDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  metricLabelText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#A1A1AA',
+    letterSpacing: -0.1,
+  },
+  metricValueText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
     letterSpacing: -0.2,
   },
 })
+
 

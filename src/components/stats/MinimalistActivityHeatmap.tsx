@@ -42,8 +42,8 @@ export function MinimalistActivityHeatmap() {
 
   const scrollViewRef = useRef<ScrollView>(null)
   const tabSlideAnim = useRef(new Animated.Value(defaultTab === 'fall' ? 0 : 80)).current
-  const gridSlideAnim = useRef(new Animated.Value(0)).current
-  const gridOpacityAnim = useRef(new Animated.Value(1)).current
+  const gridFadeAnim = useRef(new Animated.Value(1)).current
+  const gridScaleAnim = useRef(new Animated.Value(1)).current
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current
 
   const updateData = useCallback(() => {
@@ -102,44 +102,44 @@ export function MinimalistActivityHeatmap() {
   const handleTabChange = (tab: SemesterTab) => {
     if (tab === activeSemester) return
     triggerHaptic('selection')
-
-    // Dirección del deslizamiento: si va a 'spring' (derecha), entra desde x: 32, si va a 'fall' (izquierda), entra desde x: -32
-    const slideDirection = tab === 'spring' ? 32 : -32
-
-    // Opacidad en 0 absoluto en el instante del cambio para evitar que se filtre el contenido anterior
-    gridOpacityAnim.setValue(0)
-    gridSlideAnim.setValue(slideDirection)
-
-    setActiveSemester(tab)
     setSelectedDay(null)
 
-    // Desplazamiento del selector con rebote
+    // Animación fluida de la pastilla selectora
     Animated.spring(tabSlideAnim, {
       toValue: tab === 'fall' ? 0 : 80,
-      stiffness: 450,
-      damping: 28,
-      mass: 0.6,
+      stiffness: 600,
+      damping: 32,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
 
-    // Deslizamiento y entrada limpia del mapa con rebote elástico
-    Animated.parallel([
-      Animated.spring(gridSlideAnim, {
-        toValue: 0,
-        stiffness: 420,
-        damping: 26,
-        mass: 0.65,
-        useNativeDriver: true,
-      }),
-      Animated.timing(gridOpacityAnim, {
-        toValue: 1,
-        duration: 190,
-        easing: APPLE_EASING,
-        useNativeDriver: true,
-      }),
-    ]).start()
+    // Micro atenuación limpia y reaparición con rebote elástico (sin mezcla de tareas)
+    Animated.timing(gridFadeAnim, {
+      toValue: 0,
+      duration: 75,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveSemester(tab)
+      scrollViewRef.current?.scrollTo({ x: 0, animated: false })
+      gridScaleAnim.setValue(0.96)
 
-    scrollViewRef.current?.scrollTo({ x: 0, animated: false })
+      Animated.parallel([
+        Animated.timing(gridFadeAnim, {
+          toValue: 1,
+          duration: 190,
+          easing: APPLE_EASING,
+          useNativeDriver: true,
+        }),
+        Animated.spring(gridScaleAnim, {
+          toValue: 1,
+          stiffness: 450,
+          damping: 26,
+          mass: 0.55,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    })
   }
 
   const handleDayPress = (day: HeatmapDay) => {
@@ -161,11 +161,12 @@ export function MinimalistActivityHeatmap() {
     const current = await personalStorage.getTasks()
     const year = new Date().getFullYear()
 
-    gridOpacityAnim.setValue(0.5)
-    Animated.timing(gridOpacityAnim, {
+    gridScaleAnim.setValue(0.97)
+    Animated.spring(gridScaleAnim, {
       toValue: 1,
-      duration: 200,
-      easing: APPLE_EASING,
+      stiffness: 500,
+      damping: 24,
+      mass: 0.5,
       useNativeDriver: true,
     }).start()
 
@@ -282,69 +283,70 @@ export function MinimalistActivityHeatmap() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Columna de etiquetas de días fija a la izquierda dentro del scroll */}
-          <View style={styles.dayLabelsCol}>
-            <View style={styles.monthHeaderSpacer} />
-            {DAY_LABELS.map((dayLetter, idx) => (
-              <View key={`day-label-${idx}`} style={styles.dayLabelCell}>
-                <Text style={styles.dayLabelText}>{dayLetter}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Matriz de semanas con deslizamiento sincrono y rebote */}
           <Animated.View
-            key={`matrix-${activeSemester}`}
             style={[
-              styles.matrixArea,
+              styles.scrollContentAnimatedWrapper,
               {
-                opacity: gridOpacityAnim,
-                transform: [{ translateX: gridSlideAnim }],
+                opacity: gridFadeAnim,
+                transform: [{ scale: gridScaleAnim }],
               },
             ]}
           >
-            {/* Fila de etiquetas de meses */}
-            <View style={styles.monthLabelsRow}>
-              {heatmapData.monthLabels.map((m, mIdx) => (
-                <Text
-                  key={`month-${mIdx}-${m.colIndex}`}
-                  style={[
-                    styles.monthLabelText,
-                    { left: m.colIndex * COL_WIDTH },
-                  ]}
-                >
-                  {m.monthName}
-                </Text>
+            {/* Columna de etiquetas de días fija a la izquierda dentro del scroll */}
+            <View style={styles.dayLabelsCol}>
+              <View style={styles.monthHeaderSpacer} />
+              {DAY_LABELS.map((dayLetter, idx) => (
+                <View key={`day-label-${idx}`} style={styles.dayLabelCell}>
+                  <Text style={styles.dayLabelText}>{dayLetter}</Text>
+                </View>
               ))}
             </View>
 
-            {/* Columnas de Semanas */}
-            <View style={styles.weeksContainer}>
-              {heatmapData.weeks.map((week, wIdx) => (
-                <View key={`week-${wIdx}`} style={styles.weekColumn}>
-                  {week.map((day) => {
-                    const isSelected = selectedDay?.dateStr === day.dateStr
+            {/* Matriz de semanas */}
+            <View style={styles.matrixArea}>
+              {/* Fila de etiquetas de meses */}
+              <View style={styles.monthLabelsRow}>
+                {heatmapData.monthLabels.map((m, mIdx) => (
+                  <Text
+                    key={`month-${mIdx}-${m.colIndex}`}
+                    style={[
+                      styles.monthLabelText,
+                      { left: m.colIndex * COL_WIDTH },
+                    ]}
+                  >
+                    {m.monthName}
+                  </Text>
+                ))}
+              </View>
 
-                    return (
-                      <Pressable
-                        key={day.dateStr}
-                        onPress={() => handleDayPress(day)}
-                        disabled={!day.isInRange}
-                        style={[
-                          styles.dayCell,
-                          !day.isInRange && styles.dayCellOutOfRange,
-                          day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
-                          day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
-                          day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
-                          day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
-                          day.isToday && styles.dayCellToday,
-                          isSelected && styles.dayCellSelected,
-                        ]}
-                      />
-                    )
-                  })}
-                </View>
-              ))}
+              {/* Columnas de Semanas */}
+              <View style={styles.weeksContainer}>
+                {heatmapData.weeks.map((week, wIdx) => (
+                  <View key={`week-${wIdx}`} style={styles.weekColumn}>
+                    {week.map((day) => {
+                      const isSelected = selectedDay?.dateStr === day.dateStr
+
+                      return (
+                        <Pressable
+                          key={day.dateStr}
+                          onPress={() => handleDayPress(day)}
+                          disabled={!day.isInRange}
+                          style={[
+                            styles.dayCell,
+                            !day.isInRange && styles.dayCellOutOfRange,
+                            day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
+                            day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
+                            day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
+                            day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
+                            day.isToday && styles.dayCellToday,
+                            isSelected && styles.dayCellSelected,
+                          ]}
+                        />
+                      )
+                    })}
+                  </View>
+                ))}
+              </View>
             </View>
           </Animated.View>
         </ScrollView>
@@ -480,9 +482,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   scrollContent: {
+    paddingRight: 10,
+  },
+  scrollContentAnimatedWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingRight: 10,
   },
   dayLabelsCol: {
     marginRight: 6,

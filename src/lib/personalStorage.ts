@@ -257,7 +257,12 @@ export const personalStorage = {
     _tasksCache = [...safeList]
     notifyListeners()
     try {
-      await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(safeList))
+      // Optimizar para almacenamiento persistente: omitir objeto anidado redundante 'subject'
+      const storageList = safeList.map((t) => {
+        const { subject, ...rest } = t
+        return rest
+      })
+      await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(storageList))
     } catch (err) {
       console.error('[personalStorage] Error guardando tareas:', err)
     }

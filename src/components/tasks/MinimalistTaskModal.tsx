@@ -507,7 +507,7 @@ export function MinimalistTaskModal({
       }
 
       triggerHaptic('success')
-      onTaskSaved()
+      onTaskSaved?.()
       handleSmoothClose()
     } catch (err) {
       console.error('Error al guardar tarea:', err)

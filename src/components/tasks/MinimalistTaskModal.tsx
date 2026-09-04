@@ -50,6 +50,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { MinimalistPdfViewerModal } from '@/components/common/MinimalistPdfViewerModal'
+import { MinimalistImageViewerModal } from '@/components/common/MinimalistImageViewerModal'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -135,7 +136,7 @@ export function MinimalistTaskModal({
 }: MinimalistTaskModalProps) {
   const insets = useSafeAreaInsets()
   const [currentView, setCurrentView] = useState<'detail' | 'form'>('detail')
-  const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null)
+  const [selectedLightboxImage, setSelectedLightboxImage] = useState<{ uri: string; title: string } | null>(null)
   const [viewingPdf, setViewingPdf] = useState<{ uri: string; title: string } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -796,7 +797,12 @@ export function MinimalistTaskModal({
                         return (
                           <Pressable
                             key={idx}
-                            onPress={() => setSelectedLightboxImage(att.file_url)}
+                            onPress={() =>
+                              setSelectedLightboxImage({
+                                uri: att.file_url,
+                                title: att.file_name || 'Foto adjunta',
+                              })
+                            }
                             style={styles.detailImagePreviewCard}
                           >
                             <Image
@@ -808,7 +814,7 @@ export function MinimalistTaskModal({
                               <Text style={styles.detailPreviewTitle} numberOfLines={1}>
                                 {att.file_name || 'Foto adjunta'}
                               </Text>
-                              <Text style={styles.detailPreviewSubtitle}>Toca para ampliar</Text>
+                              <Text style={styles.detailPreviewSubtitle}>Toca para ampliar y hacer zoom</Text>
                             </View>
                             <Maximize2 size={14} color="#71717A" />
                           </Pressable>
@@ -1463,14 +1469,33 @@ export function MinimalistTaskModal({
 
                       return (
                         <View key={a.id} style={styles.attachedPill}>
-                          {isImg ? (
-                            <ImageIcon size={12} color="#A1A1AA" />
-                          ) : (
-                            <FileText size={12} color={isPdf ? '#F87171' : isWord ? '#60A5FA' : '#A1A1AA'} />
-                          )}
-                          <Text style={styles.attachedPillText} numberOfLines={1}>
-                            {a.file_name}
-                          </Text>
+                          <Pressable
+                            onPress={() => {
+                              if (isImg && a.file_url) {
+                                triggerHaptic('light')
+                                setSelectedLightboxImage({
+                                  uri: a.file_url,
+                                  title: a.file_name || 'Foto adjunta',
+                                })
+                              } else if (isPdf && a.file_url) {
+                                triggerHaptic('light')
+                                setViewingPdf({
+                                  uri: a.file_url,
+                                  title: a.file_name || 'Documento PDF',
+                                })
+                              }
+                            }}
+                            style={styles.attachedPillContent}
+                          >
+                            {isImg ? (
+                              <ImageIcon size={12} color="#A1A1AA" />
+                            ) : (
+                              <FileText size={12} color={isPdf ? '#F87171' : isWord ? '#60A5FA' : '#A1A1AA'} />
+                            )}
+                            <Text style={styles.attachedPillText} numberOfLines={1}>
+                              {a.file_name}
+                            </Text>
+                          </Pressable>
                           <Pressable
                             onPress={() => {
                               triggerHaptic('light')
@@ -1490,22 +1515,13 @@ export function MinimalistTaskModal({
           )}
         </Animated.View>
 
-        {/* Visor Lightbox para Fotos en Pantalla Completa (Tocar en cualquier parte cierra sin X) */}
-        {selectedLightboxImage && (
-          <Modal visible={true} transparent={true} animationType="fade" onRequestClose={() => setSelectedLightboxImage(null)}>
-            <Pressable
-              style={styles.lightboxBackdrop}
-              onPress={() => setSelectedLightboxImage(null)}
-            >
-              <Image
-                source={{ uri: selectedLightboxImage }}
-                style={styles.lightboxImage}
-                resizeMode="contain"
-              />
-              <Text style={styles.lightboxTip}>Toca en cualquier lugar para cerrar</Text>
-            </Pressable>
-          </Modal>
-        )}
+        {/* Visor Interactivo con Zoom para Fotos (Pinch-to-zoom, doble toque, pan y compartir) */}
+        <MinimalistImageViewerModal
+          visible={Boolean(selectedLightboxImage)}
+          imageUri={selectedLightboxImage?.uri || null}
+          imageTitle={selectedLightboxImage?.title || 'Foto adjunta'}
+          onClose={() => setSelectedLightboxImage(null)}
+        />
 
         {/* Visor Nativo Integrado para Documentos PDF (Solo montado cuando se necesita) */}
         {Boolean(viewingPdf) && (
@@ -2119,6 +2135,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     maxWidth: '100%',
+  },
+  attachedPillContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   attachedPillText: {
     color: '#D4D4D8',

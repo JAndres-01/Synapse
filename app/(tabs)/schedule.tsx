@@ -25,6 +25,7 @@ import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTask
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { getActiveAcademicWeek } from '@/lib/academicDateUtils'
 import {
   cancelTaskReminder,
   scheduleTaskReminder,
@@ -45,9 +46,8 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
-  const currentDay = new Date().getDay()
-  const initialDay = currentDay >= 1 && currentDay <= 5 ? currentDay : 1
-  const [selectedDay, setSelectedDay] = useState<number>(initialDay)
+  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const [selectedDay, setSelectedDay] = useState<number>(academicWeek.defaultSelectedDay)
 
   // Modales
   const [showSubjectModal, setShowSubjectModal] = useState(false)
@@ -70,7 +70,7 @@ export default function ScheduleScreen() {
     subjectId?: string | null
   }>({
     visible: false,
-    day: initialDay,
+    day: academicWeek.defaultSelectedDay,
     subjectId: null,
   })
 
@@ -164,6 +164,57 @@ export default function ScheduleScreen() {
     })
   }, [])
 
+  const handleSaveSlot = async (subjectId: string, classroom?: string, teacher?: string) => {
+    const existingIndex = schedules.findIndex(
+      (s) => s.day_of_week === assignModalData.day && s.block_number === assignModalData.block
+    )
+
+    let updatedSchedules: Schedule[]
+    if (existingIndex >= 0) {
+      updatedSchedules = schedules.map((s, idx) =>
+        idx === existingIndex
+          ? {
+              ...s,
+              subject_id: subjectId,
+              classroom_room: classroom || null,
+              teacher_name: teacher || null,
+            }
+          : s
+      )
+    } else {
+      const newScheduleItem: Schedule = {
+        id: `sched_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        user_id: user?.id || 'personal',
+        day_of_week: assignModalData.day,
+        block_number: assignModalData.block,
+        subject_id: subjectId,
+        classroom_room: classroom || null,
+        teacher_name: teacher || null,
+        created_at: new Date().toISOString(),
+      }
+      updatedSchedules = [...schedules, newScheduleItem]
+    }
+
+    setSchedules(updatedSchedules)
+    await personalStorage.setSchedules(updatedSchedules)
+
+    // Re-sincronizar notificaciones de horarios
+    const prefs = await personalStorage.getPreferences()
+    await scheduleClassReminders(updatedSchedules, subjects, prefs)
+  }
+
+  const handleDeleteSlot = async () => {
+    const updated = schedules.filter(
+      (s) => !(s.day_of_week === assignModalData.day && s.block_number === assignModalData.block)
+    )
+    setSchedules(updated)
+    await personalStorage.setSchedules(updated)
+
+    // Re-sincronizar notificaciones
+    const prefs = await personalStorage.getPreferences()
+    await scheduleClassReminders(updated, subjects, prefs)
+  }
+
   const handleOpenDayTasks = useCallback((day: number, subjectId?: string | null) => {
     triggerHaptic('light')
     setDayTasksModalData({
@@ -174,38 +225,27 @@ export default function ScheduleScreen() {
   }, [])
 
   const handleToggleTaskStatus = useCallback(async (taskId: string, currentStatus: string) => {
-    const nextStatus: 'pending' | 'completed' = currentStatus === 'completed' ? 'pending' : 'completed'
-
-    if (nextStatus === 'completed') {
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    if (newStatus === 'completed') {
       cancelTaskReminder(taskId)
     } else {
       const taskObj = tasks.find((t) => t.id === taskId)
       if (taskObj) {
-        personalStorage.getPreferences().then((p) =>
-          scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
-        )
+        const prefs = await personalStorage.getPreferences()
+        scheduleTaskReminder({ ...taskObj, status: 'pending' }, prefs)
       }
     }
 
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
+    const updatedTasks = tasks.map((t) =>
+      t.id === taskId ? { ...t, status: newStatus as 'pending' | 'completed' } : t
     )
-
-    try {
-      const task = tasks.find((t) => t.id === taskId)
-      if (task) {
-        const updatedTask: Task = { ...task, status: nextStatus }
-        await personalStorage.saveTask(updatedTask)
-      }
-    } catch (err) {
-      console.error('Error toggling status:', err)
-    }
+    setTasks(updatedTasks)
+    await personalStorage.setTasks(updatedTasks)
   }, [tasks])
 
-  const handleOpenTaskInTasksTab = useCallback((task: Task) => {
+  const handleOpenTaskDetailFromModal = useCallback((task: Task) => {
     triggerHaptic('light')
-    setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))
-
+    setDayTasksModalData((prev) => ({ ...prev, visible: false }))
     setTimeout(() => {
       router.navigate({
         pathname: '/(tabs)/tasks',
@@ -240,7 +280,7 @@ export default function ScheduleScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.title}>Horario</Text>
-              <Text style={styles.subtitle}>4 bloques diarios • 7:00 AM - 1:00 PM</Text>
+              <Text style={styles.subtitle}>{academicWeek.fullLabel}</Text>
             </View>
 
             <Pressable
@@ -345,7 +385,7 @@ export default function ScheduleScreen() {
         tasks={tasks}
         onClose={() => setDayTasksModalData((prev) => ({ ...prev, visible: false, subjectId: null }))}
         onToggleTaskStatus={handleToggleTaskStatus}
-        onOpenTaskDetail={handleOpenTaskInTasksTab}
+        onOpenTaskDetail={handleOpenTaskDetailFromModal}
       />
 
       {/* Modal de Asignar Bloque (Desde Vista Diaria) */}

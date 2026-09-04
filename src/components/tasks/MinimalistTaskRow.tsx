@@ -11,6 +11,7 @@ import {
 import type { Task } from '@/types/personal'
 import { Check, Paperclip, Edit2, Trash2, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { formatTaskDueDate } from '@/lib/academicDateUtils'
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const ACTION_BUTTON_WIDTH = 56
@@ -288,31 +289,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     })
   }
 
-  const formatDue = (dateStr?: string | null) => {
-    if (!dateStr) return null
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return null
-      const now = new Date()
-      const isPast = d.getTime() < now.getTime()
-      const isToday = d.toDateString() === now.toDateString()
-
-      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      const dayName = days[d.getDay()]
-      const hours = d.getHours()
-      const mins = String(d.getMinutes()).padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedH = hours % 12 || 12
-
-      if (isToday) return { text: `Hoy ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: true }
-      if (isPast && !isVisuallyDone) return { text: `Venció ${dayName}`, isPast: true, isToday: false }
-      return { text: `${dayName} ${formattedH}:${mins} ${ampm}`, isPast: false, isToday: false }
-    } catch {
-      return null
-    }
-  }
-
-  const dueInfo = formatDue(task.due_date)
+  const dueInfo = formatTaskDueDate(task.due_date, isVisuallyDone)
   const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
 
   return (

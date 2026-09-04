@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, CheckSquare, ChevronRight, Clock, Paperclip } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { formatTaskDueDate } from '@/lib/academicDateUtils'
 
 interface MinimalistTodayTasksProps {
   tasks: Task[]
@@ -71,31 +72,7 @@ const TodayTaskItem = memo(function TodayTaskItem({
     onToggle()
   }
 
-  const formatDue = (dateStr?: string | null) => {
-    if (!dateStr) return null
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return null
-      const now = new Date()
-      const isToday = d.toDateString() === now.toDateString()
-      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-      const isTomorrow = d.toDateString() === tomorrow.toDateString()
-
-      const hours = d.getHours()
-      const mins = d.getMinutes().toString().padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedH = hours % 12 || 12
-
-      if (isToday) return { text: `Hoy ${formattedH}:${mins} ${ampm}`, isToday: true }
-      if (isTomorrow) return { text: `Mañana ${formattedH}:${mins} ${ampm}`, isToday: false }
-      const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      return { text: `${dayNames[d.getDay()]} ${formattedH}:${mins} ${ampm}`, isToday: false }
-    } catch {
-      return null
-    }
-  }
-
-  const dueInfo = formatDue(task.due_date)
+  const dueInfo = formatTaskDueDate(task.due_date, isDone)
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, styles.taskRowOuter]}>

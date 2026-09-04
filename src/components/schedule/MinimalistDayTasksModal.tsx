@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Schedule, Subject } from '@/types/personal'
 import { X, Check, Clock, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -159,19 +160,14 @@ export function MinimalistDayTasksModal({
     })
   ).current
 
-  // FILTRADO ESTRICTO: ÚNICAMENTE tareas cuya fecha de entrega cae en este día específico
+  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const targetDayDate = academicWeek.getDayDate(day)
+
+  // FILTRADO ESTRICTO: ÚNICAMENTE tareas cuya fecha de entrega cae en la fecha exacta de este día de la semana activa
   const dayTasks = tasks.filter((t) => {
     if (t.status !== 'pending') return false
-    if (!t.due_date) return false
-    try {
-      const taskDate = new Date(t.due_date)
-      const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
-      if (dayNum !== day) return false
-      if (subjectId && t.subject_id !== subjectId) return false
-      return true
-    } catch {
-      return false
-    }
+    if (subjectId && t.subject_id !== subjectId) return false
+    return isTaskForAcademicDay(t.due_date, targetDayDate)
   })
 
   const sortedDayTasks = [...dayTasks].sort((a, b) => {

@@ -11,6 +11,7 @@ import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
@@ -137,19 +138,14 @@ export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
   onAssignSlot,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
+  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
 
   const getPendingTasksForDayAndSubject = (day: number, subjectId?: string | null) => {
     if (!subjectId) return 0
+    const columnDate = academicWeek.getDayDate(day)
     return tasks.filter((t) => {
       if (t.status !== 'pending' || t.subject_id !== subjectId) return false
-      if (!t.due_date) return false
-      try {
-        const taskDate = new Date(t.due_date)
-        const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
-        return dayNum === day
-      } catch {
-        return false
-      }
+      return isTaskForAcademicDay(t.due_date, columnDate)
     }).length
   }
 
@@ -164,13 +160,17 @@ export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
           {/* Fila de Encabezados de Días */}
           <View style={styles.headerRow}>
             {DAYS.map((d) => {
-              const isToday = currentDay === d.num
+              const columnDate = academicWeek.getDayDate(d.num)
+              const isToday = academicWeek.isCurrentWeek && currentDay === d.num
+              const isDisabled = academicWeek.isDayDisabled(d.num)
+
               return (
                 <View
                   key={d.num}
                   style={[
                     styles.dayHeaderCell,
                     isToday && styles.dayHeaderCellToday,
+                    isDisabled && { opacity: 0.45 },
                   ]}
                 >
                   <Text
@@ -179,7 +179,7 @@ export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
                       isToday && styles.dayHeaderTextToday,
                     ]}
                   >
-                    {d.short}
+                    {d.short} {columnDate.getDate()}
                   </Text>
                   {isToday && (
                     <View style={styles.todayIndicator}>

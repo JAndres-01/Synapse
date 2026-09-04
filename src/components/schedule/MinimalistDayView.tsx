@@ -15,6 +15,7 @@ import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, Clock, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -200,6 +201,8 @@ export function MinimalistDayView({
   onAssignSlot,
 }: MinimalistDayViewProps) {
   const currentDay = new Date().getDay()
+  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const targetDayDate = academicWeek.getDayDate(selectedDay)
   const daySchedules = schedules.filter((s) => s.day_of_week === selectedDay)
 
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 32)
@@ -218,7 +221,7 @@ export function MinimalistDayView({
   }, [activeDayIndex, pillWidth, daySlideAnim])
 
   const handleDayPress = (dayNum: number) => {
-    if (dayNum === selectedDay) return
+    if (dayNum === selectedDay || academicWeek.isDayDisabled(dayNum)) return
     const idx = DAYS.findIndex((d) => d.num === dayNum)
     if (idx !== -1) {
       Animated.spring(daySlideAnim, {
@@ -263,25 +266,28 @@ export function MinimalistDayView({
         />
 
         {DAYS.map((d) => {
+          const isDisabled = academicWeek.isDayDisabled(d.num)
           const isSelected = selectedDay === d.num
-          const isToday = currentDay === d.num
+          const isToday = academicWeek.isCurrentWeek && currentDay === d.num
 
           return (
             <Pressable
               key={d.num}
+              disabled={isDisabled}
               onPressIn={() => handleDayPress(d.num)}
-              style={styles.dayPill}
+              style={[styles.dayPill, isDisabled && styles.dayPillDisabled]}
             >
               <Text
                 style={[
                   styles.dayPillText,
                   isSelected && styles.dayPillTextActive,
                   isToday && !isSelected && styles.dayPillTextToday,
+                  isDisabled && styles.dayPillTextDisabled,
                 ]}
               >
                 {d.short}
               </Text>
-              {isToday && (
+              {isToday && !isDisabled && (
                 <View
                   style={[
                     styles.todayDot,
@@ -299,18 +305,11 @@ export function MinimalistDayView({
         {PERSONAL_SCHEDULE_BLOCKS.map((blockDef, idx) => {
           const item = daySchedules.find((s) => s.block_number === blockDef.block)
 
-          // FILTRADO ESTRICTO: ÚNICAMENTE tareas de esta materia cuya fecha de entrega sea este día
+          // FILTRADO ESTRICTO: ÚNICAMENTE tareas cuya fecha de entrega cae exactamente en la fecha de este día de la semana activa
           const classTasks = tasks.filter((t) => {
             if (t.status !== 'pending') return false
             if (!item?.subject_id || t.subject_id !== item.subject_id) return false
-            if (!t.due_date) return false
-            try {
-              const taskDate = new Date(t.due_date)
-              const dayNum = taskDate.getDay() === 0 ? 7 : taskDate.getDay()
-              return dayNum === selectedDay
-            } catch {
-              return false
-            }
+            return isTaskForAcademicDay(t.due_date, targetDayDate)
           })
 
           return (
@@ -367,6 +366,9 @@ const styles = StyleSheet.create({
     gap: 4,
     zIndex: 2,
   },
+  dayPillDisabled: {
+    opacity: 0.38,
+  },
   dayPillText: {
     color: '#71717A',
     fontSize: 12.5,
@@ -379,6 +381,10 @@ const styles = StyleSheet.create({
   dayPillTextToday: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  dayPillTextDisabled: {
+    color: '#52525B',
+    fontWeight: '500',
   },
   todayDot: {
     width: 4,

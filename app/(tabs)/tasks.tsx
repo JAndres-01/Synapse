@@ -465,7 +465,7 @@ export default function TasksScreen() {
         alwaysBounceVertical={true}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 105 },
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 105 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -474,8 +474,9 @@ export default function TasksScreen() {
         {!isSearchActive ? (
           <View style={styles.header}>
             <View style={styles.headerTop}>
-              <View style={styles.headerTitleRow}>
-                <Text style={styles.title}>Mis Tareas</Text>
+              <View>
+                <Text style={styles.title}>Tareas</Text>
+                <Text style={styles.subtitle}>Entregas, exámenes y pendientes</Text>
               </View>
 
               <Pressable
@@ -486,9 +487,6 @@ export default function TasksScreen() {
                 <Search size={16} color="#FFFFFF" />
               </Pressable>
             </View>
-            <Text style={styles.subtitle}>
-              Tareas, entregas, examenes
-            </Text>
           </View>
         ) : (
           <Animated.View
@@ -860,7 +858,6 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   header: {
-    gap: 2,
     paddingHorizontal: 2,
   },
   headerTop: {
@@ -868,20 +865,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   title: {
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
   },
   subtitle: {
     color: '#71717A',
     fontSize: 12.5,
+    marginTop: 2,
+    fontWeight: '500',
   },
   searchIconButton: {
     width: 36,

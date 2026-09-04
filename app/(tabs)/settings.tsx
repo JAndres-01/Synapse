@@ -625,21 +625,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     gap: 16,
   },
   header: {
-    marginBottom: 4,
+    paddingHorizontal: 2,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
     color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 13,
     color: '#71717A',
+    fontSize: 12.5,
     marginTop: 2,
     fontWeight: '500',
   },

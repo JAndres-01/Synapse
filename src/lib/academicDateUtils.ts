@@ -1,4 +1,4 @@
-﻿export interface AcademicWeekInfo {
+export interface AcademicWeekInfo {
   isCurrentWeek: boolean
   weekLabel: string // "Semana actual" | "Próxima semana"
   weekRangeText: string // "1 - 5 Sep"
@@ -99,17 +99,33 @@ export function isTaskForAcademicDay(taskDueDate?: string | null, targetDayDate?
   }
 }
 
+export type TaskUrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'future'
+
+export interface TaskDueInfo {
+  text: string
+  isPast: boolean
+  isToday: boolean
+  isTomorrow: boolean
+  urgency: TaskUrgencyLevel
+  color: string
+  bgColor: string
+  borderColor: string
+}
+
 /**
- * Formatea la fecha de vencimiento de una tarea según si pertenece a la semana actual o a semanas futuras.
- * - Hoy: "Hoy 11:59 PM"
- * - Semana actual: "Lun 11:59 PM" / "Venció Lun"
- * - Semanas posteriores: "Lun 3 Oct 11:59 PM" / "Venció Lun 3 Oct"
+ * Formatea la fecha de vencimiento de una tarea según si pertenece a la semana actual o a semanas futuras,
+ * asignando códigos de color de urgencia y prioridad minimalista.
+ * - Vencida: Rojo (#EF4444)
+ * - Hoy: Ámbar (#F59E0B)
+ * - Mañana: Amarillo (#EAB308)
+ * - Esta semana: Plata (#D4D4D8)
+ * - Semanas futuras: Zinc (#A1A1AA)
  */
 export function formatTaskDueDate(
   dateStr?: string | null,
   isVisuallyDone: boolean = false,
   referenceDate: Date = new Date()
-): { text: string; isPast: boolean; isToday: boolean } | null {
+): TaskDueInfo | null {
   if (!dateStr) return null
   try {
     const d = new Date(dateStr)
@@ -121,6 +137,12 @@ export function formatTaskDueDate(
       d.getFullYear() === now.getFullYear() &&
       d.getMonth() === now.getMonth() &&
       d.getDate() === now.getDate()
+
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const isTomorrow =
+      d.getFullYear() === tomorrow.getFullYear() &&
+      d.getMonth() === tomorrow.getMonth() &&
+      d.getDate() === tomorrow.getDate()
 
     // Calcular límites de la semana actual (de Lunes 00:00 a Domingo 23:59:59)
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay()
@@ -156,44 +178,76 @@ export function formatTaskDueDate(
     const formattedH = hours % 12 || 12
     const timeStr = `${formattedH}:${mins} ${ampm}`
 
-    // 1. Es Hoy
+    // 1. Tarea Vencida (Overdue)
+    if (isPast && !isVisuallyDone) {
+      const text = isCurrentWeek
+        ? `Venció ${dayName}`
+        : `Venció ${dayName} ${dayNum} ${monthName}`
+
+      return {
+        text,
+        isPast: true,
+        isToday: false,
+        isTomorrow: false,
+        urgency: 'overdue',
+        color: '#EF4444',
+        bgColor: 'rgba(239, 68, 68, 0.12)',
+        borderColor: 'rgba(239, 68, 68, 0.28)',
+      }
+    }
+
+    // 2. Vence Hoy (Today)
     if (isToday) {
       return {
         text: `Hoy ${timeStr}`,
         isPast: false,
         isToday: true,
+        isTomorrow: false,
+        urgency: 'today',
+        color: '#F59E0B',
+        bgColor: 'rgba(245, 158, 11, 0.12)',
+        borderColor: 'rgba(245, 158, 11, 0.28)',
       }
     }
 
-    // 2. Es de la semana actual
-    if (isCurrentWeek) {
-      if (isPast && !isVisuallyDone) {
-        return {
-          text: `Venció ${dayName}`,
-          isPast: true,
-          isToday: false,
-        }
+    // 3. Vence Mañana (Tomorrow)
+    if (isTomorrow) {
+      return {
+        text: `Mañana ${timeStr}`,
+        isPast: false,
+        isToday: false,
+        isTomorrow: true,
+        urgency: 'tomorrow',
+        color: '#EAB308',
+        bgColor: 'rgba(234, 179, 8, 0.1)',
+        borderColor: 'rgba(234, 179, 8, 0.24)',
       }
+    }
+
+    // 4. Vence en los próximos días de esta semana (This week)
+    if (isCurrentWeek) {
       return {
         text: `${dayName} ${timeStr}`,
         isPast: false,
         isToday: false,
+        isTomorrow: false,
+        urgency: 'this_week',
+        color: '#D4D4D8',
+        bgColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
       }
     }
 
-    // 3. Es de semanas posteriores (o semanas pasadas expiradas)
-    if (isPast && !isVisuallyDone) {
-      return {
-        text: `Venció ${dayName} ${dayNum} ${monthName}`,
-        isPast: true,
-        isToday: false,
-      }
-    }
-
+    // 5. Semanas posteriores (Future)
     return {
       text: `${dayName} ${dayNum} ${monthName} ${timeStr}`,
       isPast: false,
       isToday: false,
+      isTomorrow: false,
+      urgency: 'future',
+      color: '#A1A1AA',
+      bgColor: 'rgba(255, 255, 255, 0.035)',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
     }
   } catch {
     return null

@@ -123,9 +123,23 @@ const TodayTaskItem = memo(function TodayTaskItem({
             {Boolean(dueInfo) && (
               <>
                 <Text style={styles.metaDot}>•</Text>
-                <View style={[styles.dueItem, dueInfo?.isToday && styles.dueItemToday]}>
-                  <Clock size={10.5} color={dueInfo?.isToday ? '#F59E0B' : '#71717A'} />
-                  <Text style={[styles.dueText, dueInfo?.isToday && styles.dueTextToday]}>
+                <View
+                  style={[
+                    styles.dueItem,
+                    {
+                      backgroundColor: isDone ? 'transparent' : dueInfo?.bgColor,
+                      borderColor: isDone ? 'transparent' : dueInfo?.borderColor,
+                    },
+                  ]}
+                >
+                  <Clock size={10} color={isDone ? '#52525B' : dueInfo?.color} strokeWidth={2.4} />
+                  <Text
+                    style={[
+                      styles.dueText,
+                      { color: isDone ? '#52525B' : dueInfo?.color },
+                      isDone && styles.dueTextDone,
+                    ]}
+                  >
                     {dueInfo?.text}
                   </Text>
                 </View>
@@ -334,20 +348,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3.5,
-  },
-  dueItemToday: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
+    paddingHorizontal: 5.5,
+    paddingVertical: 1.8,
+    borderRadius: 5,
+    borderWidth: 0.8,
   },
   dueText: {
-    color: '#71717A',
     fontSize: 10.5,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
-  dueTextToday: {
-    color: '#F59E0B',
-    fontWeight: '700',
+  dueTextDone: {
+    color: '#52525B',
   },
 })

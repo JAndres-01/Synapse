@@ -89,6 +89,9 @@ function formatReadableDate(str?: string, fallback: string = ''): string {
   }
 }
 
+// Control de entrada única por sesión en la pantalla de Perfil
+let hasPlayedProfileEntrance = false
+
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -110,6 +113,33 @@ export default function ProfileScreen() {
   const [activeDatePicker, setActiveDatePicker] = useState<
     'fall_start' | 'fall_end' | 'spring_start' | 'spring_end' | null
   >(null)
+
+  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
+  const cardEntranceAnims = useRef([
+    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
+  ]).current
+
+  useEffect(() => {
+    if (!hasPlayedProfileEntrance) {
+      hasPlayedProfileEntrance = true
+      cardEntranceAnims.forEach((anim) => anim.setValue(0))
+
+      const staggerAnims = cardEntranceAnims.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          stiffness: 320,
+          damping: 24,
+          mass: 0.7,
+          useNativeDriver: true,
+        })
+      )
+
+      Animated.stagger(100, staggerAnims).start()
+    }
+  }, [])
 
   // Microinteracciones y Efectos de Rebote (Spring Physics)
   const heroScaleAnim = useRef(new Animated.Value(1)).current
@@ -553,8 +583,30 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Hero Profile Panel Minimalista con Efecto Rebote */}
-        <Animated.View style={{ transform: [{ scale: heroScaleAnim }] }}>
+        {/* Card 0: Hero Profile Panel Minimalista con Entrada Escalonada y Efecto Rebote */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[0].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+              { scale: heroScaleAnim },
+            ],
+          }}
+        >
           <Pressable
             onPress={handleOpenEditProfile}
             onPressIn={handleHeroPressIn}
@@ -581,14 +633,83 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Métricas Vitales Académicas */}
-        <MinimalistVitalStats />
+        {/* Card 1: Métricas Vitales Académicas */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[1].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <MinimalistVitalStats />
+        </Animated.View>
 
-        {/* Mapa de Actividad Estilo GitHub */}
-        <MinimalistActivityHeatmap />
+        {/* Card 2: Mapa de Actividad Estilo GitHub */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[2].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <MinimalistActivityHeatmap />
+        </Animated.View>
 
-        {/* Gráfica de Distribución de Carga / Balance de Materias Expandida */}
-        <MinimalistSubjectBalance />
+        {/* Card 3: Gráfica de Distribución de Carga / Balance de Materias Expandida */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[3].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[3].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[3].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <MinimalistSubjectBalance />
+        </Animated.View>
       </ScrollView>
 
       {/* ========================================================================= */}

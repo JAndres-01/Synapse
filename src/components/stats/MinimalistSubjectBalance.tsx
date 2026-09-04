@@ -118,34 +118,37 @@ export function MinimalistSubjectBalance() {
       rowAnims.forEach((anim) => anim.setValue(0))
 
       if (isFirst) {
-        // Primera vez que se abre la app: animación más suave, elegante y cinemática
-        Animated.parallel([
-          Animated.timing(barOpacityAnim, {
-            toValue: 1,
-            duration: 350,
-            easing: APPLE_EASING,
-            useNativeDriver: true,
-          }),
-          Animated.spring(barScaleXAnim, {
-            toValue: 1,
-            stiffness: 125,
-            damping: 20,
-            mass: 1.15,
-            useNativeDriver: true,
-          }),
-          Animated.stagger(
-            60,
-            stats.map((_, i) => {
-              const anim = rowAnims[i] || new Animated.Value(0)
-              return Animated.spring(anim, {
-                toValue: 1,
-                stiffness: 220,
-                damping: 24,
-                mass: 0.8,
-                useNativeDriver: true,
+        // Primera vez que se abre la app: animación suave y sincronizada al aterrizar la card
+        Animated.sequence([
+          Animated.delay(220),
+          Animated.parallel([
+            Animated.timing(barOpacityAnim, {
+              toValue: 1,
+              duration: 350,
+              easing: APPLE_EASING,
+              useNativeDriver: true,
+            }),
+            Animated.spring(barScaleXAnim, {
+              toValue: 1,
+              stiffness: 125,
+              damping: 20,
+              mass: 1.15,
+              useNativeDriver: true,
+            }),
+            Animated.stagger(
+              60,
+              stats.map((_, i) => {
+                const anim = rowAnims[i] || new Animated.Value(0)
+                return Animated.spring(anim, {
+                  toValue: 1,
+                  stiffness: 220,
+                  damping: 24,
+                  mass: 0.8,
+                  useNativeDriver: true,
+                })
               })
-            })
-          ),
+            ),
+          ]),
         ]).start(() => {
           isInitialMount.current = false
         })

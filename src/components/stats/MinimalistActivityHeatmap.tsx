@@ -15,7 +15,7 @@ import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStora
 import type { Task, AppPreferences } from '@/types/personal'
 import { generateHeatmapGrid, type HeatmapDay } from '@/lib/heatmapUtils'
 import { triggerHaptic } from '@/lib/personalHaptics'
-import { Flame, Calendar, CheckCircle2, Sparkles } from 'lucide-react-native'
+import { Flame, Calendar, CheckCircle2 } from 'lucide-react-native'
 import { useFocusEffect } from 'expo-router'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -93,10 +93,6 @@ export function MinimalistActivityHeatmap() {
     return generateHeatmapGrid(tasks, startDateStr, endDateStr)
   }, [tasks, startDateStr, endDateStr])
 
-  const isTestActive = useMemo(() => {
-    return tasks.some((t) => t.id.startsWith('test-heatmap-'))
-  }, [tasks])
-
   const handleTabChange = (tab: SemesterTab) => {
     if (tab === activeSemester) return
     triggerHaptic('selection')
@@ -126,60 +122,6 @@ export function MinimalistActivityHeatmap() {
       easing: APPLE_EASING,
       useNativeDriver: true,
     }).start()
-  }
-
-  // Generador / Limpiador de datos de prueba para visualizar el mapa
-  const handleToggleTestData = async () => {
-    triggerHaptic('medium')
-    const current = await personalStorage.getTasks()
-    const year = new Date().getFullYear()
-
-    if (isTestActive) {
-      // Limpiar tareas de prueba
-      const cleaned = current.filter((t) => !t.id.startsWith('test-heatmap-'))
-      await personalStorage.setTasks(cleaned)
-      setTasks(cleaned)
-      triggerHaptic('selection')
-      return
-    }
-
-    // Tareas de muestra orgánicamente dispersas
-    const sampleDates = [
-      // Otoño (Ago - Dic)
-      `${year}-08-04`, `${year}-08-05`, `${year}-08-11`, `${year}-08-12`, `${year}-08-18`,
-      `${year}-08-25`, `${year}-09-01`, `${year}-09-02`, `${year}-09-08`, `${year}-09-10`,
-      `${year}-09-15`, `${year}-09-16`, `${year}-09-22`, `${year}-09-29`, `${year}-10-06`,
-      `${year}-10-07`, `${year}-10-13`, `${year}-10-15`, `${year}-10-20`, `${year}-10-27`,
-      `${year}-11-03`, `${year}-11-10`, `${year}-11-17`, `${year}-11-24`, `${year}-12-01`,
-      // Primavera (Feb - Jun)
-      `${year}-02-03`, `${year}-02-04`, `${year}-02-10`, `${year}-02-17`, `${year}-02-24`,
-      `${year}-03-03`, `${year}-03-10`, `${year}-03-17`, `${year}-03-24`, `${year}-04-07`,
-      `${year}-04-14`, `${year}-04-21`, `${year}-05-05`, `${year}-05-12`, `${year}-05-19`,
-      `${year}-05-26`, `${year}-06-02`, `${year}-06-09`,
-    ]
-
-    const newTestTasks: Task[] = []
-    sampleDates.forEach((dateStr, idx) => {
-      const count = (idx % 3) + 1
-      for (let i = 0; i < count; i++) {
-        newTestTasks.push({
-          id: `test-heatmap-${dateStr}-${i}`,
-          user_id: 'test',
-          title: `Entrega simulada ${idx + 1}.${i + 1}`,
-          status: 'completed',
-          due_date: `${dateStr}T12:00:00.000Z`,
-          created_at: `${dateStr}T09:00:00.000Z`,
-          updated_at: `${dateStr}T18:00:00.000Z`,
-          type: 'individual',
-          attachments: [],
-        })
-      }
-    })
-
-    const updated = [...current, ...newTestTasks]
-    await personalStorage.setTasks(updated)
-    setTasks(updated)
-    triggerHaptic('success')
   }
 
   return (
@@ -324,7 +266,7 @@ export function MinimalistActivityHeatmap() {
         </Animated.View>
       )}
 
-      {/* Pie de Leyenda estilo GitHub + Botón de Prueba */}
+      {/* Pie de Leyenda estilo GitHub */}
       <View style={styles.footerRow}>
         <View style={styles.summaryBadge}>
           <Calendar size={11} color="#71717A" />
@@ -334,31 +276,13 @@ export function MinimalistActivityHeatmap() {
           </Text>
         </View>
 
-        <View style={styles.legendWithTestRow}>
-          {/* Botón de Testeo Rápido */}
-          <Pressable
-            onPress={handleToggleTestData}
-            style={({ pressed }) => [
-              styles.testBtn,
-              isTestActive && styles.testBtnActive,
-              pressed && styles.rowPressed,
-            ]}
-            hitSlop={6}
-          >
-            <Sparkles size={11} color={isTestActive ? '#34D399' : '#71717A'} />
-            <Text style={[styles.testBtnText, isTestActive && styles.testBtnTextActive]}>
-              {isTestActive ? 'Limpiar test' : 'Simular'}
-            </Text>
-          </Pressable>
-
-          <View style={styles.legendContainer}>
-            <Text style={styles.legendLabel}>Menos</Text>
-            <View style={[styles.legendCell, styles.dayCellLevel0]} />
-            <View style={[styles.legendCell, styles.dayCellLevel1]} />
-            <View style={[styles.legendCell, styles.dayCellLevel2]} />
-            <View style={[styles.legendCell, styles.dayCellLevel3]} />
-            <Text style={styles.legendLabel}>Más</Text>
-          </View>
+        <View style={styles.legendContainer}>
+          <Text style={styles.legendLabel}>Menos</Text>
+          <View style={[styles.legendCell, styles.dayCellLevel0]} />
+          <View style={[styles.legendCell, styles.dayCellLevel1]} />
+          <View style={[styles.legendCell, styles.dayCellLevel2]} />
+          <View style={[styles.legendCell, styles.dayCellLevel3]} />
+          <Text style={styles.legendLabel}>Más</Text>
         </View>
       </View>
     </View>
@@ -555,37 +479,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
     color: '#71717A',
-  },
-  legendWithTestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  testBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#18181B',
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: '#27272A',
-  },
-  testBtnActive: {
-    backgroundColor: 'rgba(52, 211, 153, 0.1)',
-    borderColor: 'rgba(52, 211, 153, 0.3)',
-  },
-  testBtnText: {
-    fontSize: 9.5,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  testBtnTextActive: {
-    color: '#34D399',
-  },
-  rowPressed: {
-    opacity: 0.7,
   },
   legendContainer: {
     flexDirection: 'row',

@@ -73,12 +73,15 @@ export function MinimalistVitalStats() {
         mass: 0.8,
         useNativeDriver: true,
       }),
-      Animated.timing(animProgress, {
-        toValue: Math.max(0.02, stats.completionRate / 100),
-        duration: 800,
-        easing: APPLE_EASING,
-        useNativeDriver: false,
-      }),
+      Animated.sequence([
+        Animated.delay(120),
+        Animated.timing(animProgress, {
+          toValue: Math.max(0.02, stats.completionRate / 100),
+          duration: 800,
+          easing: APPLE_EASING,
+          useNativeDriver: false,
+        }),
+      ]),
     ]).start()
   }, [stats.completionRate])
 

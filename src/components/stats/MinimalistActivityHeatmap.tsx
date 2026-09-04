@@ -27,7 +27,7 @@ const CELL_SIZE = 11
 const CELL_GAP = 3
 const COL_WIDTH = CELL_SIZE + CELL_GAP
 
-const DAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+const DAY_LABELS = ['', 'L', '', 'M', '', 'V', '']
 
 type SemesterTab = 'fall' | 'spring'
 
@@ -103,11 +103,12 @@ export function MinimalistActivityHeatmap() {
     if (tab === activeSemester) return
     triggerHaptic('selection')
 
-    // Dirección del deslizamiento: si va a 'spring' (derecha), entra desde x: 30, si va a 'fall' (izquierda), entra desde x: -30
-    const slideDirection = tab === 'spring' ? 30 : -30
+    // Dirección del deslizamiento: si va a 'spring' (derecha), entra desde x: 32, si va a 'fall' (izquierda), entra desde x: -32
+    const slideDirection = tab === 'spring' ? 32 : -32
 
+    // Opacidad en 0 absoluto en el instante del cambio para evitar que se filtre el contenido anterior
+    gridOpacityAnim.setValue(0)
     gridSlideAnim.setValue(slideDirection)
-    gridOpacityAnim.setValue(0.3)
 
     setActiveSemester(tab)
     setSelectedDay(null)
@@ -121,7 +122,7 @@ export function MinimalistActivityHeatmap() {
       useNativeDriver: true,
     }).start()
 
-    // Deslizamiento síncrono del mapa con rebote elástico
+    // Deslizamiento y entrada limpia del mapa con rebote elástico
     Animated.parallel([
       Animated.spring(gridSlideAnim, {
         toValue: 0,
@@ -132,13 +133,13 @@ export function MinimalistActivityHeatmap() {
       }),
       Animated.timing(gridOpacityAnim, {
         toValue: 1,
-        duration: 200,
+        duration: 190,
         easing: APPLE_EASING,
         useNativeDriver: true,
       }),
     ]).start()
 
-    scrollViewRef.current?.scrollTo({ x: 0, animated: true })
+    scrollViewRef.current?.scrollTo({ x: 0, animated: false })
   }
 
   const handleDayPress = (day: HeatmapDay) => {
@@ -293,6 +294,7 @@ export function MinimalistActivityHeatmap() {
 
           {/* Matriz de semanas con deslizamiento sincrono y rebote */}
           <Animated.View
+            key={`matrix-${activeSemester}`}
             style={[
               styles.matrixArea,
               {

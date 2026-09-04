@@ -76,6 +76,7 @@ export function generateHeatmapGrid(
   const weeks: HeatmapDay[][] = []
   const monthLabels: HeatmapMonthLabel[] = []
   let lastSeenMonth = -1
+  let lastLabelCol = -4
   let totalCompletions = 0
   let daysInRange = 0
 
@@ -107,11 +108,14 @@ export function generateHeatmapGrid(
     const dayOfMonth = currDate.getDate()
     const year = currDate.getFullYear()
 
-    if (isInRange && monthIndex !== lastSeenMonth && dayOfMonth <= 14) {
-      monthLabels.push({
-        monthName: monthNameShort,
-        colIndex,
-      })
+    if (isInRange && monthIndex !== lastSeenMonth) {
+      if (colIndex - lastLabelCol >= 3) {
+        monthLabels.push({
+          monthName: monthNameShort,
+          colIndex,
+        })
+        lastLabelCol = colIndex
+      }
       lastSeenMonth = monthIndex
     }
 

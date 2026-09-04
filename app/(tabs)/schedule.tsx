@@ -17,6 +17,7 @@ import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Subject, Task } from '@/types/personal'
+import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
 import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMatrix'
 import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectModal'
@@ -164,7 +165,8 @@ export default function ScheduleScreen() {
     })
   }, [])
 
-  const handleSaveSlot = async (subjectId: string, classroom?: string, teacher?: string) => {
+  const handleSaveSlot = async (subjectId: string, classroom?: string) => {
+    const blockDef = PERSONAL_SCHEDULE_BLOCKS.find((b) => b.block === assignModalData.block)
     const existingIndex = schedules.findIndex(
       (s) => s.day_of_week === assignModalData.day && s.block_number === assignModalData.block
     )
@@ -177,7 +179,6 @@ export default function ScheduleScreen() {
               ...s,
               subject_id: subjectId,
               classroom_room: classroom || null,
-              teacher_name: teacher || null,
             }
           : s
       )
@@ -187,9 +188,10 @@ export default function ScheduleScreen() {
         user_id: user?.id || 'personal',
         day_of_week: assignModalData.day,
         block_number: assignModalData.block,
+        start_time: blockDef?.startTime || '07:00',
+        end_time: blockDef?.endTime || '08:30',
         subject_id: subjectId,
         classroom_room: classroom || null,
-        teacher_name: teacher || null,
         created_at: new Date().toISOString(),
       }
       updatedSchedules = [...schedules, newScheduleItem]
@@ -200,7 +202,7 @@ export default function ScheduleScreen() {
 
     // Re-sincronizar notificaciones de horarios
     const prefs = await personalStorage.getPreferences()
-    await scheduleClassReminders(updatedSchedules, subjects, prefs)
+    await scheduleClassReminders(updatedSchedules, prefs)
   }
 
   const handleDeleteSlot = async () => {
@@ -212,7 +214,7 @@ export default function ScheduleScreen() {
 
     // Re-sincronizar notificaciones
     const prefs = await personalStorage.getPreferences()
-    await scheduleClassReminders(updated, subjects, prefs)
+    await scheduleClassReminders(updated, prefs)
   }
 
   const handleOpenDayTasks = useCallback((day: number, subjectId?: string | null) => {

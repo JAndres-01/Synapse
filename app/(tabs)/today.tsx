@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   InteractionManager,
+  Animated,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
@@ -24,6 +25,9 @@ import {
   scheduleTaskReminder,
   syncAllNotifications,
 } from '@/lib/personalNotifications'
+
+// Control de entrada única por sesión en la pantalla Hoy
+let hasPlayedTodayEntrance = false
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets()
@@ -163,6 +167,32 @@ export default function TodayScreen() {
     await personalStorage.setTasks(updatedTasks)
   }, [tasks])
 
+  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
+  const cardEntranceAnims = useRef([
+    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
+  ]).current
+
+  useEffect(() => {
+    if (!hasPlayedTodayEntrance) {
+      hasPlayedTodayEntrance = true
+      cardEntranceAnims.forEach((anim) => anim.setValue(0))
+
+      const staggerAnims = cardEntranceAnims.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          stiffness: 320,
+          damping: 24,
+          mass: 0.7,
+          useNativeDriver: true,
+        })
+      )
+
+      Animated.stagger(100, staggerAnims).start()
+    }
+  }, [])
+
   return (
     <View style={styles.screenWrapper}>
       {/* Confetti Festivo al Completar Tareas */}
@@ -198,32 +228,101 @@ export default function TodayScreen() {
           </View>
         </View>
 
-        {/* Hero Card Dinámica: Clase en Vivo / Próxima */}
-        <MinimalistLiveHero schedulesToday={schedulesToday} />
-
-        {/* Bloque de Tareas Próximas (Sólo Pendientes de los Próximos 7 Días) */}
-        <MinimalistTodayTasks
-          tasks={tasks}
-          onToggleTask={handleToggleTaskStatus}
-          onOpenTaskDetail={(t) => {
-            triggerHaptic('light')
-            setActiveTask(t)
-            setTaskModalMode('detail')
+        {/* Card 0: Hero Card Dinámica (Clase en Vivo / Próxima) */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[0].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
           }}
-          onNavigateToTasks={() => router.navigate('/(tabs)/tasks')}
-        />
+        >
+          <MinimalistLiveHero schedulesToday={schedulesToday} />
+        </Animated.View>
 
-        {/* Timeline Continuo de Clases con Entregas de Tareas */}
-        <MinimalistDayTimeline
-          schedulesToday={schedulesToday}
-          tasks={tasks}
-          onToggleTask={handleToggleTaskStatus}
-          onOpenTaskDetail={(t) => {
-            triggerHaptic('light')
-            setActiveTask(t)
-            setTaskModalMode('detail')
+        {/* Card 1: Bloque de Tareas Próximas */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[1].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
           }}
-        />
+        >
+          <MinimalistTodayTasks
+            tasks={tasks}
+            onToggleTask={handleToggleTaskStatus}
+            onOpenTaskDetail={(t) => {
+              triggerHaptic('light')
+              setActiveTask(t)
+              setTaskModalMode('detail')
+            }}
+            onNavigateToTasks={() => router.navigate('/(tabs)/tasks')}
+          />
+        </Animated.View>
+
+        {/* Card 2: Timeline Continuo de Clases con Entregas de Tareas */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[2].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <MinimalistDayTimeline
+            schedulesToday={schedulesToday}
+            tasks={tasks}
+            onToggleTask={handleToggleTaskStatus}
+            onOpenTaskDetail={(t) => {
+              triggerHaptic('light')
+              setActiveTask(t)
+              setTaskModalMode('detail')
+            }}
+          />
+        </Animated.View>
       </ScrollView>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}

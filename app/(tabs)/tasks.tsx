@@ -49,6 +49,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
+// Control de entrada única por sesión en la pantalla Tareas
+let hasPlayedTasksEntrance = false
+
 export default function TasksScreen() {
   const insets = useSafeAreaInsets()
   const { user } = usePersonalAuth()
@@ -455,6 +458,32 @@ export default function TasksScreen() {
     }).start()
   }
 
+  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
+  const cardEntranceAnims = useRef([
+    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
+  ]).current
+
+  useEffect(() => {
+    if (!hasPlayedTasksEntrance) {
+      hasPlayedTasksEntrance = true
+      cardEntranceAnims.forEach((anim) => anim.setValue(0))
+
+      const staggerAnims = cardEntranceAnims.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          stiffness: 320,
+          damping: 24,
+          mass: 0.7,
+          useNativeDriver: true,
+        })
+      )
+
+      Animated.stagger(100, staggerAnims).start()
+    }
+  }, [])
+
   const handleOpenDetail = useCallback((t: Task) => {
     setActiveTask(t)
     setTaskModalMode('detail')
@@ -467,19 +496,43 @@ export default function TasksScreen() {
 
   const renderTaskItem = useCallback(
     ({ item, index }: { item: Task; index: number }) => (
-      <MinimalistTaskRow
-        task={item}
-        statusFilter={statusFilter}
-        isLast={index === filteredTasks.length - 1}
-        isHighlighted={highlightedTaskId === item.id}
-        onToggleStatus={handleToggleStatus}
-        onOpenDetail={handleOpenDetail}
-        onEdit={handleEditTask}
-        onDelete={handleDeleteTask}
-        onSwipeActiveChange={setIsScrollEnabled}
-      />
+      <Animated.View
+        style={{
+          opacity: cardEntranceAnims[2].interpolate({
+            inputRange: [0, 0.4, 1],
+            outputRange: [0, 0.7, 1],
+          }),
+          transform: [
+            {
+              translateY: cardEntranceAnims[2].interpolate({
+                inputRange: [0, 1],
+                outputRange: [-36, 0],
+              }),
+            },
+            {
+              scale: cardEntranceAnims[2].interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.96, 1],
+              }),
+            },
+          ],
+        }}
+      >
+        <MinimalistTaskRow
+          task={item}
+          statusFilter={statusFilter}
+          isLast={index === filteredTasks.length - 1}
+          isHighlighted={highlightedTaskId === item.id}
+          onToggleStatus={handleToggleStatus}
+          onOpenDetail={handleOpenDetail}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+          onSwipeActiveChange={setIsScrollEnabled}
+        />
+      </Animated.View>
     ),
     [
+      cardEntranceAnims,
       statusFilter,
       filteredTasks.length,
       highlightedTaskId,
@@ -558,127 +611,174 @@ export default function TasksScreen() {
           </Animated.View>
         )}
 
-        {/* Botón Desplegable para Filtrar por Materia */}
-        <View style={styles.filterButtonRow}>
-          <Pressable
-            onPress={() => {
-              setShowSubjectMenu(true)
-            }}
-            style={[
-              styles.subjectDropdownButton,
-              selectedSubjectId !== 'all' && {
-                borderColor: isSelectedWhite
-                  ? '#FFFFFF'
-                  : selectedSubject?.color || '#FFFFFF',
-                backgroundColor: isSelectedWhite
-                  ? 'rgba(255, 255, 255, 0.15)'
-                  : `${selectedSubject?.color || '#FFFFFF'}1F`,
+        {/* Card 0: Botón Desplegable para Filtrar por Materia */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[0].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
               },
-            ]}
-          >
-            <View style={styles.dropdownBtnLeft}>
-              <SlidersHorizontal size={13} color="#A1A1AA" />
-              {selectedSubject ? (
-                <View style={styles.selectedSubjectInfo}>
-                  <View
-                    style={[
-                      styles.dot,
-                      { backgroundColor: selectedSubject.color || '#FFFFFF' },
-                      isSelectedWhite && styles.whiteDotBorder,
-                    ]}
-                  />
-                  <Text style={styles.dropdownBtnTextActive} numberOfLines={1}>
-                    {selectedSubject.name}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.dropdownBtnText}>Todas las materias</Text>
-              )}
-            </View>
-
-            <ChevronDown size={14} color="#A1A1AA" />
-          </Pressable>
-
-          {selectedSubjectId !== 'all' && (
-            <Pressable
-              onPress={() => {
-                setSelectedSubjectId('all')
-              }}
-              style={styles.resetFilterBtn}
-            >
-              <Text style={styles.resetFilterText}>Ver todas</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 55 : 90}
-          tint="dark"
-          style={styles.segmentedContainer}
-          onLayout={(e: LayoutChangeEvent) => {
-            const w = e.nativeEvent.layout.width
-            if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
-              setSegmentContainerWidth(w)
-            }
+              {
+                scale: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
           }}
         >
-          {/* Indicador Deslizante Suave */}
-          <Animated.View
-            style={[
-              styles.activeSegmentPill,
+          <View style={styles.filterButtonRow}>
+            <Pressable
+              onPress={() => {
+                setShowSubjectMenu(true)
+              }}
+              style={[
+                styles.subjectDropdownButton,
+                selectedSubjectId !== 'all' && {
+                  borderColor: isSelectedWhite
+                    ? '#FFFFFF'
+                    : selectedSubject?.color || '#FFFFFF',
+                  backgroundColor: isSelectedWhite
+                    ? 'rgba(255, 255, 255, 0.15)'
+                    : `${selectedSubject?.color || '#FFFFFF'}1F`,
+                },
+              ]}
+            >
+              <View style={styles.dropdownBtnLeft}>
+                <SlidersHorizontal size={13} color="#A1A1AA" />
+                {selectedSubject ? (
+                  <View style={styles.selectedSubjectInfo}>
+                    <View
+                      style={[
+                        styles.dot,
+                        { backgroundColor: selectedSubject.color || '#FFFFFF' },
+                        isSelectedWhite && styles.whiteDotBorder,
+                      ]}
+                    />
+                    <Text style={styles.dropdownBtnTextActive} numberOfLines={1}>
+                      {selectedSubject.name}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.dropdownBtnText}>Todas las materias</Text>
+                )}
+              </View>
+
+              <ChevronDown size={14} color="#A1A1AA" />
+            </Pressable>
+
+            {selectedSubjectId !== 'all' && (
+              <Pressable
+                onPress={() => {
+                  setSelectedSubjectId('all')
+                }}
+                style={styles.resetFilterBtn}
+              >
+                <Text style={styles.resetFilterText}>Ver todas</Text>
+              </Pressable>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Card 1: Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[1].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
               {
-                width: segmentWidth,
-                transform: [{ translateX: slideAnim }],
+                translateY: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
               },
-            ]}
-          />
-
-          <Pressable
-            onPressIn={() => handleStatusChange('pending')}
-            style={styles.segmentButton}
+              {
+                scale: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 55 : 90}
+            tint="dark"
+            style={styles.segmentedContainer}
+            onLayout={(e: LayoutChangeEvent) => {
+              const w = e.nativeEvent.layout.width
+              if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
+                setSegmentContainerWidth(w)
+              }
+            }}
           >
-            <Text
+            {/* Indicador Deslizante Suave */}
+            <Animated.View
               style={[
-                styles.segmentButtonText,
-                statusFilter === 'pending' && styles.segmentButtonTextActive,
+                styles.activeSegmentPill,
+                {
+                  width: segmentWidth,
+                  transform: [{ translateX: slideAnim }],
+                },
               ]}
-            >
-              Pendientes
-            </Text>
-          </Pressable>
+            />
 
-          <Pressable
-            onPressIn={() => handleStatusChange('completed')}
-            style={styles.segmentButton}
-          >
-            <Text
-              style={[
-                styles.segmentButtonText,
-                statusFilter === 'completed' && styles.segmentButtonTextActive,
-              ]}
+            <Pressable
+              onPressIn={() => handleStatusChange('pending')}
+              style={styles.segmentButton}
             >
-              Completadas
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.segmentButtonText,
+                  statusFilter === 'pending' && styles.segmentButtonTextActive,
+                ]}
+              >
+                Pendientes
+              </Text>
+            </Pressable>
 
-          <Pressable
-            onPressIn={() => handleStatusChange('all')}
-            style={styles.segmentButton}
-          >
-            <Text
-              style={[
-                styles.segmentButtonText,
-                statusFilter === 'all' && styles.segmentButtonTextActive,
-              ]}
+            <Pressable
+              onPressIn={() => handleStatusChange('completed')}
+              style={styles.segmentButton}
             >
-              Todas
-            </Text>
-          </Pressable>
-        </BlurView>
+              <Text
+                style={[
+                  styles.segmentButtonText,
+                  statusFilter === 'completed' && styles.segmentButtonTextActive,
+                ]}
+              >
+                Completadas
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPressIn={() => handleStatusChange('all')}
+              style={styles.segmentButton}
+            >
+              <Text
+                style={[
+                  styles.segmentButtonText,
+                  statusFilter === 'all' && styles.segmentButtonTextActive,
+                ]}
+              >
+                Todas
+              </Text>
+            </Pressable>
+          </BlurView>
+        </Animated.View>
       </View>
     )
   }, [
+    cardEntranceAnims,
     isSearchActive,
     searchOpacityAnim,
     searchScaleAnim,
@@ -694,7 +794,25 @@ export default function TasksScreen() {
 
   const renderEmptyComponent = useMemo(() => {
     return (
-      <View style={styles.emptyContainer}>
+      <Animated.View
+        style={[
+          styles.emptyContainer,
+          {
+            opacity: cardEntranceAnims[2].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[2].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <CheckCircle2 size={36} color="#27272A" />
         <Text style={styles.emptyTitle}>
           {statusFilter === 'completed'
@@ -708,9 +826,9 @@ export default function TasksScreen() {
             ? 'Intenta buscar con otro término o selecciona otra materia.'
             : 'Toca el botón + flotante para añadir un nuevo pendiente o entrega.'}
         </Text>
-      </View>
+      </Animated.View>
     )
-  }, [statusFilter, searchQuery])
+  }, [cardEntranceAnims, statusFilter, searchQuery])
 
   return (
     <View style={styles.screenWrapper}>

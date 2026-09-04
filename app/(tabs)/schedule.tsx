@@ -35,6 +35,9 @@ import { useRouter, useFocusEffect } from 'expo-router'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
+// Control de entrada única por sesión en la pantalla Horario
+let hasPlayedScheduleEntrance = false
+
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -279,6 +282,31 @@ export default function ScheduleScreen() {
     }, 120)
   }, [router])
 
+  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
+  const cardEntranceAnims = useRef([
+    new Animated.Value(hasPlayedScheduleEntrance ? 1 : 0),
+    new Animated.Value(hasPlayedScheduleEntrance ? 1 : 0),
+  ]).current
+
+  useEffect(() => {
+    if (!hasPlayedScheduleEntrance) {
+      hasPlayedScheduleEntrance = true
+      cardEntranceAnims.forEach((anim) => anim.setValue(0))
+
+      const staggerAnims = cardEntranceAnims.map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          stiffness: 320,
+          damping: 24,
+          mass: 0.7,
+          useNativeDriver: true,
+        })
+      )
+
+      Animated.stagger(100, staggerAnims).start()
+    }
+  }, [])
+
   return (
     <View style={styles.screenWrapper}>
       <ScrollView
@@ -310,84 +338,130 @@ export default function ScheduleScreen() {
           </View>
         </View>
 
-        {/* Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 55 : 90}
-          tint="dark"
-          style={styles.segmentedContainer}
-          onLayout={(e: LayoutChangeEvent) => {
-            const w = e.nativeEvent.layout.width
-            if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
-              setSegmentContainerWidth(w)
-            }
+        {/* Card 0: Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[0].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
+              {
+                translateY: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
+              },
+              {
+                scale: cardEntranceAnims[0].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
           }}
         >
-          <Animated.View
-            style={[
-              styles.activeSegmentPill,
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 55 : 90}
+            tint="dark"
+            style={styles.segmentedContainer}
+            onLayout={(e: LayoutChangeEvent) => {
+              const w = e.nativeEvent.layout.width
+              if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
+                setSegmentContainerWidth(w)
+              }
+            }}
+          >
+            <Animated.View
+              style={[
+                styles.activeSegmentPill,
+                {
+                  width: segmentWidth,
+                  transform: [{ translateX: viewModeAnim }],
+                },
+              ]}
+            />
+
+            <Pressable
+              onPressIn={() => handleViewModeChange('day')}
+              style={styles.segmentButton}
+            >
+              <CalendarDays
+                size={13.5}
+                color={viewMode === 'day' ? '#09090B' : '#A1A1AA'}
+              />
+              <Text
+                style={[
+                  styles.segmentButtonText,
+                  viewMode === 'day' && styles.segmentButtonTextActive,
+                ]}
+              >
+                Vista Diaria
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPressIn={() => handleViewModeChange('week')}
+              style={styles.segmentButton}
+            >
+              <LayoutGrid
+                size={13.5}
+                color={viewMode === 'week' ? '#09090B' : '#A1A1AA'}
+              />
+              <Text
+                style={[
+                  styles.segmentButtonText,
+                  viewMode === 'week' && styles.segmentButtonTextActive,
+                ]}
+              >
+                Matriz Semanal
+              </Text>
+            </Pressable>
+          </BlurView>
+        </Animated.View>
+
+        {/* Card 1: Vista Seleccionada (Diaria / Semanal) */}
+        <Animated.View
+          style={{
+            opacity: cardEntranceAnims[1].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            transform: [
               {
-                width: segmentWidth,
-                transform: [{ translateX: viewModeAnim }],
+                translateY: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-36, 0],
+                }),
               },
-            ]}
-          />
-
-          <Pressable
-            onPressIn={() => handleViewModeChange('day')}
-            style={styles.segmentButton}
-          >
-            <CalendarDays
-              size={13.5}
-              color={viewMode === 'day' ? '#09090B' : '#A1A1AA'}
+              {
+                scale: cardEntranceAnims[1].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.96, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          {viewMode === 'day' ? (
+            <MinimalistDayView
+              schedules={schedules}
+              subjects={subjects}
+              tasks={tasks}
+              selectedDay={selectedDay}
+              onSelectDay={setSelectedDay}
+              onOpenDayTasks={handleOpenDayTasks}
+              onAssignSlot={handleOpenAssign}
             />
-            <Text
-              style={[
-                styles.segmentButtonText,
-                viewMode === 'day' && styles.segmentButtonTextActive,
-              ]}
-            >
-              Vista Diaria
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPressIn={() => handleViewModeChange('week')}
-            style={styles.segmentButton}
-          >
-            <LayoutGrid
-              size={13.5}
-              color={viewMode === 'week' ? '#09090B' : '#A1A1AA'}
+          ) : (
+            <MinimalistWeeklyMatrix
+              schedules={schedules}
+              subjects={subjects}
+              tasks={tasks}
+              onAssignSlot={handleOpenAssign}
             />
-            <Text
-              style={[
-                styles.segmentButtonText,
-                viewMode === 'week' && styles.segmentButtonTextActive,
-              ]}
-            >
-              Matriz Semanal
-            </Text>
-          </Pressable>
-        </BlurView>
-
-        {/* Vista Seleccionada */}
-        {viewMode === 'day' ? (
-          <MinimalistDayView
-            schedules={schedules}
-            subjects={subjects}
-            tasks={tasks}
-            selectedDay={selectedDay}
-            onSelectDay={setSelectedDay}
-            onOpenDayTasks={handleOpenDayTasks}
-            onAssignSlot={handleOpenAssign}
-          />
-        ) : (
-          <MinimalistWeeklyMatrix
-            schedules={schedules}
-            subjects={subjects}
-            tasks={tasks}
-            onAssignSlot={handleOpenAssign}
-          />
-        )}
+          )}
+        </Animated.View>
       </ScrollView>
 
       {/* Modal de Tareas del Día */}

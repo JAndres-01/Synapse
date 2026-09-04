@@ -36,6 +36,7 @@ import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
   syncAllNotifications,
   requestNotificationPermissions,
+  sendTestNotification,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 
@@ -262,6 +263,24 @@ export default function SettingsScreen() {
     handleCloseTimeModal()
   }
 
+  const handleSendTestNotification = async () => {
+    triggerHaptic('medium')
+    const success = await sendTestNotification()
+    if (success) {
+      triggerHaptic('success')
+      Alert.alert(
+        'Notificación enviada',
+        'Se ha enviado una notificación de prueba. En 1 segundo verás el banner en tu pantalla.'
+      )
+    } else {
+      triggerHaptic('error')
+      Alert.alert(
+        'Permiso denegado',
+        'Por favor activa los permisos de notificación en los Ajustes del sistema para recibir avisos.'
+      )
+    }
+  }
+
   const handleClearAllData = () => {
     triggerHaptic('warning')
     Alert.alert(
@@ -404,6 +423,25 @@ export default function SettingsScreen() {
               ios_backgroundColor="#27272A"
             />
           </View>
+
+          <View style={styles.rowDivider} />
+
+          {/* Botón de Notificación de Prueba */}
+          <Pressable
+            onPress={handleSendTestNotification}
+            style={({ pressed }) => [styles.groupRowPressable, pressed && styles.rowPressed]}
+          >
+            <View style={styles.rowIconContainer}>
+              <Bell size={16} color="#FFFFFF" />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Probar notificaciones</Text>
+              <Text style={styles.rowSubtitle}>Envía un aviso de prueba a tu pantalla</Text>
+            </View>
+            <View style={styles.testBadge}>
+              <Text style={styles.testBadgeText}>Probar</Text>
+            </View>
+          </Pressable>
         </View>
 
         {/* Sección de Experiencia */}
@@ -702,6 +740,29 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginLeft: 58,
+  },
+  groupRowPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  rowPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  testBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 8,
+  },
+  testBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   timeValuePill: {
     flexDirection: 'row',

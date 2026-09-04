@@ -8,7 +8,7 @@ import {
   Animated,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
-import { Home, Calendar, CheckSquare, Settings } from 'lucide-react-native'
+import { Home, Calendar, CheckSquare, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
@@ -25,7 +25,7 @@ const TABS: Array<{ key: TabKey; label: string; icon: any }> = [
   { key: 'today', label: 'Hoy', icon: Home },
   { key: 'schedule', label: 'Horario', icon: Calendar },
   { key: 'tasks', label: 'Tareas', icon: CheckSquare },
-  { key: 'settings', label: 'Ajustes', icon: Settings },
+  { key: 'settings', label: 'Perfil', icon: User },
 ]
 
 const TAB_WIDTH = 78.5

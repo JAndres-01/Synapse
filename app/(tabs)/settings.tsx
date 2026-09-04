@@ -319,14 +319,14 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>Preferencias del sistema</Text>
+          <Text style={styles.title}>Perfil</Text>
+          <Text style={styles.subtitle}>Estadísticas y cuenta</Text>
         </View>
 
-        {/* Perfil Minimalista Abierto (Sin Card) */}
+        {/* Perfil del Estudiante (Panel Suave) */}
         <Pressable
           onPress={handleOpenEditProfile}
-          style={({ pressed }) => [styles.profileRow, pressed && styles.rowPressed]}
+          style={({ pressed }) => [styles.profileCard, pressed && styles.rowPressed]}
         >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(profile?.full_name)}</Text>
@@ -343,18 +343,15 @@ export default function SettingsScreen() {
           <ChevronRight size={16} color="#52525B" />
         </Pressable>
 
-        {/* Separador de Sección */}
-        <View style={styles.sectionDivider} />
-
         {/* Gráfica de Distribución de Carga / Balance de Materias */}
         <MinimalistSubjectBalance />
 
         {/* Separador de Sección */}
         <View style={styles.sectionDivider} />
 
-        {/* Sección: Recordatorios Automáticos (Abierta, Sin Cards) */}
+        {/* Sección Secundaria: Ajustes y Preferencias */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Recordatorios Automáticos</Text>
+          <Text style={styles.sectionTitle}>Ajustes y Preferencias</Text>
 
           {/* Aviso de Entregas */}
           <View style={styles.itemRow}>
@@ -616,12 +613,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  profileRow: {
+  profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    backgroundColor: '#131316',
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#242429',
     gap: 14,
-    borderRadius: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatar: {
     width: 44,

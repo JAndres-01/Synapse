@@ -4,6 +4,9 @@ export interface PersonalProfile {
   full_name: string
   avatar_url?: string | null
   theme?: string
+  student_credential_url?: string | null
+  student_credential_name?: string | null
+  student_credential_updated_at?: string | null
   created_at?: string
   updated_at?: string
 }

@@ -7,6 +7,7 @@ interface PersonalAuthContextType {
   profile: PersonalProfile | null
   loading: boolean
   updateProfile: (fullName: string, email?: string) => Promise<void>
+  updateCredential: (credentialUrl: string | null, credentialName?: string | null) => Promise<void>
   refreshProfile: () => Promise<void>
   clearData: () => Promise<void>
 }
@@ -42,6 +43,19 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     setProfile(updated)
   }
 
+  const updateCredential = async (credentialUrl: string | null, credentialName?: string | null) => {
+    const current = profile || (await personalStorage.getProfile())
+    const updated: PersonalProfile = {
+      ...current,
+      student_credential_url: credentialUrl,
+      student_credential_name: credentialName !== undefined ? credentialName : (credentialUrl ? 'Credencial_Digital.pdf' : null),
+      student_credential_updated_at: credentialUrl ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }
+    await personalStorage.setProfile(updated)
+    setProfile(updated)
+  }
+
   const refreshProfile = async () => {
     const p = await personalStorage.getProfile()
     setProfile(p)
@@ -54,6 +68,9 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       full_name: 'Estudiante',
       email: '',
       theme: 'dark',
+      student_credential_url: null,
+      student_credential_name: null,
+      student_credential_updated_at: null,
       created_at: new Date().toISOString(),
     }
     await personalStorage.setProfile(defaultProfile)
@@ -66,6 +83,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
       profile,
       loading,
       updateProfile,
+      updateCredential,
       refreshProfile,
       clearData,
     }),

@@ -21,6 +21,7 @@ const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as DocumentPicker from 'expo-document-picker'
 import {
   Sparkles,
   Smartphone,
@@ -35,6 +36,11 @@ import {
   Settings as SettingsIcon,
   Calendar,
   RotateCcw,
+  IdCard,
+  User,
+  FileUp,
+  QrCode,
+  ShieldCheck,
 } from 'lucide-react-native'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
@@ -46,6 +52,7 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import { MinimalistVitalStats } from '@/components/stats/MinimalistVitalStats'
 import { MinimalistActivityHeatmap } from '@/components/stats/MinimalistActivityHeatmap'
 import { MinimalistSubjectBalance } from '@/components/stats/MinimalistSubjectBalance'
+import { MinimalistCredentialModal } from '@/components/profile/MinimalistCredentialModal'
 
 const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
@@ -95,7 +102,10 @@ let hasPlayedProfileEntrance = false
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { profile, updateProfile, clearData } = usePersonalAuth()
+  const { profile, updateProfile, updateCredential, clearData } = usePersonalAuth()
+
+  // Modal de Credencial Digital (PDF con QR)
+  const [showCredentialModal, setShowCredentialModal] = useState(false)
 
   // Preferencias del Sistema
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
@@ -333,6 +343,36 @@ export default function ProfileScreen() {
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  // ==========================================
+  // MANEJO DE CREDENCIAL DIGITAL (PDF CON QR)
+  // ==========================================
+  const handlePickCredential = async () => {
+    triggerHaptic('light')
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf'],
+        copyToCacheDirectory: true,
+      })
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0]
+        await updateCredential(asset.uri, asset.name || 'Credencial_Digital.pdf')
+        triggerHaptic('success')
+        setShowCredentialModal(true)
+      }
+    } catch (err: any) {
+      console.error('[ProfileScreen] Error al seleccionar credencial:', err)
+      Alert.alert('Error', 'No se pudo cargar el archivo PDF de la credencial.')
+      triggerHaptic('error')
+    }
+  }
+
+  const handleDeleteCredential = async () => {
+    await updateCredential(null, null)
+    setShowCredentialModal(false)
+    triggerHaptic('success')
   }
 
   // ==========================================
@@ -608,7 +648,14 @@ export default function ProfileScreen() {
           }}
         >
           <Pressable
-            onPress={handleOpenEditProfile}
+            onPress={() => {
+              if (profile?.student_credential_url) {
+                triggerHaptic('light')
+                setShowCredentialModal(true)
+              } else {
+                handlePickCredential()
+              }
+            }}
             onPressIn={handleHeroPressIn}
             onPressOut={handleHeroPressOut}
             style={styles.heroProfileCard}
@@ -623,13 +670,30 @@ export default function ProfileScreen() {
                   {profile?.full_name || 'Estudiante'}
                 </Text>
               </View>
-              <Text style={styles.heroProfileSubtitle}>Toca para editar tu nombre</Text>
+              {profile?.student_credential_url ? (
+                <View style={styles.credentialStatusRow}>
+                  <View style={styles.statusDotActive} />
+                  <Text style={styles.heroProfileSubtitleActive} numberOfLines={1}>
+                    Credencial digital activa
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.heroProfileSubtitle}>Sin credencial vinculada</Text>
+              )}
             </View>
 
-            <View style={styles.heroEditPill}>
-              <Edit3 size={13} color="#A1A1AA" />
-              <ChevronRight size={13} color="#71717A" />
-            </View>
+            {profile?.student_credential_url ? (
+              <View style={styles.heroCredentialPill}>
+                <QrCode size={13} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.heroCredentialPillText}>Credencial</Text>
+                <ChevronRight size={12} color="#71717A" />
+              </View>
+            ) : (
+              <View style={[styles.heroCredentialPill, styles.heroCredentialPillUpload]}>
+                <FileUp size={13} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.heroCredentialPillTextUpload}>Subir PDF</Text>
+              </View>
+            )}
           </Pressable>
         </Animated.View>
 
@@ -756,6 +820,67 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.settingsSheetScroll}>
+              {/* Sección: Cuenta y Perfil */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.sectionHeaderTitle}>Cuenta y Perfil</Text>
+
+                {/* Cambiar Nombre */}
+                <Pressable
+                  onPress={() => {
+                    handleCloseSettings()
+                    setTimeout(() => {
+                      handleOpenEditProfile()
+                    }, 180)
+                  }}
+                  style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+                >
+                  <User size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Nombre de estudiante</Text>
+                    <Text style={styles.itemSubtitle}>{profile?.full_name || 'Estudiante'}</Text>
+                  </View>
+                  <View style={styles.timeValueRow}>
+                    <Text style={styles.timeValueText}>Cambiar</Text>
+                    <ChevronRight size={14} color="#71717A" />
+                  </View>
+                </Pressable>
+
+                <View style={styles.hairlineDivider} />
+
+                {/* Credencial Digital */}
+                <Pressable
+                  onPress={() => {
+                    handleCloseSettings()
+                    setTimeout(() => {
+                      if (profile?.student_credential_url) {
+                        setShowCredentialModal(true)
+                      } else {
+                        handlePickCredential()
+                      }
+                    }, 180)
+                  }}
+                  style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+                >
+                  <IdCard size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Credencial digital (PDF)</Text>
+                    <Text style={styles.itemSubtitle}>
+                      {profile?.student_credential_url
+                        ? profile.student_credential_name || 'Credencial vinculada'
+                        : 'Sin archivo PDF vinculado'}
+                    </Text>
+                  </View>
+                  <View style={styles.timeValueRow}>
+                    <Text style={styles.timeValueText}>
+                      {profile?.student_credential_url ? 'Ver' : 'Subir'}
+                    </Text>
+                    <ChevronRight size={14} color="#71717A" />
+                  </View>
+                </Pressable>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
               {/* Sección: Recordatorios Automáticos */}
               <View style={styles.settingsSection}>
                 <Text style={styles.sectionHeaderTitle}>Recordatorios Automáticos</Text>
@@ -1148,6 +1273,19 @@ export default function ProfileScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL: CREDENCIAL DIGITAL (PDF CON QR)                                    */}
+      {/* ========================================================================= */}
+      <MinimalistCredentialModal
+        visible={showCredentialModal}
+        credentialUrl={profile?.student_credential_url || null}
+        credentialName={profile?.student_credential_name || null}
+        studentName={profile?.full_name || 'Estudiante'}
+        onClose={() => setShowCredentialModal(false)}
+        onChangeCredential={handlePickCredential}
+        onDeleteCredential={handleDeleteCredential}
+      />
     </View>
   )
 }
@@ -1240,16 +1378,48 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '500',
   },
-  heroEditPill: {
+  credentialStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 5,
+    marginTop: 1,
+  },
+  statusDotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34D399',
+  },
+  heroProfileSubtitleActive: {
+    color: '#34D399',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  heroCredentialPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: '#18181B',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#27272A',
+    borderColor: '#2E2E38',
+  },
+  heroCredentialPillUpload: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  heroCredentialPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.1,
+  },
+  heroCredentialPillTextUpload: {
+    color: '#FAFAFA',
+    fontSize: 12,
+    fontWeight: '700',
   },
   modalBackdrop: {
     flex: 1,

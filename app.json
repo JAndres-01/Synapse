@@ -37,6 +37,21 @@
         {
           "root": "./app"
         }
+      ],
+      [
+        "expo-share-intent",
+        {
+          "iosAppGroupIdentifier": "group.com.synapse.app",
+          "androidIntentFilters": [
+            "text/*",
+            "image/*",
+            "*/*"
+          ],
+          "androidMultiIntentFilters": [
+            "image/*",
+            "*/*"
+          ]
+        }
       ]
     ],
     "extra": {

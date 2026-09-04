@@ -112,9 +112,12 @@ interface MinimalistTaskModalProps {
   userId: string
   subjects: Subject[]
   onClose: () => void
-  onToggleStatus: (taskId: string, currentStatus: string) => void
-  onDeleteTask: (taskId: string) => Promise<void>
+  onToggleStatus?: (taskId: string, currentStatus: string) => void
+  onDeleteTask?: (taskId: string) => Promise<void>
   onTaskSaved: () => void
+  initialAttachments?: TaskAttachment[]
+  initialTitle?: string
+  initialDescription?: string
 }
 
 export function MinimalistTaskModal({
@@ -126,6 +129,9 @@ export function MinimalistTaskModal({
   onToggleStatus,
   onDeleteTask,
   onTaskSaved,
+  initialAttachments,
+  initialTitle,
+  initialDescription,
 }: MinimalistTaskModalProps) {
   const insets = useSafeAreaInsets()
   const [currentView, setCurrentView] = useState<'detail' | 'form'>('detail')
@@ -247,12 +253,12 @@ export function MinimalistTaskModal({
       setCurrentView(mode === 'detail' ? 'detail' : 'form')
 
       if (mode === 'create') {
-        setTitle('')
-        setDescription('')
+        setTitle(initialTitle || '')
+        setDescription(initialDescription || '')
         setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
         setTaskType('individual')
         setDueDate('')
-        setAttachments([])
+        setAttachments(initialAttachments && initialAttachments.length > 0 ? initialAttachments : [])
       } else if (task && (mode === 'edit' || mode === 'detail')) {
         setTitle(task.title || '')
         setDescription(task.description || '')
@@ -317,7 +323,7 @@ export function MinimalistTaskModal({
         setModalVisible(false)
       })
     }
-  }, [mode, task?.id])
+  }, [mode, task?.id, initialTitle, initialDescription, initialAttachments])
 
   const handleSmoothClose = () => {
     triggerHaptic('light')

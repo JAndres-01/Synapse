@@ -3,11 +3,26 @@ import { Tabs, usePathname, useRouter } from 'expo-router'
 import { View, StyleSheet } from 'react-native'
 import { MinimalistFloatingIsland, type TabKey } from '@/components/navigation/MinimalistFloatingIsland'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
+import { MinimalistTaskModal } from '@/components/tasks/MinimalistTaskModal'
+import { useIncomingShareIntent } from '@/lib/useIncomingShareIntent'
+import { usePersonalAuth } from '@/context/PersonalAuthContext'
+import type { Subject } from '@/types/personal'
 
 export default function TabLayout() {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = usePersonalAuth()
   const [pendingCount, setPendingCount] = useState(0)
+  const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
+
+  // Integración "Compartir con Synapse" (Share Extension / Send Intent)
+  const {
+    isShareModalOpen,
+    incomingAttachments,
+    incomingTitle,
+    incomingDescription,
+    closeIncomingShareModal,
+  } = useIncomingShareIntent()
 
   const pathnameTab: TabKey = pathname.includes('schedule')
     ? 'schedule'
@@ -24,14 +39,19 @@ export default function TabLayout() {
   }, [pathnameTab])
 
   useEffect(() => {
-    const updatePending = () => {
+    const updateData = () => {
       personalStorage.getTasks().then((tasks) => {
         const pending = tasks.filter((t) => t.status === 'pending').length
         setPendingCount(pending)
       })
+      personalStorage.getSubjects().then((subjs) => {
+        if (subjs && Array.isArray(subjs)) {
+          setSubjects(subjs)
+        }
+      })
     }
-    updatePending()
-    const unsubscribe = subscribeToPersonalStorage(updatePending)
+    updateData()
+    const unsubscribe = subscribeToPersonalStorage(updateData)
     return unsubscribe
   }, [])
 
@@ -62,6 +82,19 @@ export default function TabLayout() {
         activeTab={activeTab}
         onSelectTab={handleSelectTab}
         pendingTasksCount={pendingCount}
+      />
+
+      {/* Modal reactivo automático para "Compartir con Synapse" */}
+      <MinimalistTaskModal
+        mode={isShareModalOpen ? 'create' : 'none'}
+        task={null}
+        userId={user?.id || 'local_user'}
+        subjects={subjects}
+        initialAttachments={incomingAttachments}
+        initialTitle={incomingTitle}
+        initialDescription={incomingDescription}
+        onClose={closeIncomingShareModal}
+        onTaskSaved={closeIncomingShareModal}
       />
     </View>
   )

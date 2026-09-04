@@ -106,41 +106,79 @@ export function MinimalistSubjectBalance() {
     return { stats: result, totalTasks: total }
   }, [tasks, subjects, scope])
 
+  const isInitialMount = useRef(true)
+
   // Disparar animación suave de llenado de barra y aparición deslizante hacia abajo
   useEffect(() => {
     if (stats.length > 0) {
+      const isFirst = isInitialMount.current
       barScaleXAnim.setValue(0)
       barOpacityAnim.setValue(0)
       rowsContainerOpacity.setValue(1)
       rowAnims.forEach((anim) => anim.setValue(0))
 
-      Animated.parallel([
-        Animated.timing(barOpacityAnim, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.spring(barScaleXAnim, {
-          toValue: 1,
-          stiffness: 240,
-          damping: 24,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-        Animated.stagger(
-          40,
-          stats.map((_, i) => {
-            const anim = rowAnims[i] || new Animated.Value(0)
-            return Animated.spring(anim, {
-              toValue: 1,
-              stiffness: 420,
-              damping: 28,
-              mass: 0.6,
-              useNativeDriver: true,
+      if (isFirst) {
+        // Primera vez que se abre la app: animación más suave, elegante y cinemática
+        Animated.parallel([
+          Animated.timing(barOpacityAnim, {
+            toValue: 1,
+            duration: 350,
+            easing: APPLE_EASING,
+            useNativeDriver: true,
+          }),
+          Animated.spring(barScaleXAnim, {
+            toValue: 1,
+            stiffness: 125,
+            damping: 20,
+            mass: 1.15,
+            useNativeDriver: true,
+          }),
+          Animated.stagger(
+            60,
+            stats.map((_, i) => {
+              const anim = rowAnims[i] || new Animated.Value(0)
+              return Animated.spring(anim, {
+                toValue: 1,
+                stiffness: 220,
+                damping: 24,
+                mass: 0.8,
+                useNativeDriver: true,
+              })
             })
-          })
-        ),
-      ]).start()
+          ),
+        ]).start(() => {
+          isInitialMount.current = false
+        })
+      } else {
+        // Siguientes interacciones / cambios de ámbito: velocidad ágil y reactiva
+        Animated.parallel([
+          Animated.timing(barOpacityAnim, {
+            toValue: 1,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+          Animated.spring(barScaleXAnim, {
+            toValue: 1,
+            stiffness: 300,
+            damping: 25,
+            mass: 0.6,
+            useNativeDriver: true,
+          }),
+          Animated.stagger(
+            30,
+            stats.map((_, i) => {
+              const anim = rowAnims[i] || new Animated.Value(0)
+              return Animated.spring(anim, {
+                toValue: 1,
+                stiffness: 450,
+                damping: 28,
+                mass: 0.5,
+                useNativeDriver: true,
+              })
+            })
+          ),
+        ]).start()
+      }
     }
   }, [stats.length, scope])
 

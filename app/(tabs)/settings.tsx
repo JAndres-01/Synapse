@@ -40,6 +40,7 @@ import {
   requestNotificationPermissions,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
+import { MinimalistVitalStats } from '@/components/stats/MinimalistVitalStats'
 import { MinimalistSubjectBalance } from '@/components/stats/MinimalistSubjectBalance'
 
 const PRESET_HOURS = [
@@ -423,6 +424,9 @@ export default function ProfileScreen() {
             <Text style={styles.heroProfileSubtitle}>Toca para editar tu nombre</Text>
           </View>
         </Pressable>
+
+        {/* Métricas Vitales Académicas */}
+        <MinimalistVitalStats />
 
         {/* Gráfica de Distribución de Carga / Balance de Materias Expandida */}
         <MinimalistSubjectBalance />

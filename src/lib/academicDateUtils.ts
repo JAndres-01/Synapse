@@ -253,3 +253,51 @@ export function formatTaskDueDate(
     return null
   }
 }
+
+export interface AcademicVitalStats {
+  completedTasksCount: number
+  punctualityRate: number
+  activeSubjectsCount: number
+}
+
+/**
+ * Calcula las métricas vitales académicas del estudiante (tareas entregadas, puntualidad y materias).
+ */
+export function calculateAcademicVitalStats(
+  tasks: Array<{
+    status: 'pending' | 'completed'
+    due_date?: string | null
+    created_at?: string
+    updated_at?: string
+  }>,
+  subjects: Array<{ id: string }>
+): AcademicVitalStats {
+  const completedTasks = tasks.filter((t) => t.status === 'completed')
+  const completedTasksCount = completedTasks.length
+
+  // Cálculo de puntualidad sobre tareas entregadas
+  let onTimeCount = 0
+  completedTasks.forEach((t) => {
+    if (!t.due_date || !t.updated_at) {
+      // Si no tiene fecha límite estricta, se considera completada a tiempo
+      onTimeCount++
+    } else {
+      const due = new Date(t.due_date).getTime()
+      const comp = new Date(t.updated_at).getTime()
+      if (isNaN(due) || isNaN(comp) || comp <= due + 60000) {
+        onTimeCount++
+      }
+    }
+  })
+
+  const punctualityRate =
+    completedTasksCount > 0
+      ? Math.min(100, Math.round((onTimeCount / completedTasksCount) * 100))
+      : 100
+
+  return {
+    completedTasksCount,
+    punctualityRate,
+    activeSubjectsCount: subjects.length,
+  }
+}

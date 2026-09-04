@@ -112,22 +112,18 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
     }
   }, [isHighlighted])
 
-  // Gesto PanResponder con bloqueo estricto de scroll vertical durante el deslizamiento
+  // Gesto PanResponder con discriminación estricta de eje horizontal vs scroll vertical
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return (
-          Math.abs(gestureState.dx) > 8 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.3
+          Math.abs(gestureState.dx) > 12 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.8
         )
       },
-      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        return (
-          Math.abs(gestureState.dx) > 8 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.3
-        )
-      },
+      onMoveShouldSetPanResponderCapture: () => false,
       onPanResponderGrant: () => {
         isSwiping.current = true
         Animated.spring(scaleAnim, {

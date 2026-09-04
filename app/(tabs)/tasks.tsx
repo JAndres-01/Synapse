@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  FlatList,
   TextInput,
   Pressable,
   StyleSheet,
@@ -454,23 +455,46 @@ export default function TasksScreen() {
     }).start()
   }
 
-  return (
-    <View style={styles.screenWrapper}>
-      <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
+  const handleOpenDetail = useCallback((t: Task) => {
+    setActiveTask(t)
+    setTaskModalMode('detail')
+  }, [])
 
-      <ScrollView
-        style={styles.scrollView}
-        scrollEnabled={isScrollEnabled}
-        bounces={true}
-        alwaysBounceVertical={true}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 105 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={() => Keyboard.dismiss()}
-      >
+  const handleEditTask = useCallback((t: Task) => {
+    setActiveTask(t)
+    setTaskModalMode('edit')
+  }, [])
+
+  const renderTaskItem = useCallback(
+    ({ item, index }: { item: Task; index: number }) => (
+      <MinimalistTaskRow
+        task={item}
+        statusFilter={statusFilter}
+        isLast={index === filteredTasks.length - 1}
+        isHighlighted={highlightedTaskId === item.id}
+        onToggleStatus={handleToggleStatus}
+        onOpenDetail={handleOpenDetail}
+        onEdit={handleEditTask}
+        onDelete={handleDeleteTask}
+        onSwipeActiveChange={setIsScrollEnabled}
+      />
+    ),
+    [
+      statusFilter,
+      filteredTasks.length,
+      highlightedTaskId,
+      handleToggleStatus,
+      handleOpenDetail,
+      handleEditTask,
+      handleDeleteTask,
+    ]
+  )
+
+  const keyExtractor = useCallback((item: Task) => item.id, [])
+
+  const renderListHeader = useMemo(() => {
+    return (
+      <View style={styles.headerContainer}>
         {!isSearchActive ? (
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -652,51 +676,68 @@ export default function TasksScreen() {
             </Text>
           </Pressable>
         </BlurView>
+      </View>
+    )
+  }, [
+    isSearchActive,
+    searchOpacityAnim,
+    searchScaleAnim,
+    searchQuery,
+    selectedSubjectId,
+    isSelectedWhite,
+    selectedSubject,
+    segmentContainerWidth,
+    segmentWidth,
+    slideAnim,
+    statusFilter,
+  ])
 
-        {/* Lista Plana y Abierta */}
-        <View style={styles.tasksListWrapper}>
-          {filteredTasks.length > 0 ? (
-            <View style={styles.openTaskRows}>
-              {filteredTasks.map((task, idx) => (
-                <MinimalistTaskRow
-                  key={task.id}
-                  task={task}
-                  statusFilter={statusFilter}
-                  isLast={idx === filteredTasks.length - 1}
-                  isHighlighted={highlightedTaskId === task.id}
-                  onToggleStatus={handleToggleStatus}
-                  onOpenDetail={(t) => {
-                    setActiveTask(t)
-                    setTaskModalMode('detail')
-                  }}
-                  onEdit={(t) => {
-                    setActiveTask(t)
-                    setTaskModalMode('edit')
-                  }}
-                  onDelete={handleDeleteTask}
-                  onSwipeActiveChange={setIsScrollEnabled}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyContainer}>
-              <CheckCircle2 size={36} color="#27272A" />
-              <Text style={styles.emptyTitle}>
-                {statusFilter === 'completed'
-                  ? 'No hay tareas completadas'
-                  : searchQuery.length > 0
-                  ? 'No se encontraron resultados'
-                  : '¡Al día! No tienes tareas pendientes'}
-              </Text>
-              <Text style={styles.emptySub}>
-                {searchQuery.length > 0
-                  ? 'Intenta buscar con otro término o selecciona otra materia.'
-                  : 'Toca el botón + flotante para añadir un nuevo pendiente o entrega.'}
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+  const renderEmptyComponent = useMemo(() => {
+    return (
+      <View style={styles.emptyContainer}>
+        <CheckCircle2 size={36} color="#27272A" />
+        <Text style={styles.emptyTitle}>
+          {statusFilter === 'completed'
+            ? 'No hay tareas completadas'
+            : searchQuery.length > 0
+            ? 'No se encontraron resultados'
+            : '¡Al día! No tienes tareas pendientes'}
+        </Text>
+        <Text style={styles.emptySub}>
+          {searchQuery.length > 0
+            ? 'Intenta buscar con otro término o selecciona otra materia.'
+            : 'Toca el botón + flotante para añadir un nuevo pendiente o entrega.'}
+        </Text>
+      </View>
+    )
+  }, [statusFilter, searchQuery])
+
+  return (
+    <View style={styles.screenWrapper}>
+      <MinimalistConfetti burstTrigger={confettiBurstTrigger} />
+
+      <FlatList
+        data={filteredTasks}
+        renderItem={renderTaskItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderEmptyComponent}
+        style={styles.flatList}
+        scrollEnabled={isScrollEnabled}
+        bounces={true}
+        alwaysBounceVertical={true}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 105 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={() => Keyboard.dismiss()}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+      />
 
       {/* Modal Desplegable de Filtro de Materia */}
       {subjMenuVisible && (
@@ -850,12 +891,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#09090B',
   },
-  scrollView: {
+  flatList: {
     flex: 1,
   },
   content: {
     paddingHorizontal: 16,
+  },
+  headerContainer: {
     gap: 14,
+    marginBottom: 8,
   },
   header: {
     paddingHorizontal: 2,

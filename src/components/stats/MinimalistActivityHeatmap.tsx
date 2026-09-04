@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import type { Task, AppPreferences } from '@/types/personal'
 import { generateHeatmapGrid, type HeatmapDay } from '@/lib/heatmapUtils'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { Flame, Calendar, CheckCircle2 } from 'lucide-react-native'
-import { useFocusEffect } from 'expo-router'
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const CELL_SIZE = 11
@@ -37,26 +36,19 @@ export function MinimalistActivityHeatmap() {
   const tabSlideAnim = useRef(new Animated.Value(defaultTab === 'fall' ? 0 : 80)).current
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current
 
-  const refreshData = useCallback(() => {
-    personalStorage.getTasks().then((t) => {
-      if (t && Array.isArray(t)) setTasks(t)
-    })
-    personalStorage.getPreferences().then((p) => {
-      if (p) setPrefs(p)
-    })
-  }, [])
-
   useEffect(() => {
-    refreshData()
-    const unsubscribe = subscribeToPersonalStorage(refreshData)
+    const updateData = () => {
+      personalStorage.getTasks().then((t) => {
+        if (t && Array.isArray(t)) setTasks(t)
+      })
+      personalStorage.getPreferences().then((p) => {
+        if (p) setPrefs(p)
+      })
+    }
+    updateData()
+    const unsubscribe = subscribeToPersonalStorage(updateData)
     return unsubscribe
-  }, [refreshData])
-
-  useFocusEffect(
-    useCallback(() => {
-      refreshData()
-    }, [refreshData])
-  )
+  }, [])
 
   const currentYear = new Date().getFullYear()
 

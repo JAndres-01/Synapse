@@ -22,7 +22,6 @@ import {
   RefreshCw,
   Trash2,
   QrCode,
-  ShieldCheck,
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
@@ -228,14 +227,6 @@ export function MinimalistCredentialModal({
             </View>
           </View>
 
-          {/* Banner de Verificación Rápida */}
-          <View style={styles.infoBanner}>
-            <ShieldCheck size={14} color="#34D399" />
-            <Text style={styles.infoBannerText}>
-              Lista para presentar en accesos escolares y lectura de código QR.
-            </Text>
-          </View>
-
           {/* Visor de PDF Integrado con WebView */}
           <View style={styles.viewerWrapper}>
             {credentialUrl ? (
@@ -421,24 +412,6 @@ const styles = StyleSheet.create({
     borderColor: '#27272A',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: 'rgba(52, 211, 153, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  infoBannerText: {
-    color: '#E4E4E7',
-    fontSize: 11.5,
-    fontWeight: '500',
-    flex: 1,
   },
   viewerWrapper: {
     flex: 1,

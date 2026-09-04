@@ -670,28 +670,19 @@ export default function ProfileScreen() {
                   {profile?.full_name || 'Estudiante'}
                 </Text>
               </View>
-              {profile?.student_credential_url ? (
-                <View style={styles.credentialStatusRow}>
-                  <View style={styles.statusDotActive} />
-                  <Text style={styles.heroProfileSubtitleActive} numberOfLines={1}>
-                    Credencial digital activa
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.heroProfileSubtitle}>Sin credencial vinculada</Text>
-              )}
+              <Text style={styles.heroProfileSubtitle} numberOfLines={1}>
+                {profile?.email || 'Estudiante'}
+              </Text>
             </View>
 
             {profile?.student_credential_url ? (
-              <View style={styles.heroCredentialPill}>
-                <QrCode size={13} color="#FFFFFF" strokeWidth={2.2} />
-                <Text style={styles.heroCredentialPillText}>Credencial</Text>
-                <ChevronRight size={12} color="#71717A" />
+              <View style={styles.heroQrBtn}>
+                <QrCode size={18} color="#FFFFFF" strokeWidth={2.2} />
               </View>
             ) : (
               <View style={[styles.heroCredentialPill, styles.heroCredentialPillUpload]}>
-                <FileUp size={13} color="#FFFFFF" strokeWidth={2.2} />
-                <Text style={styles.heroCredentialPillTextUpload}>Subir PDF</Text>
+                <IdCard size={14} color="#FFFFFF" strokeWidth={2.2} />
+                <Text style={styles.heroCredentialPillTextUpload}>Subir credencial</Text>
               </View>
             )}
           </Pressable>
@@ -1378,43 +1369,30 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '500',
   },
-  credentialStatusRow: {
-    flexDirection: 'row',
+  heroQrBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#2E2E38',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 1,
-  },
-  statusDotActive: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34D399',
-  },
-  heroProfileSubtitleActive: {
-    color: '#34D399',
-    fontSize: 11.5,
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   heroCredentialPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 12,
     backgroundColor: '#18181B',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 11,
     borderWidth: 1,
     borderColor: '#2E2E38',
   },
   heroCredentialPillUpload: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  heroCredentialPillText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: -0.1,
   },
   heroCredentialPillTextUpload: {
     color: '#FAFAFA',

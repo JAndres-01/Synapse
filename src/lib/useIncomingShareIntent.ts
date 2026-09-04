@@ -71,7 +71,7 @@ export function useIncomingShareIntent() {
           file.mimeType?.includes('pdf') ||
           Boolean(file.path?.match(/\.pdf$/i))
 
-        const cleanName = file.fileName || (isImage ? `Foto ${index + 1}` : isPdf ? `Documento PDF ${index + 1}` : `Archivo ${index + 1}`)
+        const cleanName = file.fileName || (isImage ? `Imagen ${index + 1}` : isPdf ? `Documento PDF ${index + 1}` : `Archivo ${index + 1}`)
 
         attachments.push({
           id: `share_att_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 6)}`,

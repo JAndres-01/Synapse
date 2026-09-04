@@ -549,7 +549,7 @@ export function MinimalistTaskModal({
       const asset = result.assets[0]
       const newAttachment: TaskAttachment = {
         id: Math.random().toString(36).substring(7),
-        file_name: asset.fileName || 'Foto de Apunte',
+        file_name: asset.fileName || 'Imagen',
         file_url: asset.uri,
         file_type: 'image',
         size_bytes: asset.fileSize || 0,
@@ -577,7 +577,7 @@ export function MinimalistTaskModal({
       const asset = result.assets[0]
       const newAttachment: TaskAttachment = {
         id: Math.random().toString(36).substring(7),
-        file_name: 'Foto de Pizarrón',
+        file_name: 'Imagen',
         file_url: asset.uri,
         file_type: 'image',
         size_bytes: asset.fileSize || 0,
@@ -800,7 +800,7 @@ export function MinimalistTaskModal({
                             onPress={() =>
                               setSelectedLightboxImage({
                                 uri: att.file_url,
-                                title: att.file_name || 'Foto adjunta',
+                                title: att.file_name || 'Imagen',
                               })
                             }
                             style={styles.detailImagePreviewCard}
@@ -812,7 +812,7 @@ export function MinimalistTaskModal({
                             />
                             <View style={styles.detailPreviewInfo}>
                               <Text style={styles.detailPreviewTitle} numberOfLines={1}>
-                                {att.file_name || 'Foto adjunta'}
+                                {att.file_name || 'Imagen'}
                               </Text>
                               <Text style={styles.detailPreviewSubtitle}>Toca para ampliar y hacer zoom</Text>
                             </View>
@@ -1475,7 +1475,7 @@ export function MinimalistTaskModal({
                                 triggerHaptic('light')
                                 setSelectedLightboxImage({
                                   uri: a.file_url,
-                                  title: a.file_name || 'Foto adjunta',
+                                  title: a.file_name || 'Imagen',
                                 })
                               } else if (isPdf && a.file_url) {
                                 triggerHaptic('light')
@@ -1519,7 +1519,7 @@ export function MinimalistTaskModal({
         <MinimalistImageViewerModal
           visible={Boolean(selectedLightboxImage)}
           imageUri={selectedLightboxImage?.uri || null}
-          imageTitle={selectedLightboxImage?.title || 'Foto adjunta'}
+          imageTitle={selectedLightboxImage?.title || 'Imagen'}
           onClose={() => setSelectedLightboxImage(null)}
         />
 

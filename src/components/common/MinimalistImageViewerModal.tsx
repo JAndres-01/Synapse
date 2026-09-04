@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  ActivityIndicator,
   Platform,
   Alert,
   ScrollView,
@@ -19,11 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   X,
   Share2,
-  ZoomIn,
-  ZoomOut,
   RotateCcw,
   Image as ImageIcon,
-  Maximize2,
 } from 'lucide-react-native'
 import * as Sharing from 'expo-sharing'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -43,14 +39,13 @@ export interface MinimalistImageViewerModalProps {
 export function MinimalistImageViewerModal({
   visible,
   imageUri,
-  imageTitle = 'Foto adjunta',
+  imageTitle = 'Imagen',
   onClose,
 }: MinimalistImageViewerModalProps) {
   const insets = useSafeAreaInsets()
 
   // Estado de controles UI (HUD flotante)
   const [controlsVisible, setControlsVisible] = useState(true)
-  const [loading, setLoading] = useState(true)
   const [currentZoomLevel, setCurrentZoomLevel] = useState(1)
 
   // Referencias para iOS ScrollView
@@ -106,7 +101,6 @@ export function MinimalistImageViewerModal({
 
   useEffect(() => {
     if (visible) {
-      setLoading(true)
       setControlsVisible(true)
       resetTransform(false)
 
@@ -197,26 +191,6 @@ export function MinimalistImageViewerModal({
         }),
       ]).start()
     }
-  }
-
-  const handleStepZoom = (delta: number) => {
-    triggerHaptic('selection')
-    const current = scaleValue.current
-    let nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current + delta))
-    if (Math.abs(nextScale - 1) < 0.1) {
-      resetTransform(true)
-      return
-    }
-
-    scaleValue.current = nextScale
-    setCurrentZoomLevel(nextScale)
-
-    Animated.spring(scale, {
-      toValue: nextScale,
-      stiffness: 400,
-      damping: 25,
-      useNativeDriver: true,
-    }).start()
   }
 
   // PanResponder para Android / Fallback con soporte multitouch
@@ -356,7 +330,7 @@ export function MinimalistImageViewerModal({
                 {imageTitle}
               </Text>
               <Text style={styles.headerSubtitle}>
-                {Math.round(currentZoomLevel * 100)}% • Pellizca o toca 2 veces
+                {Math.round(currentZoomLevel * 100)}%
               </Text>
             </View>
           </View>
@@ -412,8 +386,6 @@ export function MinimalistImageViewerModal({
                   source={{ uri: imageUri }}
                   style={styles.fullscreenImage}
                   resizeMode="contain"
-                  onLoadStart={() => setLoading(true)}
-                  onLoadEnd={() => setLoading(false)}
                 />
               </Pressable>
             </ScrollView>
@@ -436,70 +408,11 @@ export function MinimalistImageViewerModal({
                   source={{ uri: imageUri }}
                   style={styles.fullscreenImage}
                   resizeMode="contain"
-                  onLoadStart={() => setLoading(true)}
-                  onLoadEnd={() => setLoading(false)}
                 />
               </Pressable>
             </Animated.View>
           )}
-
-          {/* Loader de imagen */}
-          {loading && (
-            <View style={styles.loadingOverlay} pointerEvents="none">
-              <ActivityIndicator size="large" color="#FFFFFF" />
-              <Text style={styles.loadingText}>Cargando imagen en alta resolución...</Text>
-            </View>
-          )}
         </View>
-
-        {/* Barra Flotante de Acciones Inferior */}
-        <Animated.View
-          style={[
-            styles.bottomHUD,
-            {
-              bottom: Math.max(insets.bottom, 16) + 8,
-              opacity: Animated.multiply(fadeAnim, controlsOpacity),
-            },
-          ]}
-          pointerEvents={controlsVisible ? 'auto' : 'none'}
-        >
-          <View style={styles.zoomControlPill}>
-            <Pressable
-              onPress={() => handleStepZoom(-0.5)}
-              disabled={currentZoomLevel <= MIN_SCALE}
-              style={({ pressed }) => [
-                styles.zoomStepBtn,
-                currentZoomLevel <= MIN_SCALE && styles.btnDisabled,
-                pressed && styles.btnPressed,
-              ]}
-              hitSlop={6}
-            >
-              <ZoomOut size={16} color={currentZoomLevel <= MIN_SCALE ? '#52525B' : '#FFFFFF'} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => (currentZoomLevel > 1.1 ? resetTransform(true) : handleDoubleTap())}
-              style={styles.zoomLevelBadge}
-              hitSlop={6}
-            >
-              <Maximize2 size={12} color="#A1A1AA" />
-              <Text style={styles.zoomLevelText}>{Math.round(currentZoomLevel * 100)}%</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => handleStepZoom(0.5)}
-              disabled={currentZoomLevel >= MAX_SCALE}
-              style={({ pressed }) => [
-                styles.zoomStepBtn,
-                currentZoomLevel >= MAX_SCALE && styles.btnDisabled,
-                pressed && styles.btnPressed,
-              ]}
-              hitSlop={6}
-            >
-              <ZoomIn size={16} color={currentZoomLevel >= MAX_SCALE ? '#52525B' : '#FFFFFF'} />
-            </Pressable>
-          </View>
-        </Animated.View>
       </View>
     </Modal>
   )
@@ -625,67 +538,5 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.85,
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    gap: 12,
-  },
-  loadingText: {
-    color: '#D4D4D8',
-    fontSize: 12.5,
-    fontWeight: '500',
-  },
-  bottomHUD: {
-    position: 'absolute',
-    alignSelf: 'center',
-    zIndex: 50,
-  },
-  zoomControlPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(18, 18, 22, 0.85)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  zoomStepBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zoomLevelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 10,
-  },
-  zoomLevelText: {
-    color: '#FAFAFA',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  btnDisabled: {
-    opacity: 0.35,
-  },
-  btnPressed: {
-    transform: [{ scale: 0.92 }],
-    opacity: 0.8,
-  },
 })
+

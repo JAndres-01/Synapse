@@ -351,6 +351,7 @@ export const personalStorage = {
       return { ..._preferencesCache }
     }
     try {
+      const currentYear = new Date().getFullYear()
       const data = await AsyncStorage.getItem(KEYS.PREFERENCES)
       const parsed = data ? JSON.parse(data) : {}
       const prefs: AppPreferences = {
@@ -359,16 +360,25 @@ export const personalStorage = {
         advance_reminder_enabled: parsed.advance_reminder_enabled ?? true,
         advance_reminder_time: parsed.advance_reminder_time || '20:00',
         class_reminder_enabled: parsed.class_reminder_enabled ?? true,
+        semester_fall_start: parsed.semester_fall_start || `${currentYear}-08-01`,
+        semester_fall_end: parsed.semester_fall_end || `${currentYear}-12-31`,
+        semester_spring_start: parsed.semester_spring_start || `${currentYear}-02-01`,
+        semester_spring_end: parsed.semester_spring_end || `${currentYear}-06-30`,
       }
       _preferencesCache = prefs
       return prefs
     } catch {
+      const currentYear = new Date().getFullYear()
       const defaultPrefs: AppPreferences = {
         haptics_enabled: true,
         confetti_enabled: true,
         advance_reminder_enabled: true,
         advance_reminder_time: '20:00',
         class_reminder_enabled: true,
+        semester_fall_start: `${currentYear}-08-01`,
+        semester_fall_end: `${currentYear}-12-31`,
+        semester_spring_start: `${currentYear}-02-01`,
+        semester_spring_end: `${currentYear}-06-30`,
       }
       _preferencesCache = defaultPrefs
       return defaultPrefs

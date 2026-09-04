@@ -66,4 +66,9 @@ export interface AppPreferences {
   advance_reminder_enabled: boolean
   advance_reminder_time: string // ej. "20:00"
   class_reminder_enabled: boolean
+  semester_fall_start?: string // ej. "2026-08-01"
+  semester_fall_end?: string // ej. "2026-12-31"
+  semester_spring_start?: string // ej. "2026-02-01"
+  semester_spring_end?: string // ej. "2026-06-30"
 }
+

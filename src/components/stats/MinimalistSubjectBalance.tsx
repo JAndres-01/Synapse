@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native'
+import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -15,17 +15,26 @@ interface SubjectStat {
   percentage: number
 }
 
-const TOGGLE_WIDTH = 92
+const TOGGLE_WIDTH = 70
+const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 
 export function MinimalistSubjectBalance() {
   const [scope, setScope] = useState<ScopeFilter>('pending')
   const [tasks, setTasks] = useState<Task[]>(() => personalStorage.getCachedTasks())
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
 
-  // Animación de rebote suave al alternar ámbito
+  // Animación del selector de ámbito
   const slideAnim = useRef(new Animated.Value(0)).current
-  const contentFadeAnim = useRef(new Animated.Value(1)).current
-  const contentScaleAnim = useRef(new Animated.Value(1)).current
+
+  // Animaciones de entrada suave (Barra + Lista de materias)
+  const barScaleXAnim = useRef(new Animated.Value(0)).current
+  const barOpacityAnim = useRef(new Animated.Value(0)).current
+  const rowsContainerOpacity = useRef(new Animated.Value(0)).current
+
+  // Animaciones individuales para cada fila (hasta 12 materias)
+  const rowAnims = useRef<Animated.Value[]>(
+    Array.from({ length: 12 }, () => new Animated.Value(0))
+  ).current
 
   useEffect(() => {
     const updateData = () => {
@@ -40,45 +49,6 @@ export function MinimalistSubjectBalance() {
     const unsubscribe = subscribeToPersonalStorage(updateData)
     return unsubscribe
   }, [])
-
-  const handleToggleScope = (newScope: ScopeFilter) => {
-    if (newScope === scope) return
-    triggerHaptic('selection')
-    setScope(newScope)
-
-    const targetOffset = newScope === 'pending' ? 0 : TOGGLE_WIDTH
-
-    // Animación de pastilla con rebote físico tipo iOS
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: targetOffset,
-        stiffness: 700,
-        damping: 32,
-        mass: 0.6,
-        useNativeDriver: true,
-      }),
-      Animated.sequence([
-        Animated.timing(contentFadeAnim, {
-          toValue: 0.85,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-        Animated.parallel([
-          Animated.timing(contentFadeAnim, {
-            toValue: 1,
-            duration: 140,
-            useNativeDriver: true,
-          }),
-          Animated.spring(contentScaleAnim, {
-            toValue: 1,
-            stiffness: 600,
-            damping: 24,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    ]).start()
-  }
 
   // Filtrar y calcular estadísticas
   const { stats, totalTasks } = useMemo(() => {
@@ -136,16 +106,73 @@ export function MinimalistSubjectBalance() {
     return { stats: result, totalTasks: total }
   }, [tasks, subjects, scope])
 
+  // Disparar animación suave de llenado de barra y aparición deslizante hacia abajo
+  useEffect(() => {
+    if (stats.length > 0) {
+      barScaleXAnim.setValue(0)
+      barOpacityAnim.setValue(0)
+      rowsContainerOpacity.setValue(1)
+      rowAnims.forEach((anim) => anim.setValue(0))
+
+      Animated.parallel([
+        Animated.timing(barOpacityAnim, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(barScaleXAnim, {
+          toValue: 1,
+          stiffness: 240,
+          damping: 24,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+        Animated.stagger(
+          40,
+          stats.map((_, i) => {
+            const anim = rowAnims[i] || new Animated.Value(0)
+            return Animated.spring(anim, {
+              toValue: 1,
+              stiffness: 420,
+              damping: 28,
+              mass: 0.6,
+              useNativeDriver: true,
+            })
+          })
+        ),
+      ]).start()
+    }
+  }, [stats.length, scope])
+
+  const handleToggleScope = (newScope: ScopeFilter) => {
+    if (newScope === scope) return
+    triggerHaptic('selection')
+    setScope(newScope)
+
+    const targetOffset = newScope === 'pending' ? 0 : TOGGLE_WIDTH
+
+    // Animación de pastilla con rebote físico tipo iOS
+    Animated.spring(slideAnim, {
+      toValue: targetOffset,
+      stiffness: 750,
+      damping: 32,
+      mass: 0.5,
+      useNativeDriver: true,
+    }).start()
+  }
+
   return (
     <View style={styles.cardWrapper}>
-      {/* Encabezado con selector de ámbito */}
+      {/* Encabezado con título no colisionable y selector compacto */}
       <View style={styles.headerRow}>
         <View style={styles.titleWithIconRow}>
-          <BarChart2 size={14} color="#FFFFFF" strokeWidth={2.2} />
-          <Text style={styles.sectionTitle}>Distribución de Carga</Text>
+          <BarChart2 size={13.5} color="#FFFFFF" strokeWidth={2.2} />
+          <Text style={styles.sectionTitle} numberOfLines={1}>
+            Distribución de Carga
+          </Text>
         </View>
 
-        {/* Toggle Segmentado Flotante con Pastilla Animada */}
+        {/* Toggle Segmentado Compacto Flotante */}
         <View style={styles.scopeToggleContainer}>
           <Animated.View
             style={[
@@ -159,12 +186,14 @@ export function MinimalistSubjectBalance() {
           <Pressable
             onPress={() => handleToggleScope('pending')}
             style={styles.scopeButton}
+            hitSlop={4}
           >
             <Text
               style={[
                 styles.scopeButtonText,
                 scope === 'pending' && styles.scopeButtonTextActive,
               ]}
+              numberOfLines={1}
             >
               Pendientes
             </Text>
@@ -173,12 +202,14 @@ export function MinimalistSubjectBalance() {
           <Pressable
             onPress={() => handleToggleScope('all')}
             style={styles.scopeButton}
+            hitSlop={4}
           >
             <Text
               style={[
                 styles.scopeButtonText,
                 scope === 'all' && styles.scopeButtonTextActive,
               ]}
+              numberOfLines={1}
             >
               Histórico
             </Text>
@@ -195,17 +226,23 @@ export function MinimalistSubjectBalance() {
           </Text>
         </View>
       ) : (
-        <Animated.View
-          style={[
-            styles.contentBody,
-            {
-              opacity: contentFadeAnim,
-              transform: [{ scale: contentScaleAnim }],
-            },
-          ]}
-        >
-          {/* Barra Multicromática Segmentada (Apple style) */}
-          <View style={styles.segmentedBarWrapper}>
+        <View style={styles.contentBody}>
+          {/* Barra Multicromática Segmentada con animación suave de expansión */}
+          <Animated.View
+            style={[
+              styles.segmentedBarWrapper,
+              {
+                opacity: barOpacityAnim,
+                transform: [
+                  {
+                    scaleX: barScaleXAnim,
+                  },
+                ],
+                // @ts-ignore
+                transformOrigin: 'left',
+              },
+            ]}
+          >
             <View style={styles.segmentedBarTrack}>
               {stats.map((item, index) => {
                 const widthPercent = `${Math.max(item.percentage, 3.5)}%` as const
@@ -224,13 +261,28 @@ export function MinimalistSubjectBalance() {
                 )
               })}
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Lista de Filas Simétricas */}
+          {/* Lista de Filas con animación de entrada deslizante hacia abajo (stagger) */}
           <View style={styles.statsList}>
             {stats.map((item, index) => {
+              const anim = rowAnims[index] || new Animated.Value(1)
+              const translateY = anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-9, 0],
+              })
+
               return (
-                <View key={item.subjectId || `gen_${index}`} style={styles.statRow}>
+                <Animated.View
+                  key={item.subjectId || `gen_${index}`}
+                  style={[
+                    styles.statRow,
+                    {
+                      opacity: anim,
+                      transform: [{ translateY }],
+                    },
+                  ]}
+                >
                   <View style={styles.statLeftCol}>
                     <View
                       style={[
@@ -250,11 +302,11 @@ export function MinimalistSubjectBalance() {
                       ({item.count} {item.count === 1 ? 'tarea' : 'tareas'})
                     </Text>
                   </View>
-                </View>
+                </Animated.View>
               )
             })}
           </View>
-        </Animated.View>
+        </View>
       )}
     </View>
   )
@@ -270,59 +322,63 @@ const styles = StyleSheet.create({
     gap: 14,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 4,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   titleWithIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6.5,
+    flex: 1,
+    marginRight: 4,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#F4F4F5',
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   scopeToggleContainer: {
     flexDirection: 'row',
     position: 'relative',
     backgroundColor: '#09090B',
-    borderRadius: 20,
-    padding: 2.5,
+    borderRadius: 18,
+    padding: 2,
     borderWidth: 1,
     borderColor: '#27272A',
-    width: TOGGLE_WIDTH * 2 + 5,
+    width: TOGGLE_WIDTH * 2 + 4,
   },
   activePill: {
     position: 'absolute',
-    top: 2.5,
-    left: 2.5,
+    top: 2,
+    left: 2,
     width: TOGGLE_WIDTH,
-    bottom: 2.5,
+    bottom: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   scopeButton: {
     width: TOGGLE_WIDTH,
-    paddingVertical: 5,
+    paddingVertical: 4.5,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
   scopeButtonText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '500',
     color: '#71717A',
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   scopeButtonTextActive: {
     color: '#FFFFFF',

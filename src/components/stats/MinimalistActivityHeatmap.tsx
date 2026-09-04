@@ -36,6 +36,12 @@ export function MinimalistActivityHeatmap() {
   const scrollViewRef = useRef<ScrollView>(null)
   const tabSlideAnim = useRef(new Animated.Value(defaultTab === 'fall' ? 0 : 80)).current
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current
+  const monthLabelsFadeAnim = useRef(new Animated.Value(1)).current
+
+  // Animaciones en cascada para cada columna de semanas (Efecto de Organización)
+  const columnAnims = useRef<Animated.Value[]>(
+    Array.from({ length: 32 }, () => new Animated.Value(1))
+  ).current
 
   const updateData = useCallback(() => {
     personalStorage.getTasks().then((t) => {
@@ -85,6 +91,33 @@ export function MinimalistActivityHeatmap() {
   const heatmapData = useMemo(() => {
     return generateHeatmapGrid(tasks, startDateStr, endDateStr)
   }, [tasks, startDateStr, endDateStr])
+
+  // Disparar efecto de organización en cascada / ola de cuadros al cambiar de semestre
+  useEffect(() => {
+    columnAnims.forEach((anim) => anim.setValue(0))
+    monthLabelsFadeAnim.setValue(0)
+
+    Animated.timing(monthLabelsFadeAnim, {
+      toValue: 1,
+      duration: 220,
+      easing: APPLE_EASING,
+      useNativeDriver: true,
+    }).start()
+
+    const staggerAnimations = columnAnims
+      .slice(0, heatmapData.weeks.length)
+      .map((anim) =>
+        Animated.spring(anim, {
+          toValue: 1,
+          stiffness: 450,
+          damping: 22,
+          mass: 0.5,
+          useNativeDriver: true,
+        })
+      )
+
+    Animated.stagger(13, staggerAnimations).start()
+  }, [activeSemester, heatmapData.weeks.length])
 
   const handleTabChange = (tab: SemesterTab) => {
     if (tab === activeSemester) return
@@ -194,7 +227,7 @@ export function MinimalistActivityHeatmap() {
           {/* Matriz de semanas */}
           <View style={styles.matrixArea}>
             {/* Fila de etiquetas de meses */}
-            <View style={styles.monthLabelsRow}>
+            <Animated.View style={[styles.monthLabelsRow, { opacity: monthLabelsFadeAnim }]}>
               {heatmapData.monthLabels.map((m, mIdx) => (
                 <Text
                   key={`month-${mIdx}-${m.colIndex}`}
@@ -206,35 +239,60 @@ export function MinimalistActivityHeatmap() {
                   {m.monthName}
                 </Text>
               ))}
-            </View>
+            </Animated.View>
 
-            {/* Columnas de Semanas */}
+            {/* Columnas de Semanas con Efecto de Organización en Cascada */}
             <View style={styles.weeksContainer}>
-              {heatmapData.weeks.map((week, wIdx) => (
-                <View key={`week-${wIdx}`} style={styles.weekColumn}>
-                  {week.map((day) => {
-                    const isSelected = selectedDay?.dateStr === day.dateStr
+              {heatmapData.weeks.map((week, wIdx) => {
+                const colAnim = columnAnims[wIdx] || columnAnims[0]
+                const colScale = colAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.25, 1],
+                })
+                const colTranslateY = colAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [8, 0],
+                })
+                const colOpacity = colAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.15, 1],
+                })
 
-                    return (
-                      <Pressable
-                        key={day.dateStr}
-                        onPress={() => handleDayPress(day)}
-                        disabled={!day.isInRange}
-                        style={[
-                          styles.dayCell,
-                          !day.isInRange && styles.dayCellOutOfRange,
-                          day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
-                          day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
-                          day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
-                          day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
-                          day.isToday && styles.dayCellToday,
-                          isSelected && styles.dayCellSelected,
-                        ]}
-                      />
-                    )
-                  })}
-                </View>
-              ))}
+                return (
+                  <Animated.View
+                    key={`week-${wIdx}-${activeSemester}`}
+                    style={[
+                      styles.weekColumn,
+                      {
+                        opacity: colOpacity,
+                        transform: [{ scale: colScale }, { translateY: colTranslateY }],
+                      },
+                    ]}
+                  >
+                    {week.map((day) => {
+                      const isSelected = selectedDay?.dateStr === day.dateStr
+
+                      return (
+                        <Pressable
+                          key={day.dateStr}
+                          onPress={() => handleDayPress(day)}
+                          disabled={!day.isInRange}
+                          style={[
+                            styles.dayCell,
+                            !day.isInRange && styles.dayCellOutOfRange,
+                            day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
+                            day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
+                            day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
+                            day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
+                            day.isToday && styles.dayCellToday,
+                            isSelected && styles.dayCellSelected,
+                          ]}
+                        />
+                      )
+                    })}
+                  </Animated.View>
+                )
+              })}
             </View>
           </View>
         </ScrollView>

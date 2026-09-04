@@ -1162,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 18,
+    gap: 12,
   },
   header: {
     paddingHorizontal: 2,
@@ -1203,7 +1203,6 @@ const styles = StyleSheet.create({
     borderColor: '#1E1E24',
     padding: 16,
     gap: 14,
-    marginBottom: 16,
   },
   heroAvatar: {
     width: 48,

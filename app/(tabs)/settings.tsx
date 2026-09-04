@@ -665,13 +665,8 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.heroProfileInfo}>
-              <View style={styles.nameWithEditRow}>
-                <Text style={styles.heroProfileName} numberOfLines={1}>
-                  {profile?.full_name || 'Estudiante'}
-                </Text>
-              </View>
-              <Text style={styles.heroProfileSubtitle} numberOfLines={1}>
-                {profile?.email || 'Estudiante'}
+              <Text style={styles.heroProfileName} numberOfLines={1}>
+                {profile?.full_name || 'Estudiante'}
               </Text>
             </View>
 
@@ -1351,23 +1346,13 @@ const styles = StyleSheet.create({
   },
   heroProfileInfo: {
     flex: 1,
-    gap: 2,
-  },
-  nameWithEditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
   },
   heroProfileName: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 16.5,
     fontWeight: '700',
     letterSpacing: -0.3,
-  },
-  heroProfileSubtitle: {
-    color: '#71717A',
-    fontSize: 11.5,
-    fontWeight: '500',
   },
   heroQrBtn: {
     width: 38,

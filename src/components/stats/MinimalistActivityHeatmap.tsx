@@ -7,6 +7,9 @@ import {
   Pressable,
   Animated,
   Easing,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, AppPreferences } from '@/types/personal'
@@ -14,6 +17,10 @@ import { generateHeatmapGrid, type HeatmapDay } from '@/lib/heatmapUtils'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { Flame, Calendar, CheckCircle2, Sparkles } from 'lucide-react-native'
 import { useFocusEffect } from 'expo-router'
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
+}
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const CELL_SIZE = 11
@@ -23,80 +30,6 @@ const COL_WIDTH = CELL_SIZE + CELL_GAP
 const DAY_LABELS = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
 type SemesterTab = 'fall' | 'spring'
-
-interface AnimatedHeatmapCellProps {
-  day: HeatmapDay
-  isSelected: boolean
-  colIndex: number
-  rowIndex: number
-  semesterKey: string
-  onPress: (day: HeatmapDay) => void
-}
-
-const AnimatedHeatmapCell = React.memo(function AnimatedHeatmapCell({
-  day,
-  isSelected,
-  colIndex,
-  rowIndex,
-  semesterKey,
-  onPress,
-}: AnimatedHeatmapCellProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current
-  const opacityAnim = useRef(new Animated.Value(1)).current
-
-  useEffect(() => {
-    // Stagger diagonal orgánico por coordenada (columna y fila)
-    const delay = Math.min(280, colIndex * 7 + rowIndex * 12)
-    scaleAnim.setValue(0.15)
-    opacityAnim.setValue(0.2)
-
-    const timer = setTimeout(() => {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          stiffness: day.intensity > 0 ? 540 : 440,
-          damping: day.intensity > 0 ? 18 : 22,
-          mass: 0.45,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 160,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    }, delay)
-
-    return () => clearTimeout(timer)
-  }, [semesterKey, day.dateStr, day.count, day.isInRange])
-
-  return (
-    <Animated.View
-      style={[
-        {
-          transform: [{ scale: scaleAnim }],
-          opacity: opacityAnim,
-        },
-      ]}
-    >
-      <Pressable
-        onPress={() => onPress(day)}
-        disabled={!day.isInRange}
-        style={[
-          styles.dayCell,
-          !day.isInRange && styles.dayCellOutOfRange,
-          day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
-          day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
-          day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
-          day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
-          day.isToday && styles.dayCellToday,
-          isSelected && styles.dayCellSelected,
-        ]}
-      />
-    </Animated.View>
-  )
-})
 
 export function MinimalistActivityHeatmap() {
   const currentMonth = new Date().getMonth()
@@ -167,6 +100,15 @@ export function MinimalistActivityHeatmap() {
   const handleTabChange = (tab: SemesterTab) => {
     if (tab === activeSemester) return
     triggerHaptic('selection')
+
+    // Animación de reorganización física con rebote (igual que en lista de tareas)
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.72 },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    })
+
     setActiveSemester(tab)
     setSelectedDay(null)
 
@@ -199,6 +141,13 @@ export function MinimalistActivityHeatmap() {
     triggerHaptic('medium')
     const current = await personalStorage.getTasks()
     const year = new Date().getFullYear()
+
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      update: { type: LayoutAnimation.Types.spring, springDamping: 0.72 },
+      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+    })
 
     if (isTestActive) {
       // Limpiar tareas de prueba
@@ -340,22 +289,28 @@ export function MinimalistActivityHeatmap() {
               ))}
             </View>
 
-            {/* Columnas de Semanas con Cuadritos Animados Individualmente */}
+            {/* Columnas de Semanas con Cuadritos Animados con Layout Spring */}
             <View style={styles.weeksContainer}>
               {heatmapData.weeks.map((week, wIdx) => (
                 <View key={`week-${wIdx}`} style={styles.weekColumn}>
-                  {week.map((day, rIdx) => {
+                  {week.map((day) => {
                     const isSelected = selectedDay?.dateStr === day.dateStr
 
                     return (
-                      <AnimatedHeatmapCell
-                        key={`${day.dateStr}-${activeSemester}`}
-                        day={day}
-                        isSelected={isSelected}
-                        colIndex={wIdx}
-                        rowIndex={rIdx}
-                        semesterKey={activeSemester}
-                        onPress={handleDayPress}
+                      <Pressable
+                        key={day.dateStr}
+                        onPress={() => handleDayPress(day)}
+                        disabled={!day.isInRange}
+                        style={[
+                          styles.dayCell,
+                          !day.isInRange && styles.dayCellOutOfRange,
+                          day.isInRange && day.intensity === 0 && styles.dayCellLevel0,
+                          day.isInRange && day.intensity === 1 && styles.dayCellLevel1,
+                          day.isInRange && day.intensity === 2 && styles.dayCellLevel2,
+                          day.isInRange && day.intensity === 3 && styles.dayCellLevel3,
+                          day.isToday && styles.dayCellToday,
+                          isSelected && styles.dayCellSelected,
+                        ]}
                       />
                     )
                   })}

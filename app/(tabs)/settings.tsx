@@ -338,11 +338,14 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Ajustes</Text>
-          <Text style={styles.subtitle}>Preferencias personales</Text>
+          <Text style={styles.subtitle}>Preferencias del sistema</Text>
         </View>
 
-        {/* Tarjeta de Perfil */}
-        <Pressable onPress={handleOpenEditProfile} style={styles.profileCard}>
+        {/* Perfil Minimalista Abierto (Sin Card) */}
+        <Pressable
+          onPress={handleOpenEditProfile}
+          style={({ pressed }) => [styles.profileRow, pressed && styles.rowPressed]}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(profile?.full_name)}</Text>
           </View>
@@ -358,20 +361,19 @@ export default function SettingsScreen() {
           <ChevronRight size={16} color="#52525B" />
         </Pressable>
 
-        {/* Sección de Recordatorios Automáticos */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recordatorios Automáticos</Text>
-        </View>
+        {/* Separador de Sección */}
+        <View style={styles.sectionDivider} />
 
-        <View style={styles.groupCard}>
-          {/* Recordatorio de Entregas (1 Día Antes) */}
-          <View style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <Bell size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Aviso de entregas</Text>
-              <Text style={styles.rowSubtitle}>Notificar el día anterior a la hora elegida</Text>
+        {/* Sección: Recordatorios Automáticos (Abierta, Sin Cards) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Recordatorios Automáticos</Text>
+
+          {/* Aviso de Entregas */}
+          <View style={styles.itemRow}>
+            <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>Aviso de entregas</Text>
+              <Text style={styles.itemSubtitle}>Notificar el día anterior a la hora elegida</Text>
             </View>
             <Switch
               value={advanceReminderEnabled}
@@ -385,35 +387,34 @@ export default function SettingsScreen() {
           {/* Selector de Hora */}
           {advanceReminderEnabled && (
             <>
-              <View style={styles.rowDivider} />
-              <Pressable onPress={handleOpenTimeModal} style={styles.groupRow}>
-                <View style={styles.rowIconContainer}>
-                  <Clock size={16} color="#A1A1AA" />
+              <View style={styles.hairlineDivider} />
+              <Pressable
+                onPress={handleOpenTimeModal}
+                style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+              >
+                <Clock size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Hora del recordatorio</Text>
+                  <Text style={styles.itemSubtitle}>Momento del aviso previo a la entrega</Text>
                 </View>
-                <View style={styles.rowContent}>
-                  <Text style={styles.rowTitle}>Hora del recordatorio</Text>
-                  <Text style={styles.rowSubtitle}>Momento del aviso previo a la entrega</Text>
-                </View>
-                <View style={styles.timeValuePill}>
+                <View style={styles.timeValueRow}>
                   <Text style={styles.timeValueText}>
                     {formatTimeDisplay(advanceReminderTime)}
                   </Text>
-                  <ChevronRight size={13} color="#71717A" />
+                  <ChevronRight size={14} color="#71717A" />
                 </View>
               </Pressable>
             </>
           )}
 
-          <View style={styles.rowDivider} />
+          <View style={styles.hairlineDivider} />
 
           {/* Aviso de Próxima Clase */}
-          <View style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <BookOpen size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Aviso de próxima clase</Text>
-              <Text style={styles.rowSubtitle}>10 min antes con el nombre de la materia</Text>
+          <View style={styles.itemRow}>
+            <BookOpen size={18} color="#A1A1AA" style={styles.itemIcon} />
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>Aviso de próxima clase</Text>
+              <Text style={styles.itemSubtitle}>10 min antes con el nombre de la materia</Text>
             </View>
             <Switch
               value={classReminderEnabled}
@@ -424,40 +425,35 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={styles.rowDivider} />
+          <View style={styles.hairlineDivider} />
 
-          {/* Botón de Notificación de Prueba */}
+          {/* Probar Notificaciones */}
           <Pressable
             onPress={handleSendTestNotification}
-            style={({ pressed }) => [styles.groupRowPressable, pressed && styles.rowPressed]}
+            style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
           >
-            <View style={styles.rowIconContainer}>
-              <Bell size={16} color="#FFFFFF" />
+            <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>Probar notificaciones</Text>
+              <Text style={styles.itemSubtitle}>Envía un aviso de prueba a tu pantalla</Text>
             </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Probar notificaciones</Text>
-              <Text style={styles.rowSubtitle}>Envía un aviso de prueba a tu pantalla</Text>
-            </View>
-            <View style={styles.testBadge}>
-              <Text style={styles.testBadgeText}>Probar</Text>
-            </View>
+            <Text style={styles.actionLinkText}>Probar</Text>
           </Pressable>
         </View>
 
-        {/* Sección de Experiencia */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Experiencia y Respuesta</Text>
-        </View>
+        {/* Separador de Sección */}
+        <View style={styles.sectionDivider} />
 
-        <View style={styles.groupCard}>
+        {/* Sección: Experiencia y Respuesta (Abierta, Sin Cards) */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Experiencia y Respuesta</Text>
+
           {/* Respuesta Háptica */}
-          <View style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <Smartphone size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Vibración háptica</Text>
-              <Text style={styles.rowSubtitle}>Retroalimentación táctil de iOS</Text>
+          <View style={styles.itemRow}>
+            <Smartphone size={18} color="#A1A1AA" style={styles.itemIcon} />
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>Vibración háptica</Text>
+              <Text style={styles.itemSubtitle}>Retroalimentación táctil nativa</Text>
             </View>
             <Switch
               value={hapticsEnabled}
@@ -468,16 +464,14 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={styles.rowDivider} />
+          <View style={styles.hairlineDivider} />
 
-          {/* Confetti al Completar Tareas */}
-          <View style={styles.groupRow}>
-            <View style={styles.rowIconContainer}>
-              <Sparkles size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Animación festiva</Text>
-              <Text style={styles.rowSubtitle}>Confetti al completar entregas</Text>
+          {/* Animación Festiva */}
+          <View style={styles.itemRow}>
+            <Sparkles size={18} color="#A1A1AA" style={styles.itemIcon} />
+            <View style={styles.itemContent}>
+              <Text style={styles.itemTitle}>Animación festiva</Text>
+              <Text style={styles.itemSubtitle}>Confetti al completar entregas</Text>
             </View>
             <Switch
               value={confettiEnabled}
@@ -489,9 +483,15 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Botón de Restablecer Todo */}
-        <Pressable onPress={handleClearAllData} style={styles.clearBtn}>
-          <Trash2 size={15} color="#EF4444" />
+        {/* Separador de Sección */}
+        <View style={styles.sectionDivider} />
+
+        {/* Restablecer Datos (Abierto y Limpio) */}
+        <Pressable
+          onPress={handleClearAllData}
+          style={({ pressed }) => [styles.clearRow, pressed && styles.rowPressed]}
+        >
+          <Trash2 size={16} color="#EF4444" />
           <Text style={styles.clearBtnText}>Restablecer Datos</Text>
         </Pressable>
 
@@ -625,11 +625,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 16,
   },
   header: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
@@ -643,34 +643,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  profileCard: {
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#121215',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    padding: 14,
-    gap: 12,
+    paddingVertical: 10,
+    gap: 14,
+    borderRadius: 12,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#27272A',
+    backgroundColor: '#18181B',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   profileInfo: {
     flex: 1,
-    gap: 3,
+    gap: 2,
   },
   nameWithEditRow: {
     flexDirection: 'row',
@@ -688,119 +685,98 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  sectionHeader: {
-    marginTop: 10,
-    paddingHorizontal: 4,
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 4,
+  },
+  sectionContainer: {
+    gap: 2,
   },
   sectionTitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+    marginBottom: 6,
   },
-  groupCard: {
-    backgroundColor: '#121215',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  groupRow: {
+  itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 14,
   },
-  rowIconContainer: {
-    width: 32,
-    height: 32,
+  itemRowPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowContent: {
-    flex: 1,
-  },
-  rowTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  rowSubtitle: {
-    color: '#71717A',
-    fontSize: 11.5,
-    marginTop: 1,
-  },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginLeft: 58,
-  },
-  groupRowPressable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12,
+    gap: 14,
   },
   rowPressed: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    opacity: 0.7,
   },
-  testBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 8,
+  itemIcon: {
+    opacity: 0.85,
   },
-  testBadgeText: {
+  itemContent: {
+    flex: 1,
+  },
+  itemTitle: {
     color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
-  timeValuePill: {
+  itemSubtitle: {
+    color: '#71717A',
+    fontSize: 12,
+    marginTop: 1.5,
+    fontWeight: '400',
+  },
+  hairlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginLeft: 32,
+  },
+  timeValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 9,
-    paddingVertical: 4.5,
-    borderRadius: 10,
   },
   timeValueText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
   },
-  clearBtn: {
+  actionLinkText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingHorizontal: 4,
+  },
+  clearRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    paddingVertical: 13,
-    borderRadius: 16,
-    marginTop: 12,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 4,
   },
   clearBtnText: {
     color: '#EF4444',
-    fontSize: 13.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   versionText: {
     textAlign: 'center',
     color: '#52525B',
     fontSize: 11.5,
     fontWeight: '500',
-    marginTop: 10,
+    marginTop: 12,
     marginBottom: 8,
   },
   modalBackdrop: {

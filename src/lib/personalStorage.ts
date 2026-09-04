@@ -50,7 +50,10 @@ export const personalStorage = {
   },
 
   getCachedTasks(): Task[] {
-    return _tasksCache !== null ? [..._tasksCache] : []
+    if (_tasksCache !== null) {
+      return _tasksCache.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
+    }
+    return []
   },
 
   getCachedProfile(): PersonalProfile | null {
@@ -234,6 +237,11 @@ export const personalStorage = {
   // ==========================================
   async getTasks(): Promise<Task[]> {
     if (_tasksCache !== null) {
+      if (_tasksCache.some((t) => t.id?.startsWith('test-heatmap-') || t.id?.startsWith('test-'))) {
+        const cleaned = _tasksCache.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
+        _tasksCache = cleaned
+        this.setTasks(cleaned)
+      }
       return [..._tasksCache]
     }
     try {
@@ -241,8 +249,12 @@ export const personalStorage = {
       if (data) {
         const parsed = JSON.parse(data)
         if (Array.isArray(parsed)) {
-          _tasksCache = parsed
-          return [...parsed]
+          const cleaned = parsed.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
+          _tasksCache = cleaned
+          if (cleaned.length !== parsed.length) {
+            await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(cleaned))
+          }
+          return [...cleaned]
         }
       }
     } catch (err) {

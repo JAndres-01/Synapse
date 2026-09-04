@@ -36,7 +36,6 @@ import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
   syncAllNotifications,
   requestNotificationPermissions,
-  sendTestNotification,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 
@@ -263,24 +262,6 @@ export default function SettingsScreen() {
     handleCloseTimeModal()
   }
 
-  const handleSendTestNotification = async () => {
-    triggerHaptic('medium')
-    const success = await sendTestNotification()
-    if (success) {
-      triggerHaptic('success')
-      Alert.alert(
-        'Notificación enviada',
-        'Se ha enviado una notificación de prueba. En 1 segundo verás el banner en tu pantalla.'
-      )
-    } else {
-      triggerHaptic('error')
-      Alert.alert(
-        'Permiso denegado',
-        'Por favor activa los permisos de notificación en los Ajustes del sistema para recibir avisos.'
-      )
-    }
-  }
-
   const handleClearAllData = () => {
     triggerHaptic('warning')
     Alert.alert(
@@ -424,21 +405,6 @@ export default function SettingsScreen() {
               ios_backgroundColor="#27272A"
             />
           </View>
-
-          <View style={styles.hairlineDivider} />
-
-          {/* Probar Notificaciones */}
-          <Pressable
-            onPress={handleSendTestNotification}
-            style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
-          >
-            <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
-            <View style={styles.itemContent}>
-              <Text style={styles.itemTitle}>Probar notificaciones</Text>
-              <Text style={styles.itemSubtitle}>Envía un aviso de prueba a tu pantalla</Text>
-            </View>
-            <Text style={styles.actionLinkText}>Probar</Text>
-          </Pressable>
         </View>
 
         {/* Separador de Sección */}
@@ -750,12 +716,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
-  },
-  actionLinkText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    paddingHorizontal: 4,
   },
   clearRow: {
     flexDirection: 'row',

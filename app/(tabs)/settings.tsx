@@ -38,6 +38,7 @@ import {
   requestNotificationPermissions,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
+import { MinimalistSubjectBalance } from '@/components/stats/MinimalistSubjectBalance'
 
 const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
@@ -341,6 +342,12 @@ export default function SettingsScreen() {
           </View>
           <ChevronRight size={16} color="#52525B" />
         </Pressable>
+
+        {/* Separador de Sección */}
+        <View style={styles.sectionDivider} />
+
+        {/* Gráfica de Distribución de Carga / Balance de Materias */}
+        <MinimalistSubjectBalance />
 
         {/* Separador de Sección */}
         <View style={styles.sectionDivider} />

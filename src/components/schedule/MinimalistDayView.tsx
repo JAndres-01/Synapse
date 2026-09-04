@@ -97,7 +97,7 @@ const DayClassRow = memo(function DayClassRow({
           <Text style={styles.timeStartText}>{blockDef.startTime}</Text>
           <Text style={styles.timeEndText}>{blockDef.endTime}</Text>
           <View style={styles.blockBadge}>
-            <Text style={styles.blockBadgeText}>B{blockDef.block}</Text>
+            <Text style={styles.blockBadgeText}>C{blockDef.block}</Text>
           </View>
         </View>
 

@@ -14,6 +14,7 @@ import {
   Platform,
   Keyboard,
   Easing,
+  PanResponder,
 } from 'react-native'
 
 const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
@@ -31,6 +32,7 @@ import {
   Clock,
   BookOpen,
   Trash2,
+  Settings as SettingsIcon,
 } from 'lucide-react-native'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
@@ -48,16 +50,23 @@ const PRESET_HOURS = [
   { time: '22:00', label: '10:00 PM', desc: 'Antes de dormir' },
 ]
 
-export default function SettingsScreen() {
+export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const { profile, updateProfile, clearData } = usePersonalAuth()
 
+  // Preferencias del Sistema
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [confettiEnabled, setConfettiEnabled] = useState(true)
   const [advanceReminderEnabled, setAdvanceReminderEnabled] = useState(true)
   const [advanceReminderTime, setAdvanceReminderTime] = useState('20:00')
   const [classReminderEnabled, setClassReminderEnabled] = useState(true)
+
+  // Modal Principal de Ajustes del Sistema (Secundario)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const settingsFadeAnim = useRef(new Animated.Value(0)).current
+  const settingsSlideAnim = useRef(new Animated.Value(500)).current
+  const settingsPanY = useRef(new Animated.Value(0)).current
 
   // Modal de Selección de Hora de Recordatorio
   const [showTimeModal, setShowTimeModal] = useState(false)
@@ -69,11 +78,11 @@ export default function SettingsScreen() {
   const [editName, setEditName] = useState(profile?.full_name || '')
   const [savingProfile, setSavingProfile] = useState(false)
   const nameInputRef = useRef<TextInput>(null)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(300)).current
+  const editFadeAnim = useRef(new Animated.Value(0)).current
+  const editSlideAnim = useRef(new Animated.Value(300)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
 
-  // Sincronización instantánea a 120Hz con el teclado de iOS (igual que MinimalistTaskModal)
+  // Sincronización instantánea con el teclado de iOS
   useEffect(() => {
     if (!showEditProfileModal) return
 
@@ -130,17 +139,73 @@ export default function SettingsScreen() {
     loadData()
   }, [loadData])
 
+  // ==========================================
+  // MANEJO DEL MODAL DE AJUSTES (HOJA DESLIZANTE)
+  // ==========================================
+  const handleOpenSettings = () => {
+    triggerHaptic('light')
+    setShowSettingsModal(true)
+    settingsSlideAnim.setValue(500)
+    settingsFadeAnim.setValue(0)
+    settingsPanY.setValue(0)
+
+    Animated.parallel([
+      Animated.timing(settingsFadeAnim, { toValue: 1, duration: 180, easing: APPLE_EASING, useNativeDriver: true }),
+      Animated.spring(settingsSlideAnim, { toValue: 0, stiffness: 450, damping: 30, mass: 0.8, useNativeDriver: true }),
+    ]).start()
+  }
+
+  const handleCloseSettings = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(settingsFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(settingsSlideAnim, { toValue: 500, duration: 180, useNativeDriver: true }),
+      Animated.timing(settingsPanY, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => {
+      setShowSettingsModal(false)
+    })
+  }
+
+  const settingsPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          settingsPanY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 90 || gestureState.vy > 0.45) {
+          handleCloseSettings()
+        } else {
+          Animated.spring(settingsPanY, {
+            toValue: 0,
+            damping: 24,
+            stiffness: 400,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
+
+  // ==========================================
+  // MANEJO DEL MODAL DE EDICIÓN DE PERFIL
+  // ==========================================
   const handleOpenEditProfile = () => {
     triggerHaptic('light')
     setEditName(profile?.full_name || '')
     setShowEditProfileModal(true)
-    slideAnim.setValue(300)
-    fadeAnim.setValue(0)
+    editSlideAnim.setValue(300)
+    editFadeAnim.setValue(0)
     keyboardTranslateY.setValue(0)
 
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 180, easing: APPLE_EASING, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 220, easing: APPLE_EASING, useNativeDriver: true }),
+      Animated.timing(editFadeAnim, { toValue: 1, duration: 180, easing: APPLE_EASING, useNativeDriver: true }),
+      Animated.timing(editSlideAnim, { toValue: 0, duration: 220, easing: APPLE_EASING, useNativeDriver: true }),
     ]).start(({ finished }) => {
       if (finished) {
         requestAnimationFrame(() => {
@@ -154,8 +219,8 @@ export default function SettingsScreen() {
     triggerHaptic('light')
     Keyboard.dismiss()
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
+      Animated.timing(editFadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(editSlideAnim, { toValue: 300, duration: 150, useNativeDriver: true }),
       Animated.timing(keyboardTranslateY, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start(() => {
       setShowEditProfileModal(false)
@@ -183,6 +248,9 @@ export default function SettingsScreen() {
     }
   }
 
+  // ==========================================
+  // MANEJO DE PREFERENCIAS
+  // ==========================================
   const handleToggleHaptics = async (val: boolean) => {
     setHapticsEnabled(val)
     setGlobalHapticsEnabled(val)
@@ -277,6 +345,7 @@ export default function SettingsScreen() {
             triggerHaptic('error')
             await clearData()
             loadData()
+            handleCloseSettings()
             Alert.alert('Restablecido', 'La app ha quedado limpia como en su primer uso.')
           },
         },
@@ -299,7 +368,7 @@ export default function SettingsScreen() {
   }
 
   const getInitials = (name?: string) => {
-    if (!name) return 'U'
+    if (!name) return 'E'
     const parts = name.trim().split(' ')
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
@@ -313,163 +382,219 @@ export default function SettingsScreen() {
         style={styles.container}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header Principal con Botón de Tuerca (Settings) */}
         <View style={styles.header}>
-          <Text style={styles.title}>Perfil</Text>
-          <Text style={styles.subtitle}>Estadísticas y cuenta</Text>
+          <View style={styles.headerTopRow}>
+            <View>
+              <Text style={styles.title}>Perfil</Text>
+              <Text style={styles.subtitle}>Estadísticas y cuenta</Text>
+            </View>
+
+            <Pressable
+              onPress={handleOpenSettings}
+              hitSlop={10}
+              style={({ pressed }) => [styles.gearBtn, pressed && styles.rowPressed]}
+            >
+              <SettingsIcon size={18} color="#FFFFFF" strokeWidth={2.2} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Perfil del Estudiante (Panel Suave) */}
+        {/* Hero Profile Abierto y Sofisticado */}
         <Pressable
           onPress={handleOpenEditProfile}
-          style={({ pressed }) => [styles.profileCard, pressed && styles.rowPressed]}
+          style={({ pressed }) => [styles.heroProfileRow, pressed && styles.rowPressed]}
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(profile?.full_name)}</Text>
+          <View style={styles.heroAvatar}>
+            <Text style={styles.heroAvatarText}>{getInitials(profile?.full_name)}</Text>
           </View>
-          <View style={styles.profileInfo}>
+
+          <View style={styles.heroProfileInfo}>
             <View style={styles.nameWithEditRow}>
-              <Text style={styles.profileName} numberOfLines={1}>
+              <Text style={styles.heroProfileName} numberOfLines={1}>
                 {profile?.full_name || 'Estudiante'}
               </Text>
-              <Edit3 size={13} color="#71717A" />
+              <Edit3 size={14} color="#71717A" />
             </View>
-            <Text style={styles.profileSubtitle}>Toca para cambiar tu nombre</Text>
+            <Text style={styles.heroProfileSubtitle}>Toca para editar tu nombre</Text>
           </View>
-          <ChevronRight size={16} color="#52525B" />
         </Pressable>
 
-        {/* Gráfica de Distribución de Carga / Balance de Materias */}
+        {/* Gráfica de Distribución de Carga / Balance de Materias Expandida */}
         <MinimalistSubjectBalance />
-
-        {/* Separador de Sección */}
-        <View style={styles.sectionDivider} />
-
-        {/* Sección Secundaria: Ajustes y Preferencias */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Ajustes y Preferencias</Text>
-
-          {/* Aviso de Entregas */}
-          <View style={styles.itemRow}>
-            <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
-            <View style={styles.itemContent}>
-              <Text style={styles.itemTitle}>Aviso de entregas</Text>
-              <Text style={styles.itemSubtitle}>Notificar el día anterior a la hora elegida</Text>
-            </View>
-            <Switch
-              value={advanceReminderEnabled}
-              onValueChange={handleToggleAdvanceReminder}
-              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-              thumbColor={advanceReminderEnabled ? '#09090B' : '#71717A'}
-              ios_backgroundColor="#27272A"
-            />
-          </View>
-
-          {/* Selector de Hora */}
-          {advanceReminderEnabled && (
-            <>
-              <View style={styles.hairlineDivider} />
-              <Pressable
-                onPress={handleOpenTimeModal}
-                style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
-              >
-                <Clock size={18} color="#A1A1AA" style={styles.itemIcon} />
-                <View style={styles.itemContent}>
-                  <Text style={styles.itemTitle}>Hora del recordatorio</Text>
-                  <Text style={styles.itemSubtitle}>Momento del aviso previo a la entrega</Text>
-                </View>
-                <View style={styles.timeValueRow}>
-                  <Text style={styles.timeValueText}>
-                    {formatTimeDisplay(advanceReminderTime)}
-                  </Text>
-                  <ChevronRight size={14} color="#71717A" />
-                </View>
-              </Pressable>
-            </>
-          )}
-
-          <View style={styles.hairlineDivider} />
-
-          {/* Aviso de Próxima Clase */}
-          <View style={styles.itemRow}>
-            <BookOpen size={18} color="#A1A1AA" style={styles.itemIcon} />
-            <View style={styles.itemContent}>
-              <Text style={styles.itemTitle}>Aviso de próxima clase</Text>
-              <Text style={styles.itemSubtitle}>10 min antes con el nombre de la materia</Text>
-            </View>
-            <Switch
-              value={classReminderEnabled}
-              onValueChange={handleToggleClassReminder}
-              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-              thumbColor={classReminderEnabled ? '#09090B' : '#71717A'}
-              ios_backgroundColor="#27272A"
-            />
-          </View>
-        </View>
-
-        {/* Separador de Sección */}
-        <View style={styles.sectionDivider} />
-
-        {/* Sección: Experiencia y Respuesta (Abierta, Sin Cards) */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Experiencia y Respuesta</Text>
-
-          {/* Respuesta Háptica */}
-          <View style={styles.itemRow}>
-            <Smartphone size={18} color="#A1A1AA" style={styles.itemIcon} />
-            <View style={styles.itemContent}>
-              <Text style={styles.itemTitle}>Vibración háptica</Text>
-              <Text style={styles.itemSubtitle}>Retroalimentación táctil nativa</Text>
-            </View>
-            <Switch
-              value={hapticsEnabled}
-              onValueChange={handleToggleHaptics}
-              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-              thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
-              ios_backgroundColor="#27272A"
-            />
-          </View>
-
-          <View style={styles.hairlineDivider} />
-
-          {/* Animación Festiva */}
-          <View style={styles.itemRow}>
-            <Sparkles size={18} color="#A1A1AA" style={styles.itemIcon} />
-            <View style={styles.itemContent}>
-              <Text style={styles.itemTitle}>Animación festiva</Text>
-              <Text style={styles.itemSubtitle}>Confetti al completar entregas</Text>
-            </View>
-            <Switch
-              value={confettiEnabled}
-              onValueChange={handleToggleConfetti}
-              trackColor={{ false: '#27272A', true: '#FFFFFF' }}
-              thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
-              ios_backgroundColor="#27272A"
-            />
-          </View>
-        </View>
-
-        {/* Separador de Sección */}
-        <View style={styles.sectionDivider} />
-
-        {/* Restablecer Datos (Abierto y Limpio) */}
-        <Pressable
-          onPress={handleClearAllData}
-          style={({ pressed }) => [styles.clearRow, pressed && styles.rowPressed]}
-        >
-          <Trash2 size={16} color="#EF4444" />
-          <Text style={styles.clearBtnText}>Restablecer Datos</Text>
-        </Pressable>
-
-        {/* Versión */}
-        <Text style={styles.versionText}>Synapse v2.0</Text>
       </ScrollView>
 
-      {/* Modal de Selección de Hora de Recordatorio */}
+      {/* ========================================================================= */}
+      {/* MODAL: AJUSTES DEL SISTEMA (BOTTOM SHEET ESTILO APPLE)                     */}
+      {/* ========================================================================= */}
+      <Modal
+        visible={showSettingsModal}
+        transparent
+        animationType="none"
+        onRequestClose={handleCloseSettings}
+      >
+        <View style={styles.modalBackdrop}>
+          {/* Backdrop con Fade */}
+          <Animated.View style={[styles.backdropTouch, { opacity: settingsFadeAnim }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseSettings} />
+          </Animated.View>
+
+          {/* Hoja Deslizante con PanResponder */}
+          <Animated.View
+            style={[
+              styles.settingsSheetContainer,
+              {
+                paddingBottom: Math.max(insets.bottom, 20) + 16,
+                transform: [
+                  { translateY: settingsSlideAnim },
+                  { translateY: settingsPanY },
+                ],
+              },
+            ]}
+          >
+            {/* Tirador Superior y Cabecera del Modal con gesto PanResponder */}
+            <View {...settingsPanResponder.panHandlers}>
+              <View style={styles.dragHandle} />
+
+              <View style={styles.sheetHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Ajustes del Sistema</Text>
+                  <Text style={styles.modalSubtitle}>Preferencias de la aplicación</Text>
+                </View>
+                <Pressable onPress={handleCloseSettings} hitSlop={12} style={styles.modalCloseBtn}>
+                  <X size={18} color="#A1A1AA" />
+                </Pressable>
+              </View>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.settingsSheetScroll}>
+              {/* Sección: Recordatorios Automáticos */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.sectionHeaderTitle}>Recordatorios Automáticos</Text>
+
+                {/* Aviso de Entregas */}
+                <View style={styles.itemRow}>
+                  <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Aviso de entregas</Text>
+                    <Text style={styles.itemSubtitle}>Notificar la noche anterior a la hora elegida</Text>
+                  </View>
+                  <Switch
+                    value={advanceReminderEnabled}
+                    onValueChange={handleToggleAdvanceReminder}
+                    trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                    thumbColor={advanceReminderEnabled ? '#09090B' : '#71717A'}
+                    ios_backgroundColor="#27272A"
+                  />
+                </View>
+
+                {/* Selector de Hora */}
+                {advanceReminderEnabled && (
+                  <>
+                    <View style={styles.hairlineDivider} />
+                    <Pressable
+                      onPress={handleOpenTimeModal}
+                      style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+                    >
+                      <Clock size={18} color="#A1A1AA" style={styles.itemIcon} />
+                      <View style={styles.itemContent}>
+                        <Text style={styles.itemTitle}>Hora del recordatorio</Text>
+                        <Text style={styles.itemSubtitle}>Momento del aviso previo a la entrega</Text>
+                      </View>
+                      <View style={styles.timeValueRow}>
+                        <Text style={styles.timeValueText}>
+                          {formatTimeDisplay(advanceReminderTime)}
+                        </Text>
+                        <ChevronRight size={14} color="#71717A" />
+                      </View>
+                    </Pressable>
+                  </>
+                )}
+
+                <View style={styles.hairlineDivider} />
+
+                {/* Aviso de Próxima Clase */}
+                <View style={styles.itemRow}>
+                  <BookOpen size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Aviso de próxima clase</Text>
+                    <Text style={styles.itemSubtitle}>10 min antes con el nombre de la materia</Text>
+                  </View>
+                  <Switch
+                    value={classReminderEnabled}
+                    onValueChange={handleToggleClassReminder}
+                    trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                    thumbColor={classReminderEnabled ? '#09090B' : '#71717A'}
+                    ios_backgroundColor="#27272A"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
+              {/* Sección: Experiencia y Respuesta */}
+              <View style={styles.settingsSection}>
+                <Text style={styles.sectionHeaderTitle}>Experiencia y Respuesta</Text>
+
+                {/* Respuesta Háptica */}
+                <View style={styles.itemRow}>
+                  <Smartphone size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Vibración háptica</Text>
+                    <Text style={styles.itemSubtitle}>Retroalimentación táctil nativa</Text>
+                  </View>
+                  <Switch
+                    value={hapticsEnabled}
+                    onValueChange={handleToggleHaptics}
+                    trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                    thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
+                    ios_backgroundColor="#27272A"
+                  />
+                </View>
+
+                <View style={styles.hairlineDivider} />
+
+                {/* Animación Festiva */}
+                <View style={styles.itemRow}>
+                  <Sparkles size={18} color="#A1A1AA" style={styles.itemIcon} />
+                  <View style={styles.itemContent}>
+                    <Text style={styles.itemTitle}>Animación festiva</Text>
+                    <Text style={styles.itemSubtitle}>Confetti al completar entregas</Text>
+                  </View>
+                  <Switch
+                    value={confettiEnabled}
+                    onValueChange={handleToggleConfetti}
+                    trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                    thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
+                    ios_backgroundColor="#27272A"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
+              {/* Restablecer Datos */}
+              <Pressable
+                onPress={handleClearAllData}
+                style={({ pressed }) => [styles.clearRow, pressed && styles.rowPressed]}
+              >
+                <Trash2 size={16} color="#EF4444" />
+                <Text style={styles.clearBtnText}>Restablecer Datos Locales</Text>
+              </Pressable>
+
+              <Text style={styles.versionText}>Synapse v2.0</Text>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* MODAL: SELECCIÓN DE HORA DE RECORDATORIO                                  */}
+      {/* ========================================================================= */}
       <Modal visible={showTimeModal} transparent animationType="none" onRequestClose={handleCloseTimeModal}>
         <View style={styles.modalBackdrop}>
           <Animated.View style={[styles.backdropTouch, { opacity: timeFadeAnim }]}>
@@ -503,17 +628,17 @@ export default function SettingsScreen() {
                   <Pressable
                     key={preset.time}
                     onPress={() => handleSelectHour(preset.time)}
-                    style={[styles.hourRow, isSelected && styles.hourRowSelected]}
+                    style={[styles.hourItem, isSelected && styles.hourItemSelected]}
                   >
-                    <View style={styles.hourInfo}>
-                      <Text style={[styles.hourLabel, isSelected && styles.hourLabelSelected]}>
+                    <View>
+                      <Text style={[styles.hourItemText, isSelected && styles.hourItemTextSelected]}>
                         {preset.label}
                       </Text>
-                      <Text style={styles.hourDesc}>{preset.desc}</Text>
+                      <Text style={styles.hourItemDesc}>{preset.desc}</Text>
                     </View>
                     {isSelected && (
-                      <View style={styles.hourCheckPill}>
-                        <Check size={14} color="#09090B" />
+                      <View style={styles.selectedCheck}>
+                        <Check size={14} color="#09090B" strokeWidth={3} />
                       </View>
                     )}
                   </Pressable>
@@ -524,10 +649,12 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Edición de Perfil con sincronización nativa ultra rápida (igual que MinimalistTaskModal) */}
+      {/* ========================================================================= */}
+      {/* MODAL: EDICIÓN DE PERFIL                                                  */}
+      {/* ========================================================================= */}
       <Modal visible={showEditProfileModal} transparent animationType="none" onRequestClose={handleCloseEditProfile}>
         <View style={styles.modalBackdrop}>
-          <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.backdropTouch, { opacity: editFadeAnim }]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseEditProfile} />
           </Animated.View>
 
@@ -536,7 +663,7 @@ export default function SettingsScreen() {
               styles.sheetContainer,
               {
                 paddingBottom: Math.max(insets.bottom, 20) + 16,
-                transform: [{ translateY: slideAnim }, { translateY: keyboardTranslateY }],
+                transform: [{ translateY: editSlideAnim }, { translateY: keyboardTranslateY }],
               },
             ]}
           >
@@ -544,7 +671,7 @@ export default function SettingsScreen() {
             <View style={styles.sheetHeader}>
               <View>
                 <Text style={styles.modalTitle}>Editar Nombre</Text>
-                <Text style={styles.modalSubtitle}>Cómo te saluda la app</Text>
+                <Text style={styles.modalSubtitle}>Cómo te saluda Synapse</Text>
               </View>
               <Pressable onPress={handleCloseEditProfile} hitSlop={12} style={styles.modalCloseBtn}>
                 <X size={18} color="#A1A1AA" />
@@ -574,7 +701,7 @@ export default function SettingsScreen() {
                 <ActivityIndicator size="small" color="#09090B" />
               ) : (
                 <>
-                  <Check size={16} color="#09090B" />
+                  <Check size={16} color="#09090B" strokeWidth={2.5} />
                   <Text style={styles.saveBtnText}>Guardar</Text>
                 </>
               )}
@@ -596,10 +723,15 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    gap: 16,
+    gap: 18,
   },
   header: {
     paddingHorizontal: 2,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   title: {
     color: '#FFFFFF',
@@ -613,82 +745,150 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#131316',
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#242429',
-    gap: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  gearBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#18181B',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#27272A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
+  heroProfileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  heroAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#18181B',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  heroAvatarText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '800',
   },
-  profileInfo: {
+  heroProfileInfo: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   nameWithEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  profileName: {
+  heroProfileName: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
-  profileSubtitle: {
+  heroProfileSubtitle: {
     color: '#71717A',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '500',
   },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    marginVertical: 4,
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
-  sectionContainer: {
-    gap: 2,
+  backdropTouch: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
-  sectionTitle: {
+  settingsSheetContainer: {
+    backgroundColor: '#121214',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: '82%',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  settingsSheetScroll: {
+    marginTop: 10,
+  },
+  settingsSection: {
+    gap: 4,
+  },
+  sectionHeaderTitle: {
     color: '#71717A',
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 6,
+    marginTop: 4,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  modalSubtitle: {
+    color: '#71717A',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#18181B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 14,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     gap: 14,
   },
   itemRowPressable: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     paddingHorizontal: 4,
     borderRadius: 10,
     gap: 14,
@@ -725,171 +925,129 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   timeValueText: {
-    color: '#FFFFFF',
+    color: '#A1A1AA',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   clearRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginTop: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    marginTop: 6,
   },
   clearBtnText: {
     color: '#EF4444',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
   },
   versionText: {
+    color: '#3F3F46',
+    fontSize: 11,
     textAlign: 'center',
-    color: '#52525B',
-    fontSize: 11.5,
-    fontWeight: '500',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
-  },
-  backdropTouch: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheetContainer: {
-    backgroundColor: '#121215',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    gap: 16,
+    marginTop: 14,
+    marginBottom: 6,
   },
   timeSheetContainer: {
-    backgroundColor: '#121215',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    gap: 14,
-  },
-  dragHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#3F3F46',
-    alignSelf: 'center',
-    marginBottom: 4,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: '#121214',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
   },
   timeSheetHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  modalTitle: {
+  hoursList: {
+    gap: 8,
+  },
+  hourItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#18181B',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  hourItemSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#FFFFFF',
+  },
+  hourItemText: {
+    color: '#E4E4E7',
+    fontSize: 14.5,
+    fontWeight: '600',
+  },
+  hourItemTextSelected: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  modalSubtitle: {
+  hourItemDesc: {
     color: '#71717A',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11.5,
+    marginTop: 1,
   },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  selectedCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sheetContainer: {
+    backgroundColor: '#121214',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    gap: 16,
   },
   inputGroup: {
     gap: 6,
   },
   inputLabel: {
     color: '#71717A',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: '#18181B',
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '500',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#27272A',
   },
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 13,
+    borderRadius: 14,
     marginTop: 4,
   },
   saveBtnText: {
     color: '#09090B',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  hoursList: {
-    gap: 8,
-  },
-  hourRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  hourRowSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.09)',
-    borderColor: '#FFFFFF',
-  },
-  hourInfo: {
-    gap: 1,
-  },
-  hourLabel: {
-    color: '#E4E4E7',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
-  },
-  hourLabelSelected: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  hourDesc: {
-    color: '#71717A',
-    fontSize: 11.5,
-  },
-  hourCheckPill: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 })

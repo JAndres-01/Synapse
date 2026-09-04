@@ -52,8 +52,22 @@ export default function TasksScreen() {
   const insets = useSafeAreaInsets()
   const { user } = usePersonalAuth()
 
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const cachedTasks = personalStorage.getCachedTasks()
+    const cachedSubjs = personalStorage.getCachedSubjects()
+    return cachedTasks.map((t) => {
+      if (!t.subject_id) {
+        return { ...t, subject: null }
+      }
+      const foundSubj = cachedSubjs.find((s) => s.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+  })
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState('')

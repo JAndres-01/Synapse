@@ -39,6 +39,43 @@ function notifyListeners() {
 
 export const personalStorage = {
   // ==========================================
+  // MÉTODOS DE ACCESO DIRECTO A CACHÉ EN MEMORIA
+  // ==========================================
+  getCachedSubjects(): Subject[] {
+    return _subjectsCache !== null ? [..._subjectsCache] : []
+  },
+
+  getCachedSchedules(): Schedule[] {
+    return _schedulesCache !== null ? [..._schedulesCache] : []
+  },
+
+  getCachedTasks(): Task[] {
+    return _tasksCache !== null ? [..._tasksCache] : []
+  },
+
+  getCachedProfile(): PersonalProfile | null {
+    return _profileCache !== null ? { ..._profileCache } : null
+  },
+
+  getCachedPreferences(): AppPreferences | null {
+    return _preferencesCache !== null ? { ..._preferencesCache } : null
+  },
+
+  isPreloaded(): boolean {
+    return _subjectsCache !== null && _schedulesCache !== null && _tasksCache !== null
+  },
+
+  async preloadAll(): Promise<void> {
+    await Promise.all([
+      this.getSubjects(),
+      this.getSchedules(),
+      this.getTasks(),
+      this.getProfile(),
+      this.getPreferences(),
+    ])
+  },
+
+  // ==========================================
   // MATERIAS (SUBJECTS)
   // ==========================================
   async getSubjects(): Promise<Subject[]> {

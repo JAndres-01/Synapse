@@ -40,9 +40,32 @@ export default function ScheduleScreen() {
   const router = useRouter()
   const { user } = usePersonalAuth()
 
-  const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
+  const [schedules, setSchedules] = useState<Schedule[]>(() => {
+    const cachedScheds = personalStorage.getCachedSchedules()
+    const cachedSubjs = personalStorage.getCachedSubjects()
+    return cachedScheds
+      .map((s) => {
+        const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
+        return {
+          ...s,
+          subject: foundSubj || null,
+        }
+      })
+      .filter((s) => Boolean(s.subject))
+  })
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const cachedTasks = personalStorage.getCachedTasks()
+    const cachedSubjs = personalStorage.getCachedSubjects()
+    return cachedTasks.map((t) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+  })
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
   const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])

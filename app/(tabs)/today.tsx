@@ -30,19 +30,43 @@ export default function TodayScreen() {
   const router = useRouter()
   const { user, profile } = usePersonalAuth()
 
-  const [schedulesToday, setSchedulesToday] = useState<Schedule[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const getTodayDayOfWeek = () => {
+    const day = new Date().getDay()
+    return day === 0 ? 7 : day // 1: Lun ... 5: Vie
+  }
+
+  const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const cachedTasks = personalStorage.getCachedTasks()
+    const cachedSubjs = personalStorage.getCachedSubjects()
+    return cachedTasks.map((t) => {
+      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
+      return {
+        ...t,
+        subject: foundSubj || null,
+        subject_id: foundSubj ? t.subject_id : null,
+      }
+    })
+  })
+  const [schedulesToday, setSchedulesToday] = useState<Schedule[]>(() => {
+    const todayNum = new Date().getDay() === 0 ? 7 : new Date().getDay()
+    const cachedScheds = personalStorage.getCachedSchedules()
+    const cachedSubjs = personalStorage.getCachedSubjects()
+    return cachedScheds
+      .map((s) => {
+        const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
+        return {
+          ...s,
+          subject: foundSubj || null,
+        }
+      })
+      .filter((s) => Boolean(s.subject) && s.day_of_week === todayNum)
+  })
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
   // Modal Unificado de Tareas
   const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
-
-  const getTodayDayOfWeek = () => {
-    const day = new Date().getDay()
-    return day === 0 ? 7 : day // 1: Lun ... 5: Vie
-  }
 
   // Formato elegante de fecha actual (ej. "Lunes, 1 de Septiembre")
   const getFormattedCurrentDate = () => {

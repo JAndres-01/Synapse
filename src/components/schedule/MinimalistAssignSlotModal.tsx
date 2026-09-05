@@ -53,14 +53,14 @@ export function MinimalistAssignSlotModal({
   const [loading, setLoading] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(450)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(visible)
 
   useEffect(() => {
     if (visible) {
       setModalVisible(true)
-      slideAnim.setValue(450)
+      slideAnim.setValue(SCREEN_HEIGHT)
       fadeAnim.setValue(0)
       panY.setValue(0)
       Animated.parallel([
@@ -81,18 +81,18 @@ export function MinimalistAssignSlotModal({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 150,
+          duration: 160,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
-          toValue: 450,
-          duration: 180,
+          toValue: SCREEN_HEIGHT,
+          duration: 200,
           easing: APPLE_EASING,
           useNativeDriver: true,
         }),
         Animated.timing(panY, {
           toValue: 0,
-          duration: 150,
+          duration: 160,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -106,18 +106,18 @@ export function MinimalistAssignSlotModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 160,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: 450,
-        duration: 180,
+        toValue: SCREEN_HEIGHT,
+        duration: 200,
         easing: APPLE_EASING,
         useNativeDriver: true,
       }),
       Animated.timing(panY, {
         toValue: 0,
-        duration: 150,
+        duration: 160,
         useNativeDriver: true,
       }),
     ]).start(() => {

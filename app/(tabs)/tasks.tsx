@@ -79,6 +79,7 @@ export default function TasksScreen() {
 
   // FAB animation
   const fabScaleAnim = useRef(new Animated.Value(1)).current
+  const panelBounceAnim = useRef(new Animated.Value(1)).current
 
   // Debounce para búsqueda fluida
   useEffect(() => {
@@ -169,6 +170,17 @@ export default function TasksScreen() {
     if (newStatus === statusFilter) return
     setStatusFilter(newStatus)
   }
+
+  useEffect(() => {
+    panelBounceAnim.setValue(0.92)
+    Animated.spring(panelBounceAnim, {
+      toValue: 1,
+      stiffness: 420,
+      damping: 18,
+      mass: 0.6,
+      useNativeDriver: true,
+    }).start()
+  }, [statusFilter, panelBounceAnim])
 
   const handleToggleStatus = useCallback(
     async (taskId: string, currentStatus: string) => {
@@ -337,6 +349,9 @@ export default function TasksScreen() {
                 inputRange: [0, 1],
                 outputRange: [0.96, 1],
               }),
+            },
+            {
+              scale: panelBounceAnim,
             },
           ],
         }}

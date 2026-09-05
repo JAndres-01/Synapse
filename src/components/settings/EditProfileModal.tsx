@@ -10,11 +10,14 @@ import {
   Platform,
   Keyboard,
   Animated,
+  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 export interface EditProfileModalProps {
   visible: boolean
@@ -30,19 +33,21 @@ export function EditProfileModal({
   onSaveName,
 }: EditProfileModalProps) {
   const insets = useSafeAreaInsets()
+  const [modalVisible, setModalVisible] = useState(visible)
   const [editName, setEditName] = useState(currentName)
   const [saving, setSaving] = useState(false)
   const nameInputRef = useRef<TextInput>(null)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(300)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true)
       setEditName(currentName)
       fadeAnim.setValue(0)
-      slideAnim.setValue(300)
+      slideAnim.setValue(SCREEN_HEIGHT)
       keyboardTranslateY.setValue(0)
 
       Animated.parallel([
@@ -61,6 +66,14 @@ export function EditProfileModal({
         }),
       ]).start(() => {
         nameInputRef.current?.focus()
+      })
+    } else if (modalVisible) {
+      Keyboard.dismiss()
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
+      ]).start(() => {
+        setModalVisible(false)
       })
     }
   }, [visible, currentName])
@@ -106,10 +119,11 @@ export function EditProfileModal({
     triggerHaptic('light')
     Keyboard.dismiss()
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 300, duration: 180, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
     })
   }
 
@@ -130,7 +144,7 @@ export function EditProfileModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleClose}>
       <View style={styles.modalBackdrop}>
         <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />

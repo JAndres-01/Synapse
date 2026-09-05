@@ -169,18 +169,33 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
         }
 
         if (dx >= SWIPE_THRESHOLD) {
-          // Completar / Descompletar disparado: regresar suavemente a 0 y ejecutar acción
+          // Completar / Descompletar disparado: regresar suavemente a 0 con rebote físico
           triggerHaptic('success')
           isOpen.current = false
           isGreenTriggered.current = false
           rightSwipeDistance.setValue(0)
 
-          Animated.timing(translateX, {
-            toValue: 0,
-            duration: 140,
-            easing: APPLE_EASING,
-            useNativeDriver: true,
-          }).start(() => {
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: 0,
+              duration: 140,
+              easing: APPLE_EASING,
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(scaleAnim, {
+                toValue: 1.04,
+                duration: 70,
+                useNativeDriver: true,
+              }),
+              Animated.spring(scaleAnim, {
+                toValue: 1,
+                stiffness: 500,
+                damping: 18,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]).start(() => {
             onToggleStatus(task.id, task.status)
           })
         } else if (dx <= -48) {

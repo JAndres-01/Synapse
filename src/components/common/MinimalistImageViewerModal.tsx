@@ -99,8 +99,11 @@ export function MinimalistImageViewerModal({
     }
   }, [scale, translateX, translateY, dismissOpacity])
 
+  const [modalVisible, setModalVisible] = useState(visible)
+
   useEffect(() => {
     if (visible) {
+      setModalVisible(true)
       setControlsVisible(true)
       resetTransform(false)
 
@@ -109,14 +112,17 @@ export function MinimalistImageViewerModal({
         duration: 200,
         useNativeDriver: true,
       }).start()
-    } else {
+    } else if (modalVisible) {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 160,
         useNativeDriver: true,
-      }).start()
+      }).start(() => {
+        setModalVisible(false)
+        resetTransform(false)
+      })
     }
-  }, [visible, fadeAnim, resetTransform])
+  }, [visible, modalVisible, fadeAnim, resetTransform])
 
   const handleClose = useCallback(() => {
     triggerHaptic('light')
@@ -127,6 +133,7 @@ export function MinimalistImageViewerModal({
     }).start(() => {
       resetTransform(false)
       onClose()
+      setModalVisible(false)
     })
   }, [fadeAnim, onClose, resetTransform])
 
@@ -288,11 +295,11 @@ export function MinimalistImageViewerModal({
     })
   ).current
 
-  if (!visible || !imageUri) return null
+  if (!modalVisible || !imageUri) return null
 
   return (
     <Modal
-      visible={visible}
+      visible={modalVisible}
       transparent={true}
       animationType="none"
       onRequestClose={handleClose}

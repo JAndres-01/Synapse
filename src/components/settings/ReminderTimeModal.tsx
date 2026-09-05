@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -6,11 +6,14 @@ import {
   Pressable,
   StyleSheet,
   Animated,
+  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
@@ -34,13 +37,15 @@ export function ReminderTimeModal({
   onSelectTime,
 }: ReminderTimeModalProps) {
   const insets = useSafeAreaInsets()
+  const [modalVisible, setModalVisible] = useState(visible)
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(300)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true)
       fadeAnim.setValue(0)
-      slideAnim.setValue(300)
+      slideAnim.setValue(SCREEN_HEIGHT)
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -57,16 +62,24 @@ export function ReminderTimeModal({
           useNativeDriver: true,
         }),
       ]).start()
+    } else if (modalVisible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
+      ]).start(() => {
+        setModalVisible(false)
+      })
     }
   }, [visible])
 
   const handleClose = () => {
     triggerHaptic('light')
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 300, duration: 180, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
     })
   }
 
@@ -77,7 +90,7 @@ export function ReminderTimeModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleClose}>
       <View style={styles.modalBackdrop}>
         <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />

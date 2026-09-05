@@ -11,7 +11,10 @@ import {
   Alert,
   PanResponder,
   Platform,
+  Dimensions,
 } from 'react-native'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 import { WebView } from 'react-native-webview'
 import * as Sharing from 'expo-sharing'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -52,7 +55,7 @@ export function MinimalistCredentialModal({
   const [webViewReady, setWebViewReady] = useState(false)
   const webViewRef = useRef<any>(null)
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(450)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
 
   // Normalizar ruta para mitigar cambios de UUID del sandbox en iOS
@@ -76,7 +79,7 @@ export function MinimalistCredentialModal({
 
     if (visible) {
       setModalRendered(true)
-      slideAnim.setValue(450)
+      slideAnim.setValue(SCREEN_HEIGHT)
       fadeAnim.setValue(0)
       panY.setValue(0)
       activeAnim = Animated.parallel([
@@ -109,12 +112,12 @@ export function MinimalistCredentialModal({
       activeAnim = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 150,
+          duration: 160,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
-          toValue: 450,
-          duration: 180,
+          toValue: SCREEN_HEIGHT,
+          duration: 200,
           easing: APPLE_EASING,
           useNativeDriver: true,
         }),

@@ -256,7 +256,7 @@ export function MinimalistTaskModal({
       }
 
       fadeAnim.setValue(0)
-      slideAnim.setValue(450)
+      slideAnim.setValue(SCREEN_HEIGHT)
       panY.setValue(0)
       keyboardTranslateY.setValue(0)
 
@@ -274,6 +274,24 @@ export function MinimalistTaskModal({
           useNativeDriver: true,
         }),
       ]).start()
+    } else if (modalVisible) {
+      Keyboard.dismiss()
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 200,
+          easing: APPLE_EASING,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false)
+        setActivePicker(null)
+      })
     }
 
     return () => {
@@ -288,12 +306,12 @@ export function MinimalistTaskModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 160,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: 450,
-        duration: 180,
+        toValue: SCREEN_HEIGHT,
+        duration: 200,
         easing: APPLE_EASING,
         useNativeDriver: true,
       }),

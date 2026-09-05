@@ -12,8 +12,11 @@ import {
   PanResponder,
   TextInput,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 import {
   X,
   ChevronRight,
@@ -148,13 +151,15 @@ export function SystemSettingsModal({
     setNameInput(profile?.full_name || '')
   }, [profile?.full_name])
 
+  const [modalVisible, setModalVisible] = useState(visible)
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(420)).current
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const panY = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(420)
+      setModalVisible(true)
+      slideAnim.setValue(SCREEN_HEIGHT)
       fadeAnim.setValue(0)
       panY.setValue(0)
       setActiveDatePicker(null)
@@ -175,17 +180,26 @@ export function SystemSettingsModal({
           useNativeDriver: true,
         }),
       ]).start()
+    } else if (modalVisible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
+        Animated.timing(panY, { toValue: 0, duration: 160, useNativeDriver: true }),
+      ]).start(() => {
+        setModalVisible(false)
+      })
     }
   }, [visible])
 
   const handleClose = (callback?: (() => void) | unknown) => {
     triggerHaptic('light')
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 420, duration: 180, easing: APPLE_EASING, useNativeDriver: true }),
-      Animated.timing(panY, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
+      Animated.timing(panY, { toValue: 0, duration: 160, useNativeDriver: true }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
       if (typeof callback === 'function') {
         setTimeout(callback, 80)
       }
@@ -234,7 +248,7 @@ export function SystemSettingsModal({
   ).current
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleClose}>
       <View style={styles.modalBackdrop}>
         {/* Backdrop con Fade */}
         <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>

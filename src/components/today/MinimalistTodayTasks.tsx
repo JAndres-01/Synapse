@@ -51,27 +51,43 @@ const TodayTaskItem = memo(function TodayTaskItem({
   }
 
   const handleCheckboxToggle = () => {
-    Animated.sequence([
-      Animated.timing(checkBounceAnim, {
-        toValue: 1.45,
-        duration: 60,
-        useNativeDriver: true,
-      }),
-      Animated.timing(checkBounceAnim, {
-        toValue: 0.82,
-        duration: 45,
-        useNativeDriver: true,
-      }),
-      Animated.spring(checkBounceAnim, {
-        toValue: 1,
-        stiffness: 900,
-        damping: 14,
-        useNativeDriver: true,
-      }),
-    ]).start()
-
     triggerHaptic(isDone ? 'light' : 'success')
-    onToggle()
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(checkBounceAnim, {
+          toValue: 1.45,
+          duration: 70,
+          useNativeDriver: true,
+        }),
+        Animated.timing(checkBounceAnim, {
+          toValue: 0.82,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.spring(checkBounceAnim, {
+          toValue: 1,
+          stiffness: 750,
+          damping: 14,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.03,
+          duration: 70,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          stiffness: 500,
+          damping: 18,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      onToggle()
+    })
   }
 
   const dueInfo = formatTaskDueDate(task.due_date, isDone)

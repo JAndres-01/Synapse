@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -33,11 +33,13 @@ export function TasksSubjectFilterModal({
   onSelectSubject,
   onClose,
 }: TasksSubjectFilterModalProps) {
+  const [modalVisible, setModalVisible] = useState(visible)
   const menuFadeAnim = useRef(new Animated.Value(0)).current
   const menuSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
   useEffect(() => {
     if (visible) {
+      setModalVisible(true)
       menuFadeAnim.setValue(0)
       menuSlideAnim.setValue(SCREEN_HEIGHT)
 
@@ -55,6 +57,21 @@ export function TasksSubjectFilterModal({
           useNativeDriver: true,
         }),
       ]).start()
+    } else if (modalVisible) {
+      Animated.parallel([
+        Animated.timing(menuFadeAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(menuSlideAnim, {
+          toValue: SCREEN_HEIGHT,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setModalVisible(false)
+      })
     }
   }, [visible])
 
@@ -72,6 +89,7 @@ export function TasksSubjectFilterModal({
       }),
     ]).start(() => {
       onClose()
+      setModalVisible(false)
     })
   }
 
@@ -81,10 +99,10 @@ export function TasksSubjectFilterModal({
     handleClose()
   }
 
-  if (!visible) return null
+  if (!modalVisible) return null
 
   return (
-    <Modal visible={visible} transparent={true} animationType="none" onRequestClose={handleClose}>
+    <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleClose}>
       <View style={styles.modalRoot}>
         <Animated.View style={[styles.menuBackdrop, { opacity: menuFadeAnim }]}>
           <Pressable style={styles.menuBackdropTouch} onPress={handleClose} />

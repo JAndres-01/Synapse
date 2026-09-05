@@ -167,7 +167,9 @@ export default function TasksScreen() {
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    LAYOUT_EASE(240)
+    // Panel switch: fade de entrada/salida rápido (100ms) + reposicionamiento suave (160ms)
+    // para que el barrido entre Pendientes/Completadas/Todas se sienta fluido.
+    LAYOUT_EASE(100, { create: 100, update: 60, delete: 100 })
     setStatusFilter(newStatus)
   }
 
@@ -191,19 +193,24 @@ export default function TasksScreen() {
         }
       }
 
-      // Desaparición rápida (90ms) + reposicionamiento fluido easeInEaseOut de las demás filas
+      // Fade de salida rápido (120ms) + reposicionamiento fluido easeInEaseOut de las demás filas
+      // El delete/create (fila que sale/cambia) termina antes que el update (reorden del resto)
+      // para que el desvanecimiento se complete mientras el resto se acomoda sin cortes.
       LayoutAnimation.configureNext({
         duration: 180,
         create: {
           type: LayoutAnimation.Types.easeInEaseOut,
           property: LayoutAnimation.Properties.opacity,
+          duration: 120,
         },
         update: {
           type: LayoutAnimation.Types.easeInEaseOut,
+          duration: 180,
         },
         delete: {
           type: LayoutAnimation.Types.easeInEaseOut,
           property: LayoutAnimation.Properties.opacity,
+          duration: 120,
         },
       })
       setTasks((prevTasks) => {

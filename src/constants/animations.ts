@@ -23,19 +23,25 @@ export const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
  * - update: easeInEaseOut (sin rebote)
  * - create/delete: easeInEaseOut con opacity
  */
-export const LAYOUT_EASE = (duration: number = 220) =>
+export const LAYOUT_EASE = (
+  duration: number = 220,
+  phaseDurations?: { create?: number; update?: number; delete?: number }
+) =>
   LayoutAnimation.configureNext({
     duration,
     create: {
       type: LayoutAnimation.Types.easeInEaseOut,
       property: LayoutAnimation.Properties.opacity,
+      duration: phaseDurations?.create,
     },
     update: {
       type: LayoutAnimation.Types.easeInEaseOut,
+      duration: phaseDurations?.update,
     },
     delete: {
       type: LayoutAnimation.Types.easeInEaseOut,
       property: LayoutAnimation.Properties.opacity,
+      duration: phaseDurations?.delete,
     },
   })
 

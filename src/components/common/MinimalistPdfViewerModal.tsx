@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { WebView } from 'react-native-webview'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Share2, FileText } from 'lucide-react-native'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system/legacy'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
 interface MinimalistPdfViewerModalProps {
@@ -29,15 +30,68 @@ export function MinimalistPdfViewerModal({
   onClose,
 }: MinimalistPdfViewerModalProps) {
   const insets = useSafeAreaInsets()
+  const [webViewSource, setWebViewSource] = useState<{ uri: string } | null>(null)
+  const [shareableUri, setShareableUri] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const preparePdf = async () => {
+      if (!pdfUri) {
+        setWebViewSource(null)
+        setShareableUri(null)
+        return
+      }
+      setLoading(true)
+      try {
+        let safeShare = pdfUri
+        if (pdfUri.startsWith('file://')) {
+          try {
+            const base64 = await FileSystem.readAsStringAsync(pdfUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            })
+            if (isMounted) {
+              setWebViewSource({ uri: `data:application/pdf;base64,${base64}` })
+              setShareableUri(pdfUri)
+              setLoading(false)
+              return
+            }
+          } catch (e) {
+            console.warn('[PdfViewer] Falló lectura base64:', e)
+          }
+        }
+        if (isMounted) {
+          setWebViewSource({ uri: safeShare })
+          setShareableUri(safeShare)
+          setLoading(false)
+        }
+      } catch {
+        if (isMounted) {
+          setWebViewSource({ uri: pdfUri })
+          setShareableUri(pdfUri)
+          setLoading(false)
+        }
+      }
+    }
+
+    if (visible && pdfUri) {
+      preparePdf()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [visible, pdfUri])
 
   if (!pdfUri) return null
 
   const handleShare = async () => {
+    const uriToShare = shareableUri || pdfUri
     triggerHaptic('light')
     try {
       const isAvailable = await Sharing.isAvailableAsync()
-      if (isAvailable && pdfUri) {
-        await Sharing.shareAsync(pdfUri, {
+      if (isAvailable && uriToShare) {
+        await Sharing.shareAsync(uriToShare, {
           dialogTitle: pdfTitle,
           mimeType: 'application/pdf',
           UTI: 'com.adobe.pdf',
@@ -89,22 +143,34 @@ export function MinimalistPdfViewerModal({
 
         {/* Visor Nativo de PDF (Apple WKWebView Engine) */}
         <View style={styles.webviewContainer}>
-          <WebView
-            source={{ uri: pdfUri }}
-            style={styles.webview}
-            originWhitelist={['*']}
-            allowFileAccess={true}
-            allowFileAccessFromFileURLs={true}
-            allowUniversalAccessFromFileURLs={true}
-            scalesPageToFit={true}
-            startInLoadingState={true}
-            renderLoading={() => (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.loadingText}>Cargando PDF...</Text>
-              </View>
-            )}
-          />
+          {loading ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.loadingText}>Cargando PDF...</Text>
+            </View>
+          ) : webViewSource ? (
+            <WebView
+              source={webViewSource}
+              style={styles.webview}
+              originWhitelist={['*']}
+              allowFileAccess={true}
+              allowFileAccessFromFileURLs={true}
+              allowUniversalAccessFromFileURLs={true}
+              scalesPageToFit={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.loadingBox}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.loadingText}>Cargando PDF...</Text>
+                </View>
+              )}
+            />
+          ) : (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.loadingText}>Cargando PDF...</Text>
+            </View>
+          )}
         </View>
       </View>
     </Modal>

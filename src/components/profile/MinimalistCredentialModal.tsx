@@ -14,6 +14,7 @@ import {
 } from 'react-native'
 import { WebView } from 'react-native-webview'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system/legacy'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   IdCard,
@@ -49,9 +50,82 @@ export function MinimalistCredentialModal({
   const insets = useSafeAreaInsets()
 
   const [modalRendered, setModalRendered] = useState(visible)
+  const [webViewSource, setWebViewSource] = useState<{ uri: string } | null>(null)
+  const [shareableUri, setShareableUri] = useState<string | null>(null)
+  const [loadingPdf, setLoadingPdf] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(600)).current
   const panY = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    let isMounted = true
+    const preparePdf = async () => {
+      if (!credentialUrl) {
+        setWebViewSource(null)
+        setShareableUri(null)
+        return
+      }
+      setLoadingPdf(true)
+      try {
+        let safeShareUri = credentialUrl
+
+        // Asegurar copia en directorio seguro del sistema
+        if (credentialUrl.startsWith('file://')) {
+          try {
+            const destDir = `${FileSystem.documentDirectory ?? ''}credentials/`
+            const dirInfo = await FileSystem.getInfoAsync(destDir)
+            if (!dirInfo.exists) {
+              await FileSystem.makeDirectoryAsync(destDir, { intermediates: true })
+            }
+            const safeName = (credentialName || 'credencial.pdf').replace(/[^a-zA-Z0-9._-]/g, '_')
+            const destFile = `${destDir}${safeName}`
+            if (credentialUrl !== destFile) {
+              await FileSystem.copyAsync({ from: credentialUrl, to: destFile })
+            }
+            safeShareUri = destFile
+          } catch (copyErr) {
+            console.warn('[CredentialModal] Copia permanente:', copyErr)
+          }
+
+          // Para evitar restricciones de sandbox en iOS WebKit, leer en base64
+          try {
+            const base64 = await FileSystem.readAsStringAsync(safeShareUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            })
+            if (isMounted) {
+              setWebViewSource({ uri: `data:application/pdf;base64,${base64}` })
+              setShareableUri(safeShareUri)
+              setLoadingPdf(false)
+              return
+            }
+          } catch (readErr) {
+            console.warn('[CredentialModal] Lectura base64 falló:', readErr)
+          }
+        }
+
+        if (isMounted) {
+          setWebViewSource({ uri: safeShareUri })
+          setShareableUri(safeShareUri)
+          setLoadingPdf(false)
+        }
+      } catch (err) {
+        console.error('[CredentialModal] Error preparando PDF:', err)
+        if (isMounted) {
+          setWebViewSource({ uri: credentialUrl })
+          setShareableUri(credentialUrl)
+          setLoadingPdf(false)
+        }
+      }
+    }
+
+    if (visible && credentialUrl) {
+      preparePdf()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [visible, credentialUrl, credentialName])
 
   useEffect(() => {
     if (visible) {
@@ -96,12 +170,13 @@ export function MinimalistCredentialModal({
   }
 
   const handleShare = async () => {
-    if (!credentialUrl) return
+    const uriToShare = shareableUri || credentialUrl
+    if (!uriToShare) return
     triggerHaptic('light')
     try {
       const isAvailable = await Sharing.isAvailableAsync()
       if (isAvailable) {
-        await Sharing.shareAsync(credentialUrl, {
+        await Sharing.shareAsync(uriToShare, {
           dialogTitle: `Credencial Digital - ${studentName}`,
           mimeType: 'application/pdf',
           UTI: 'com.adobe.pdf',
@@ -229,9 +304,14 @@ export function MinimalistCredentialModal({
 
           {/* Visor de PDF Integrado con WebView */}
           <View style={styles.viewerWrapper}>
-            {credentialUrl ? (
+            {loadingPdf ? (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.loaderText}>Cargando credencial digital...</Text>
+              </View>
+            ) : webViewSource ? (
               <WebView
-                source={{ uri: credentialUrl }}
+                source={webViewSource}
                 style={styles.webView}
                 originWhitelist={['*']}
                 allowFileAccess={true}

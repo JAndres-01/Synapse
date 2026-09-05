@@ -22,6 +22,7 @@ import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system/legacy'
 import {
   Sparkles,
   Smartphone,
@@ -358,7 +359,22 @@ export default function ProfileScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0]
-        await updateCredential(asset.uri, asset.name || 'Credencial_Digital.pdf')
+        let permanentUri = asset.uri
+        try {
+          const destDir = `${FileSystem.documentDirectory ?? ''}credentials/`
+          const dirInfo = await FileSystem.getInfoAsync(destDir)
+          if (!dirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(destDir, { intermediates: true })
+          }
+          const cleanName = (asset.name || 'Credencial_Digital.pdf').replace(/[^a-zA-Z0-9._-]/g, '_')
+          const destUri = `${destDir}${Date.now()}_${cleanName}`
+          await FileSystem.copyAsync({ from: asset.uri, to: destUri })
+          permanentUri = destUri
+        } catch (copyErr) {
+          console.warn('[ProfileScreen] Copia permanente:', copyErr)
+        }
+
+        await updateCredential(permanentUri, asset.name || 'Credencial_Digital.pdf')
         triggerHaptic('success')
         setShowCredentialModal(true)
       }

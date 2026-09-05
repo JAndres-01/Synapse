@@ -42,7 +42,7 @@ import { TaskDatePicker } from './modal/TaskDatePicker'
 import { TaskTypePicker } from './modal/TaskTypePicker'
 import { TaskAttachmentSection } from './modal/TaskAttachmentSection'
 import { SCREEN_HEIGHT } from '@/constants/layout'
-import { DEFAULT_USER_ID, DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
+import { DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
 import { logger } from '@/lib/logger'
 
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
@@ -91,8 +91,8 @@ function formatDueDateLabel(dateStr?: string | null): string {
 interface MinimalistTaskModalProps {
   mode: TaskModalMode
   task: Task | null
-  userId: string
-  subjects: Subject[]
+  userId?: string
+  subjects?: Subject[]
   onClose: () => void
   onToggleStatus?: (taskId: string, currentStatus: string) => void
   onDeleteTask?: (taskId: string) => Promise<void>
@@ -372,7 +372,6 @@ export function MinimalistTaskModal({
       } else {
         const fullTask: Task = {
           id: generateId('task'),
-          user_id: userId || DEFAULT_USER_ID,
           ...payload,
           status: 'pending',
           created_at: new Date().toISOString(),

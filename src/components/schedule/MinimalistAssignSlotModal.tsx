@@ -21,7 +21,6 @@ import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
 import { generateId } from '@/lib/idGenerator'
 import { SCREEN_HEIGHT } from '@/constants/layout'
-import { DEFAULT_USER_ID } from '@/constants/defaults'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
 import { logger } from '@/lib/logger'
 
@@ -91,7 +90,6 @@ export function MinimalistAssignSlotModal({
     try {
       const slotData: Schedule = {
         id: existingSchedule?.id || generateId('sched'),
-        user_id: userId || DEFAULT_USER_ID,
         day_of_week: dayOfWeek,
         block_number: blockNumber,
         subject_id: selectedSubjectId,

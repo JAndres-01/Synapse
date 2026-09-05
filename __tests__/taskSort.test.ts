@@ -6,7 +6,6 @@ describe('sortTasksByDueDate', () => {
     const tasks: Task[] = [
       {
         id: 't3',
-        user_id: 'u1',
         title: 'Entrega en 5 días',
         status: 'pending',
         due_date: '2026-09-10T10:00:00.000Z',
@@ -14,7 +13,6 @@ describe('sortTasksByDueDate', () => {
       },
       {
         id: 't1',
-        user_id: 'u1',
         title: 'Entrega mañana',
         status: 'pending',
         due_date: '2026-09-06T10:00:00.000Z',
@@ -22,7 +20,6 @@ describe('sortTasksByDueDate', () => {
       },
       {
         id: 't2',
-        user_id: 'u1',
         title: 'Entrega en 3 días',
         status: 'pending',
         due_date: '2026-09-08T10:00:00.000Z',
@@ -38,14 +35,12 @@ describe('sortTasksByDueDate', () => {
     const tasks: Task[] = [
       {
         id: 'future',
-        user_id: 'u1',
         title: 'Futura',
         status: 'pending',
         due_date: '2026-09-10T10:00:00.000Z',
       },
       {
         id: 'overdue',
-        user_id: 'u1',
         title: 'Atrasada ayer',
         status: 'pending',
         due_date: '2026-09-04T10:00:00.000Z',
@@ -61,7 +56,6 @@ describe('sortTasksByDueDate', () => {
     const tasks: Task[] = [
       {
         id: 'no-date',
-        user_id: 'u1',
         title: 'Sin fecha',
         status: 'pending',
         due_date: null,
@@ -69,7 +63,6 @@ describe('sortTasksByDueDate', () => {
       },
       {
         id: 'with-date',
-        user_id: 'u1',
         title: 'Con fecha',
         status: 'pending',
         due_date: '2026-09-07T10:00:00.000Z',
@@ -86,14 +79,12 @@ describe('sortTasksByDueDate', () => {
     const tasks: Task[] = [
       {
         id: 'completed-earlier',
-        user_id: 'u1',
         title: 'Completada fecha antigua',
         status: 'completed',
         due_date: '2026-09-01T10:00:00.000Z',
       },
       {
         id: 'pending-later',
-        user_id: 'u1',
         title: 'Pendiente fecha posterior',
         status: 'pending',
         due_date: '2026-09-08T10:00:00.000Z',

@@ -5,14 +5,11 @@ import { MinimalistFloatingIsland, type TabKey } from '@/components/navigation/M
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import { MinimalistTaskModal } from '@/components/tasks/MinimalistTaskModal'
 import { useIncomingShareIntent } from '@/lib/useIncomingShareIntent'
-import { DEFAULT_USER_ID } from '@/constants/defaults'
-import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import type { Subject } from '@/types/personal'
 
 export default function TabLayout() {
   const pathname = usePathname()
   const router = useRouter()
-  const { user } = usePersonalAuth()
   const [pendingCount, setPendingCount] = useState(0)
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
 
@@ -95,7 +92,6 @@ export default function TabLayout() {
       <MinimalistTaskModal
         mode={isShareModalOpen ? 'create' : 'none'}
         task={null}
-        userId={user?.id || DEFAULT_USER_ID}
         subjects={subjects}
         initialAttachments={incomingAttachments}
         initialTitle={incomingTitle}

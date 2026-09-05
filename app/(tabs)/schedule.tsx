@@ -11,7 +11,6 @@ import {
   LayoutAnimation,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
-import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
@@ -35,7 +34,6 @@ import { SCREEN_WIDTH } from '@/constants/layout'
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { user } = usePersonalAuth()
 
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
   const [schedules, setSchedules] = useState<Schedule[]>(() => {
@@ -376,29 +374,23 @@ export default function ScheduleScreen() {
       />
 
       {/* Modal de Asignar Bloque (Desde Vista Diaria) */}
-      {user && (
-        <MinimalistAssignSlotModal
-          visible={assignModalData.visible}
-          onClose={() => setAssignModalData((prev) => ({ ...prev, visible: false }))}
-          userId={user.id}
-          subjects={subjects}
-          initialDay={assignModalData.day}
-          initialBlock={assignModalData.block}
-          existingSchedule={assignModalData.existingSchedule}
-          onScheduleSaved={loadData}
-        />
-      )}
+      <MinimalistAssignSlotModal
+        visible={assignModalData.visible}
+        onClose={() => setAssignModalData((prev) => ({ ...prev, visible: false }))}
+        subjects={subjects}
+        initialDay={assignModalData.day}
+        initialBlock={assignModalData.block}
+        existingSchedule={assignModalData.existingSchedule}
+        onScheduleSaved={loadData}
+      />
 
       {/* Modal de Administrar Materias */}
-      {user && (
-        <MinimalistSubjectModal
-          visible={showSubjectModal}
-          onClose={() => setShowSubjectModal(false)}
-          userId={user.id}
-          subjects={subjects}
-          onSubjectsUpdated={loadData}
-        />
-      )}
+      <MinimalistSubjectModal
+        visible={showSubjectModal}
+        onClose={() => setShowSubjectModal(false)}
+        subjects={subjects}
+        onSubjectsUpdated={loadData}
+      />
     </View>
   )
 }

@@ -10,7 +10,6 @@ export interface PersonalProfile {
 
 export interface Subject {
   id: string
-  user_id?: string
   name: string
   code?: string | null
   teacher_name?: string | null
@@ -21,7 +20,6 @@ export interface Subject {
 
 export interface Schedule {
   id: string
-  user_id?: string
   day_of_week: number // 1: Lun, 2: Mar, 3: Mié, 4: Jue, 5: Vie
   block_number: number // 1, 2, 3, 4
   subject_id: string | null
@@ -47,7 +45,6 @@ export interface TaskAttachment {
 
 export interface Task {
   id: string
-  user_id?: string
   subject_id?: string | null
   title: string
   description?: string | null

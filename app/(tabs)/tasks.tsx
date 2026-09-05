@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { Plus, CheckCircle2 } from 'lucide-react-native'
-import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
@@ -38,7 +37,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets()
-  const { user } = usePersonalAuth()
 
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -493,21 +491,18 @@ export default function TasksScreen() {
       </Animated.View>
 
       {/* Modal Unificado de Tareas */}
-      {user && (
-        <MinimalistTaskModal
-          mode={taskModalMode}
-          task={activeTask}
-          userId={user.id}
-          subjects={subjects}
-          onClose={() => {
-            setTaskModalMode('none')
-            setActiveTask(null)
-          }}
-          onToggleStatus={handleToggleStatus}
-          onDeleteTask={handleDeleteTask}
-          onTaskSaved={loadData}
-        />
-      )}
+      <MinimalistTaskModal
+        mode={taskModalMode}
+        task={activeTask}
+        subjects={subjects}
+        onClose={() => {
+          setTaskModalMode('none')
+          setActiveTask(null)
+        }}
+        onToggleStatus={handleToggleStatus}
+        onDeleteTask={handleDeleteTask}
+        onTaskSaved={loadData}
+      />
     </View>
   )
 }

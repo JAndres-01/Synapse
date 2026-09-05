@@ -20,14 +20,13 @@ import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
 import { generateId } from '@/lib/idGenerator'
 import { SCREEN_HEIGHT } from '@/constants/layout'
-import { DEFAULT_USER_ID } from '@/constants/defaults'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
 import { logger } from '@/lib/logger'
 
 interface MinimalistSubjectModalProps {
   visible: boolean
   onClose: () => void
-  userId: string
+  userId?: string
   subjects: Subject[]
   onSubjectsUpdated: () => void
 }
@@ -117,7 +116,6 @@ export function MinimalistSubjectModal({
       } else {
         const newSubject: Subject = {
           id: generateId('subj'),
-          user_id: userId || DEFAULT_USER_ID,
           name: name.trim(),
           teacher_name: teacher.trim() || undefined,
           color: selectedColor,

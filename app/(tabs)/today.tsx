@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native'
-import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Task, Subject } from '@/types/personal'
 import { MinimalistLiveHero } from '@/components/today/MinimalistLiveHero'
@@ -28,7 +27,6 @@ import { useCardEntrance } from '@/hooks/useCardEntrance'
 export default function TodayScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { user } = usePersonalAuth()
 
   const getTodayDayOfWeek = () => {
     const day = new Date().getDay()
@@ -295,21 +293,18 @@ export default function TodayScreen() {
       </ScrollView>
 
       {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
-      {user && (
-        <MinimalistTaskModal
-          mode={taskModalMode}
-          task={activeTask}
-          userId={user.id}
-          subjects={subjects}
-          onClose={() => {
-            setTaskModalMode('none')
-            setActiveTask(null)
-          }}
-          onToggleStatus={handleToggleTaskStatus}
-          onDeleteTask={handleDeleteTask}
-          onTaskSaved={loadData}
-        />
-      )}
+      <MinimalistTaskModal
+        mode={taskModalMode}
+        task={activeTask}
+        subjects={subjects}
+        onClose={() => {
+          setTaskModalMode('none')
+          setActiveTask(null)
+        }}
+        onToggleStatus={handleToggleTaskStatus}
+        onDeleteTask={handleDeleteTask}
+        onTaskSaved={loadData}
+      />
     </View>
   )
 }

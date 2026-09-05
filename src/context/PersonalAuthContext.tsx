@@ -4,17 +4,19 @@ import { cancelAllNotifications } from '@/lib/personalNotifications'
 import type { PersonalProfile } from '@/types/personal'
 import { DEFAULT_USER_ID, DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
-interface PersonalAuthContextType {
-  user: { id: string } | null
+interface PersonalProfileContextType {
   profile: PersonalProfile | null
   updateProfile: (fullName: string) => Promise<void>
   updateCredential: (credentialUrl: string | null, credentialName?: string | null) => Promise<void>
   clearData: () => Promise<void>
 }
 
-const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(undefined)
+export type PersonalAuthContextType = PersonalProfileContextType
+export type ProfileContextType = PersonalProfileContextType
 
-export function PersonalAuthProvider({ children }: { children: ReactNode }) {
+const PersonalProfileContext = createContext<PersonalProfileContextType | undefined>(undefined)
+
+export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
 
   const loadLocalProfile = async () => {
@@ -67,7 +69,6 @@ export function PersonalAuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      user: { id: profile?.id || DEFAULT_USER_ID },
       profile,
       updateProfile,
       updateCredential,
@@ -77,16 +78,20 @@ export function PersonalAuthProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <PersonalAuthContext.Provider value={value}>
+    <PersonalProfileContext.Provider value={value}>
       {children}
-    </PersonalAuthContext.Provider>
+    </PersonalProfileContext.Provider>
   )
 }
 
-export function usePersonalAuth() {
-  const context = useContext(PersonalAuthContext)
+export const PersonalAuthProvider = ProfileProvider
+
+export function useProfile() {
+  const context = useContext(PersonalProfileContext)
   if (!context) {
-    throw new Error('usePersonalAuth must be used within a PersonalAuthProvider')
+    throw new Error('useProfile must be used within a ProfileProvider')
   }
   return context
 }
+
+export const usePersonalAuth = useProfile

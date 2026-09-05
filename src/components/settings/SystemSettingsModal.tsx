@@ -1,0 +1,805 @@
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  View,
+  Text,
+  Modal,
+  ScrollView,
+  Pressable,
+  Switch,
+  StyleSheet,
+  Animated,
+  Platform,
+  PanResponder,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import {
+  X,
+  ChevronRight,
+  Bell,
+  Clock,
+  BookOpen,
+  Calendar,
+  RotateCcw,
+  IdCard,
+  User,
+  Smartphone,
+  Sparkles,
+  Trash2,
+} from 'lucide-react-native'
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
+import type { PersonalProfile } from '@/types/personal'
+import { APPLE_EASING } from '@/constants/animations'
+import { MONTHS_SHORT } from '@/constants/dates'
+import { triggerHaptic } from '@/lib/personalHaptics'
+
+export interface SystemSettingsModalProps {
+  visible: boolean
+  onClose: () => void
+  profile: PersonalProfile | null
+  onOpenEditName: () => void
+  onOpenCredential: () => void
+  onUploadCredential: () => void
+  advanceReminderEnabled: boolean
+  onToggleAdvanceReminder: (val: boolean) => void
+  advanceReminderTime: string
+  onOpenTimeModal: () => void
+  classReminderEnabled: boolean
+  onToggleClassReminder: (val: boolean) => void
+  fallStart: string
+  fallEnd: string
+  springStart: string
+  springEnd: string
+  onUpdateSemesterDate: (
+    type: 'fall_start' | 'fall_end' | 'spring_start' | 'spring_end',
+    date: Date
+  ) => void
+  onResetSemesterDates: () => void
+  hapticsEnabled: boolean
+  onToggleHaptics: (val: boolean) => void
+  confettiEnabled: boolean
+  onToggleConfetti: (val: boolean) => void
+  onClearData: () => void
+}
+
+function parseDateString(
+  str?: string,
+  defaultYear?: number,
+  defaultMonth?: number,
+  defaultDay?: number
+): Date {
+  if (str) {
+    const parts = str.split('-').map((p) => parseInt(p, 10))
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0)
+    }
+  }
+  const y = defaultYear || new Date().getFullYear()
+  const m = defaultMonth !== undefined ? defaultMonth : 0
+  const d = defaultDay || 1
+  return new Date(y, m, d, 12, 0, 0)
+}
+
+function formatReadableDate(str?: string, fallback: string = ''): string {
+  if (!str) return fallback
+  try {
+    const parts = str.split('-').map((n) => parseInt(n, 10))
+    const m = parts[1]
+    const d = parts[2]
+    return `${d} ${MONTHS_SHORT[m - 1]}`
+  } catch {
+    return fallback
+  }
+}
+
+function formatTimeDisplay(timeStr?: string): string {
+  if (!timeStr) return '8:00 PM'
+  const [h, m] = timeStr.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+export function SystemSettingsModal({
+  visible,
+  onClose,
+  profile,
+  onOpenEditName,
+  onOpenCredential,
+  onUploadCredential,
+  advanceReminderEnabled,
+  onToggleAdvanceReminder,
+  advanceReminderTime,
+  onOpenTimeModal,
+  classReminderEnabled,
+  onToggleClassReminder,
+  fallStart,
+  fallEnd,
+  springStart,
+  springEnd,
+  onUpdateSemesterDate,
+  onResetSemesterDates,
+  hapticsEnabled,
+  onToggleHaptics,
+  confettiEnabled,
+  onToggleConfetti,
+  onClearData,
+}: SystemSettingsModalProps) {
+  const insets = useSafeAreaInsets()
+  const currentYear = new Date().getFullYear()
+  const [activeDatePicker, setActiveDatePicker] = useState<
+    'fall_start' | 'fall_end' | 'spring_start' | 'spring_end' | null
+  >(null)
+
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(500)).current
+  const panY = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(500)
+      fadeAnim.setValue(0)
+      panY.setValue(0)
+      setActiveDatePicker(null)
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 180,
+          easing: APPLE_EASING,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          stiffness: 450,
+          damping: 30,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [visible])
+
+  const handleClose = () => {
+    triggerHaptic('light')
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 500, duration: 180, useNativeDriver: true }),
+      Animated.timing(panY, { toValue: 0, duration: 150, useNativeDriver: true }),
+    ]).start(() => {
+      onClose()
+    })
+  }
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 90 || gestureState.vy > 0.45) {
+          handleClose()
+        } else {
+          Animated.spring(panY, {
+            toValue: 0,
+            damping: 25,
+            stiffness: 400,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+      <View style={styles.modalBackdrop}>
+        {/* Backdrop con Fade */}
+        <Animated.View style={[styles.backdropTouch, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        </Animated.View>
+
+        {/* Hoja Deslizante con PanResponder */}
+        <Animated.View
+          style={[
+            styles.settingsSheetContainer,
+            {
+              paddingBottom: Math.max(insets.bottom, 20) + 16,
+              transform: [{ translateY: slideAnim }, { translateY: panY }],
+            },
+          ]}
+        >
+          {/* Tirador Superior y Cabecera */}
+          <View {...panResponder.panHandlers}>
+            <View style={styles.dragHandle} />
+
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Ajustes del Sistema</Text>
+                <Text style={styles.modalSubtitle}>Preferencias de la aplicación</Text>
+              </View>
+              <Pressable onPress={handleClose} hitSlop={12} style={styles.modalCloseBtn}>
+                <X size={18} color="#A1A1AA" />
+              </Pressable>
+            </View>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.settingsSheetScroll}>
+            {/* Sección: Cuenta y Perfil */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionHeaderTitle}>Cuenta y Perfil</Text>
+
+              {/* Cambiar Nombre */}
+              <Pressable
+                onPress={() => {
+                  handleClose()
+                  setTimeout(() => {
+                    onOpenEditName()
+                  }, 180)
+                }}
+                style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+              >
+                <User size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Nombre de estudiante</Text>
+                  <Text style={styles.itemSubtitle}>{profile?.full_name || 'Estudiante'}</Text>
+                </View>
+                <View style={styles.timeValueRow}>
+                  <Text style={styles.timeValueText}>Cambiar</Text>
+                  <ChevronRight size={14} color="#71717A" />
+                </View>
+              </Pressable>
+
+              <View style={styles.hairlineDivider} />
+
+              {/* Credencial Digital */}
+              <Pressable
+                onPress={() => {
+                  handleClose()
+                  setTimeout(() => {
+                    if (profile?.student_credential_url) {
+                      onOpenCredential()
+                    } else {
+                      onUploadCredential()
+                    }
+                  }, 180)
+                }}
+                style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+              >
+                <IdCard size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Credencial digital (PDF)</Text>
+                  <Text style={styles.itemSubtitle}>
+                    {profile?.student_credential_url
+                      ? profile.student_credential_name || 'Credencial vinculada'
+                      : 'Sin archivo PDF vinculado'}
+                  </Text>
+                </View>
+                <View style={styles.timeValueRow}>
+                  <Text style={styles.timeValueText}>
+                    {profile?.student_credential_url ? 'Ver' : 'Subir'}
+                  </Text>
+                  <ChevronRight size={14} color="#71717A" />
+                </View>
+              </Pressable>
+            </View>
+
+            <View style={styles.sectionDivider} />
+
+            {/* Sección: Recordatorios Automáticos */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionHeaderTitle}>Recordatorios Automáticos</Text>
+
+              {/* Aviso de Entregas */}
+              <View style={styles.itemRow}>
+                <Bell size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Aviso de entregas</Text>
+                  <Text style={styles.itemSubtitle}>Notificar la noche anterior a la hora elegida</Text>
+                </View>
+                <Switch
+                  value={advanceReminderEnabled}
+                  onValueChange={onToggleAdvanceReminder}
+                  trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                  thumbColor={advanceReminderEnabled ? '#09090B' : '#71717A'}
+                  ios_backgroundColor="#27272A"
+                />
+              </View>
+
+              {/* Selector de Hora */}
+              {advanceReminderEnabled && (
+                <>
+                  <View style={styles.hairlineDivider} />
+                  <Pressable
+                    onPress={onOpenTimeModal}
+                    style={({ pressed }) => [styles.itemRowPressable, pressed && styles.rowPressed]}
+                  >
+                    <Clock size={18} color="#A1A1AA" style={styles.itemIcon} />
+                    <View style={styles.itemContent}>
+                      <Text style={styles.itemTitle}>Hora del recordatorio</Text>
+                      <Text style={styles.itemSubtitle}>Momento del aviso previo a la entrega</Text>
+                    </View>
+                    <View style={styles.timeValueRow}>
+                      <Text style={styles.timeValueText}>
+                        {formatTimeDisplay(advanceReminderTime)}
+                      </Text>
+                      <ChevronRight size={14} color="#71717A" />
+                    </View>
+                  </Pressable>
+                </>
+              )}
+
+              <View style={styles.hairlineDivider} />
+
+              {/* Aviso de Próxima Clase */}
+              <View style={styles.itemRow}>
+                <BookOpen size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Aviso de próxima clase</Text>
+                  <Text style={styles.itemSubtitle}>10 min antes con el nombre de la materia</Text>
+                </View>
+                <Switch
+                  value={classReminderEnabled}
+                  onValueChange={onToggleClassReminder}
+                  trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                  thumbColor={classReminderEnabled ? '#09090B' : '#71717A'}
+                  ios_backgroundColor="#27272A"
+                />
+              </View>
+            </View>
+
+            <View style={styles.sectionDivider} />
+
+            {/* Sección: Periodos de Semestre */}
+            <View style={styles.settingsSection}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionHeaderTitle}>Periodos de Semestre</Text>
+                <Pressable
+                  onPress={onResetSemesterDates}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.resetPresetBtn, pressed && styles.rowPressed]}
+                >
+                  <RotateCcw size={11} color="#71717A" />
+                  <Text style={styles.resetPresetText}>Restablecer</Text>
+                </Pressable>
+              </View>
+
+              {/* Semestre Otoño (Ago - Dic) */}
+              <View style={styles.semesterConfigBox}>
+                <View style={styles.semesterTitleRow}>
+                  <Calendar size={14} color="#FF6B00" />
+                  <Text style={styles.semesterBoxTitle}>Otoño (Agosto - Diciembre)</Text>
+                </View>
+
+                <View style={styles.datesPillsRow}>
+                  <Pressable
+                    onPress={() => {
+                      triggerHaptic('light')
+                      setActiveDatePicker(activeDatePicker === 'fall_start' ? null : 'fall_start')
+                    }}
+                    style={[
+                      styles.datePillBtn,
+                      activeDatePicker === 'fall_start' && styles.datePillBtnActive,
+                    ]}
+                  >
+                    <Text style={styles.datePillLabel}>Inicio</Text>
+                    <Text style={styles.datePillValue}>{formatReadableDate(fallStart, '01 Ago')}</Text>
+                  </Pressable>
+
+                  <Text style={styles.datePillArrow}>→</Text>
+
+                  <Pressable
+                    onPress={() => {
+                      triggerHaptic('light')
+                      setActiveDatePicker(activeDatePicker === 'fall_end' ? null : 'fall_end')
+                    }}
+                    style={[
+                      styles.datePillBtn,
+                      activeDatePicker === 'fall_end' && styles.datePillBtnActive,
+                    ]}
+                  >
+                    <Text style={styles.datePillLabel}>Fin</Text>
+                    <Text style={styles.datePillValue}>{formatReadableDate(fallEnd, '31 Dic')}</Text>
+                  </Pressable>
+                </View>
+
+                {/* Inline Date Picker si está activo para Otoño */}
+                {(activeDatePicker === 'fall_start' || activeDatePicker === 'fall_end') && (
+                  <View style={styles.inlinePickerContainer}>
+                    <Text style={styles.inlinePickerHeader}>
+                      {activeDatePicker === 'fall_start'
+                        ? 'Fecha de Inicio (Otoño)'
+                        : 'Fecha de Fin (Otoño)'}
+                    </Text>
+                    <DateTimePicker
+                      value={parseDateString(
+                        activeDatePicker === 'fall_start' ? fallStart : fallEnd,
+                        currentYear,
+                        activeDatePicker === 'fall_start' ? 7 : 11,
+                        activeDatePicker === 'fall_start' ? 1 : 31
+                      )}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      themeVariant="dark"
+                      locale="es-ES"
+                      onChange={(_: DateTimePickerEvent, d?: Date) => {
+                        if (d) {
+                          onUpdateSemesterDate(activeDatePicker, d)
+                          if (Platform.OS === 'android') setActiveDatePicker(null)
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+
+              {/* Semestre Primavera (Feb - Jun) */}
+              <View style={styles.semesterConfigBox}>
+                <View style={styles.semesterTitleRow}>
+                  <Calendar size={14} color="#34D399" />
+                  <Text style={styles.semesterBoxTitle}>Primavera (Febrero - Junio)</Text>
+                </View>
+
+                <View style={styles.datesPillsRow}>
+                  <Pressable
+                    onPress={() => {
+                      triggerHaptic('light')
+                      setActiveDatePicker(activeDatePicker === 'spring_start' ? null : 'spring_start')
+                    }}
+                    style={[
+                      styles.datePillBtn,
+                      activeDatePicker === 'spring_start' && styles.datePillBtnActive,
+                    ]}
+                  >
+                    <Text style={styles.datePillLabel}>Inicio</Text>
+                    <Text style={styles.datePillValue}>{formatReadableDate(springStart, '01 Feb')}</Text>
+                  </Pressable>
+
+                  <Text style={styles.datePillArrow}>→</Text>
+
+                  <Pressable
+                    onPress={() => {
+                      triggerHaptic('light')
+                      setActiveDatePicker(activeDatePicker === 'spring_end' ? null : 'spring_end')
+                    }}
+                    style={[
+                      styles.datePillBtn,
+                      activeDatePicker === 'spring_end' && styles.datePillBtnActive,
+                    ]}
+                  >
+                    <Text style={styles.datePillLabel}>Fin</Text>
+                    <Text style={styles.datePillValue}>{formatReadableDate(springEnd, '30 Jun')}</Text>
+                  </Pressable>
+                </View>
+
+                {/* Inline Date Picker si está activo para Primavera */}
+                {(activeDatePicker === 'spring_start' || activeDatePicker === 'spring_end') && (
+                  <View style={styles.inlinePickerContainer}>
+                    <Text style={styles.inlinePickerHeader}>
+                      {activeDatePicker === 'spring_start'
+                        ? 'Fecha de Inicio (Primavera)'
+                        : 'Fecha de Fin (Primavera)'}
+                    </Text>
+                    <DateTimePicker
+                      value={parseDateString(
+                        activeDatePicker === 'spring_start' ? springStart : springEnd,
+                        currentYear,
+                        activeDatePicker === 'spring_start' ? 1 : 5,
+                        activeDatePicker === 'spring_start' ? 1 : 30
+                      )}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      themeVariant="dark"
+                      locale="es-ES"
+                      onChange={(_: DateTimePickerEvent, d?: Date) => {
+                        if (d) {
+                          onUpdateSemesterDate(activeDatePicker, d)
+                          if (Platform.OS === 'android') setActiveDatePicker(null)
+                        }
+                      }}
+                    />
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.sectionDivider} />
+
+            {/* Sección: Experiencia y Respuesta */}
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionHeaderTitle}>Experiencia y Respuesta</Text>
+
+              {/* Respuesta Háptica */}
+              <View style={styles.itemRow}>
+                <Smartphone size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Vibración háptica</Text>
+                  <Text style={styles.itemSubtitle}>Retroalimentación táctil nativa</Text>
+                </View>
+                <Switch
+                  value={hapticsEnabled}
+                  onValueChange={onToggleHaptics}
+                  trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                  thumbColor={hapticsEnabled ? '#09090B' : '#71717A'}
+                  ios_backgroundColor="#27272A"
+                />
+              </View>
+
+              <View style={styles.hairlineDivider} />
+
+              {/* Animación Festiva */}
+              <View style={styles.itemRow}>
+                <Sparkles size={18} color="#A1A1AA" style={styles.itemIcon} />
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemTitle}>Animación festiva</Text>
+                  <Text style={styles.itemSubtitle}>Confetti al completar entregas</Text>
+                </View>
+                <Switch
+                  value={confettiEnabled}
+                  onValueChange={onToggleConfetti}
+                  trackColor={{ false: '#27272A', true: '#FFFFFF' }}
+                  thumbColor={confettiEnabled ? '#09090B' : '#71717A'}
+                  ios_backgroundColor="#27272A"
+                />
+              </View>
+            </View>
+
+            <View style={styles.sectionDivider} />
+
+            {/* Restablecer Datos */}
+            <Pressable
+              onPress={onClearData}
+              style={({ pressed }) => [styles.clearRow, pressed && styles.rowPressed]}
+            >
+              <Trash2 size={16} color="#EF4444" />
+              <Text style={styles.clearBtnText}>Restablecer Datos Locales</Text>
+            </Pressable>
+
+            <Text style={styles.versionText}>Synapse v2.0</Text>
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  backdropTouch: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+  },
+  settingsSheetContainer: {
+    backgroundColor: '#121214',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: '82%',
+    borderWidth: 1,
+    borderColor: '#27272A',
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3F3F46',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+  },
+  modalSubtitle: {
+    color: '#71717A',
+    fontSize: 12.5,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsSheetScroll: {
+    marginBottom: 12,
+  },
+  settingsSection: {
+    backgroundColor: '#18181B',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    padding: 16,
+    gap: 12,
+  },
+  sectionHeaderTitle: {
+    color: '#71717A',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resetPresetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  resetPresetText: {
+    color: '#71717A',
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  itemRowPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  rowPressed: {
+    opacity: 0.7,
+  },
+  itemIcon: {
+    width: 18,
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  itemSubtitle: {
+    color: '#71717A',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  timeValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeValueText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  hairlineDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  sectionDivider: {
+    height: 16,
+  },
+  semesterConfigBox: {
+    backgroundColor: '#121214',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#222226',
+    padding: 12,
+    gap: 10,
+  },
+  semesterTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  semesterBoxTitle: {
+    color: '#E4E4E7',
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  datesPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  datePillBtn: {
+    flex: 1,
+    backgroundColor: '#18181B',
+    borderWidth: 1,
+    borderColor: '#27272A',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  datePillBtnActive: {
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  datePillLabel: {
+    color: '#71717A',
+    fontSize: 9.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  datePillValue: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  datePillArrow: {
+    color: '#52525B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  inlinePickerContainer: {
+    backgroundColor: '#18181B',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#27272A',
+    alignItems: 'center',
+  },
+  inlinePickerHeader: {
+    color: '#A1A1AA',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  clearRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  clearBtnText: {
+    color: '#EF4444',
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
+  versionText: {
+    color: '#3F3F46',
+    fontSize: 11.5,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+})

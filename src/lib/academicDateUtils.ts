@@ -101,7 +101,7 @@ export interface FormattedHour12 {
 }
 
 /**
- * Convierte hora y minutos de 24 horas a formato 12 horas canónico de Synapse.
+ * Convierte hora y minutos de 24 horas a formato 12 horas canónico de Zora.
  */
 export function formatHour12(hour: number, minute: number = 0): FormattedHour12 {
   const ampm: 'AM' | 'PM' = hour >= 12 ? 'PM' : 'AM'

@@ -9,11 +9,11 @@ import {
 import { logger } from './logger'
 
 const KEYS = {
-  SUBJECTS: 'synapse_personal_subjects_v2',
-  SCHEDULES: 'synapse_personal_schedules_v2',
-  TASKS: 'synapse_personal_tasks_v2',
-  PROFILE: 'synapse_personal_profile_v2',
-  PREFERENCES: 'synapse_personal_prefs_v2',
+  SUBJECTS: 'zora_personal_subjects_v2',
+  SCHEDULES: 'zora_personal_schedules_v2',
+  TASKS: 'zora_personal_tasks_v2',
+  PROFILE: 'zora_personal_profile_v2',
+  PREFERENCES: 'zora_personal_prefs_v2',
 }
 
 // ==========================================
@@ -412,7 +412,7 @@ export const personalStorage = {
     ])
     return JSON.stringify(
       {
-        app: 'Synapse',
+        app: 'Zora',
         version: '2.0-local',
         exported_at: new Date().toISOString(),
         subjects,

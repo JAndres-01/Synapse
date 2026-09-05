@@ -13,7 +13,7 @@ export default function TabLayout() {
   const [pendingCount, setPendingCount] = useState(0)
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
 
-  // Integración "Compartir con Synapse" (Share Extension / Send Intent)
+  // Integración "Compartir con Zora" (Share Extension / Send Intent)
   const {
     isShareModalOpen,
     incomingAttachments,
@@ -88,7 +88,7 @@ export default function TabLayout() {
         pendingTasksCount={pendingCount}
       />
 
-      {/* Modal reactivo automático para "Compartir con Synapse" */}
+      {/* Modal reactivo automático para "Compartir con Zora" */}
       <MinimalistTaskModal
         mode={isShareModalOpen ? 'create' : 'none'}
         task={null}

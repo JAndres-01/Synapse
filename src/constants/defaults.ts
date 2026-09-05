@@ -1,5 +1,5 @@
 /**
- * Valores por defecto del dominio académico y de usuario en Synapse.
+ * Valores por defecto del dominio académico y de usuario en Zora.
  */
 
 export const DEFAULT_USER_ID = 'local_user'

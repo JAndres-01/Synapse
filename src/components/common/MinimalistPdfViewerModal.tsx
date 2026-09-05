@@ -96,7 +96,7 @@ export function MinimalistPdfViewerModal({
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {pdfTitle || 'Documento PDF'}
               </Text>
-              <Text style={styles.headerSubtitle}>Visor Integrado Synapse</Text>
+              <Text style={styles.headerSubtitle}>Visor Integrado Zora</Text>
             </View>
           </View>
 

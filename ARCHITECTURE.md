@@ -1,4 +1,4 @@
-# Arquitectura del Sistema — Synapse 2.0 (Mobile Native)
+# Arquitectura del Sistema — Zora 2.0 (Mobile Native)
 
 **Documento de Arquitectura de Software y Especificación Técnica**  
 **Versión:** 2.0.0 Producción  
@@ -10,7 +10,7 @@
 
 ## 1. Visión General y Principios de Arquitectura
 
-Synapse es un asistente académico y organizador personal para estudiantes universitarios, implementado de forma nativa sobre React Native y Expo. La arquitectura responde a un requerimiento de diseño fundamental: **autonomía operativa total y soberanía de datos**, permitiendo al usuario registrar materias, planificar horarios, gestionar entregas y consultar su credencial digital sin requerir conectividad de red ni depender de servidores centrales.
+Zora es un asistente académico y organizador personal para estudiantes universitarios, implementado de forma nativa sobre React Native y Expo. La arquitectura responde a un requerimiento de diseño fundamental: **autonomía operativa total y soberanía de datos**, permitiendo al usuario registrar materias, planificar horarios, gestionar entregas y consultar su credencial digital sin requerir conectividad de red ni depender de servidores centrales.
 
 ### 1.1. Principios de Ingeniería
 
@@ -86,7 +86,7 @@ graph TD
 La estructura del código fuente refleja la separación entre navegación, presentación, constantes, contexto y lógica de dominio:
 
 ```text
-Synapse/
+Zora/
 ├── app/                              # Sistema de rutas basado en archivos (Expo Router)
 │   ├── _layout.tsx                   # Layout raíz (SafeAreaProvider, tema global)
 │   ├── index.tsx                     # Punto de entrada y redirección a (tabs)/today
@@ -138,7 +138,7 @@ Synapse/
 
 ## 4. Capa de Almacenamiento: Dual In-Memory + Persistent Store
 
-El acceso constante a almacenamiento persistente en dispositivos móviles puede generar bloqueos o caídas de fluidez si se realiza de forma asíncrona no coordinada. Synapse implementa un patrón **In-Memory Cache + Persistent Store**:
+El acceso constante a almacenamiento persistente en dispositivos móviles puede generar bloqueos o caídas de fluidez si se realiza de forma asíncrona no coordinada. Zora implementa un patrón **In-Memory Cache + Persistent Store**:
 
 ```typescript
 // Variables en memoria para acceso síncrono inmediato:

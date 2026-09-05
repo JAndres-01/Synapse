@@ -75,7 +75,7 @@ describe('personalStorage Local-First Engine', () => {
     const backupJson = await personalStorage.exportBackup()
     expect(typeof backupJson).toBe('string')
     const parsed = JSON.parse(backupJson)
-    expect(parsed.app).toBe('Synapse')
+    expect(parsed.app).toBe('Zora')
     expect(parsed.subjects).toHaveLength(1)
     expect(parsed.tasks).toHaveLength(1)
 

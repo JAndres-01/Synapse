@@ -121,7 +121,7 @@ export function useIncomingShareIntent() {
     }
   }, [hasShareIntent, shareIntent])
 
-  // 2. Manejo de Deep Linking como respaldo (e.g. synapse://share-task?uri=...&name=...)
+  // 2. Manejo de Deep Linking como respaldo (e.g. zora://share-task?uri=...&name=...)
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
       try {

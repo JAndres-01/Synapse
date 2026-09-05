@@ -502,7 +502,7 @@ export function SystemSettingsModal({
               <Text style={styles.clearBtnText}>Restablecer Datos Locales</Text>
             </Pressable>
 
-            <Text style={styles.versionText}>Synapse v2.0</Text>
+            <Text style={styles.versionText}>Zora v2.0</Text>
           </ScrollView>
         </Animated.View>
       </View>

@@ -24,7 +24,7 @@ export function setupNotificationInfrastructure(): void {
 
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
-        name: 'Synapse',
+        name: 'Zora',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FFFFFF',

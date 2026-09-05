@@ -1,4 +1,4 @@
-# PRD — Synapse: Asistente Académico Personal Local-First (Mobile Native)
+# PRD — Zora: Asistente Académico Personal Local-First (Mobile Native)
 
 **Documento de Requisitos de Producto y Arquitectura Maestra**  
 **Versión:** 2.0 Producción  
@@ -19,7 +19,7 @@ Los estudiantes universitarios se enfrentan a una fragmentación constante de in
 3. **Pérdida de identidad y accesos rápidos:** Portar la credencial escolar física o buscar el PDF con el código QR en carpetas de archivos del teléfono durante el ingreso al campus resulta ineficiente.
 
 ### 1.2. Propuesta de Valor y Filosofía
-**Synapse 2.0** es un asistente académico personal, nativo y ultra minimalista para dispositivos móviles. Diseñado bajo la premisa de **soberanía de datos y cero latencia**:
+**Zora 2.0** es un asistente académico personal, nativo y ultra minimalista para dispositivos móviles. Diseñado bajo la premisa de **soberanía de datos y cero latencia**:
 - **100% Local-First:** Todos los datos (materias, horarios, tareas, credencial digital y preferencias) residen y persisten de forma privada en el almacenamiento local del dispositivo mediante `@react-native-async-storage/async-storage`.
 - **Cero latencia:** Arquitectura de caché reactivo en memoria con listeners síncronos, garantizando transiciones a 60/120 FPS sin pantallas de carga de red.
 - **Identificación escolar inmediata:** Visor integrado de credencial digital estudiantil en PDF con acceso directo a código QR.
@@ -64,7 +64,7 @@ La jornada académica universitaria se divide en **4 bloques continuos de 90 min
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│                    SYNAPSE 2.0 (EXPO)                     │
+│                     ZORA 2.0 (EXPO)                       │
 ├───────────────────────────────────────────────────────────┤
 │                                                           │
 │  [ (tabs): Cronograma | Horario | Tareas | Ajustes ]      │

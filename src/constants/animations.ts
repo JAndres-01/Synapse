@@ -3,7 +3,7 @@ import { Easing, LayoutAnimation } from 'react-native'
 export const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 
 /**
- * ─── FILOSOFÍA DE ANIMACIONES — SYNAPSE ────────────────────────────────────
+ * ─── FILOSOFÍA DE ANIMACIONES — ZORA ───────────────────────────────────────
  *
  * Estilo canónico: easeInEaseOut
  * ─────────────────────────────
@@ -18,7 +18,7 @@ export const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
  */
 
 /**
- * Configuración LayoutAnimation estándar de Synapse.
+ * Configuración LayoutAnimation estándar de Zora.
  * Usar para reposicionamiento de listas, cambios de panel, entrada/salida de filas.
  * - update: easeInEaseOut (sin rebote)
  * - create/delete: easeInEaseOut con opacity

@@ -1,11 +1,11 @@
-# Synapse 2.0 — Asistente Académico Universitario Nativo
+# Zora 2.0 — Asistente Académico Universitario Nativo
 
 [![React Native](https://img.shields.io/badge/React_Native-0.86.3-000000?style=for-the-badge&logo=react)](https://reactnative.dev/)
 [![Expo SDK](https://img.shields.io/badge/Expo_SDK-57.0.0-000000?style=for-the-badge&logo=expo)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-000000?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-100%25_Local--First-000000?style=for-the-badge)](./ARCHITECTURE.md)
 
-**Synapse** es una aplicación móvil académica de alto rendimiento diseñada específicamente para estudiantes universitarios. Implementada con una arquitectura **100% Local-First**, garantiza soberanía absoluta sobre los datos personales y académicos, operando de manera completamente autónoma sin depender de servidores en la nube ni conexión a internet.
+**Zora** es una aplicación móvil académica de alto rendimiento diseñada específicamente para estudiantes universitarios. Implementada con una arquitectura **100% Local-First**, garantiza soberanía absoluta sobre los datos personales y académicos, operando de manera completamente autónoma sin depender de servidores en la nube ni conexión a internet.
 
 ---
 
@@ -69,8 +69,8 @@
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/JAndres-01/Synapse.git
-cd Synapse
+git clone https://github.com/JAndres-01/Zora.git
+cd Zora
 
 # 2. Instalar dependencias
 npm install
@@ -88,7 +88,7 @@ Desde la consola interactiva de Expo:
 
 ## 🧪 Pruebas y Control de Calidad
 
-Synapse cuenta con una cobertura completa de pruebas unitarias sobre sus motores matemáticos de horarios, utilidades de fecha académica y capa de persistencia local:
+Zora cuenta con una cobertura completa de pruebas unitarias sobre sus motores matemáticos de horarios, utilidades de fecha académica y capa de persistencia local:
 
 ```bash
 # Ejecutar la suite completa de pruebas unitarias
@@ -103,7 +103,7 @@ npx tsc --noEmit
 ## 📂 Estructura del Código
 
 ```text
-Synapse/
+Zora/
 ├── app/                              # Rutas basadas en archivos (Expo Router)
 │   ├── _layout.tsx                   # Layout raíz con proveedores globales
 │   ├── index.tsx                     # Redirección inicial hacia (tabs)/today

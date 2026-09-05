@@ -132,7 +132,7 @@ export function EditProfileModal({
           <View style={styles.sheetHeader}>
             <View>
               <Text style={styles.modalTitle}>Editar Nombre</Text>
-              <Text style={styles.modalSubtitle}>Cómo te saluda Synapse</Text>
+              <Text style={styles.modalSubtitle}>Cómo te saluda Zora</Text>
             </View>
             <Pressable onPress={handleClose} hitSlop={12} style={styles.modalCloseBtn}>
               <X size={18} color="#A1A1AA" />

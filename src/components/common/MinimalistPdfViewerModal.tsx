@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#18181B',
   },
   loadingBox: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#09090B',
     alignItems: 'center',
     justifyContent: 'center',

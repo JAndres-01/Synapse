@@ -160,7 +160,7 @@ export const MinimalistConfetti = memo(function MinimalistConfetti({ burstTrigge
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 9999,
   },
   confettiPiece: {

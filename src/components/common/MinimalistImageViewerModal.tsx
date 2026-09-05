@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.96)',
   },
   headerHUD: {

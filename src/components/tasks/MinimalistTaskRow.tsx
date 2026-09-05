@@ -494,17 +494,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   swipeBackgroundContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 14,
     overflow: 'hidden',
   },
   swipeLeftBackgroundGrey: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#27272A',
     borderRadius: 14,
   },
   swipeLeftBackgroundGreen: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#10B981',
     borderRadius: 14,
   },
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   highlightOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: 'rgba(255, 255, 255, 0.35)',
     borderWidth: 1,

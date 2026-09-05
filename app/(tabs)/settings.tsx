@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   backdropTouch: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.72)',
   },
   settingsSheetContainer: {

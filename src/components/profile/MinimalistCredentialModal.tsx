@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
   },
   sheetContainer: {
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#09090B',
     alignItems: 'center',
     justifyContent: 'center',
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   errorOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#09090B',
     alignItems: 'center',
     justifyContent: 'center',

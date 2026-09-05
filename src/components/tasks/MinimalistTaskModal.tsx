@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Image,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -14,45 +13,33 @@ import {
   Animated,
   Dimensions,
   Keyboard,
-  Easing,
   PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Subject, TaskType, TaskAttachment, Schedule } from '@/types/personal'
 import {
-  X,
-  Clock,
-  Trash2,
-  Edit2,
-  Check,
-  Paperclip,
-  ExternalLink,
   Camera,
   Image as ImageIcon,
-  Link2,
   ChevronDown,
-  ChevronRight,
   Calendar,
   Layers,
   ArrowLeft,
-  Maximize2,
-  Rocket,
   FileText,
-  Users,
-  GraduationCap,
 } from 'lucide-react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as DocumentPicker from 'expo-document-picker'
-import * as Sharing from 'expo-sharing'
-import * as Linking from 'expo-linking'
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { MinimalistPdfViewerModal } from '@/components/common/MinimalistPdfViewerModal'
 import { MinimalistImageViewerModal } from '@/components/common/MinimalistImageViewerModal'
 import { APPLE_EASING } from '@/constants/animations'
-import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
-import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
+import { isWhiteColor } from '@/constants/theme'
+import { DAYS_SHORT } from '@/constants/dates'
+import { TaskDetailView } from './modal/TaskDetailView'
+import { TaskSubjectPicker } from './modal/TaskSubjectPicker'
+import { TaskDatePicker } from './modal/TaskDatePicker'
+import { TaskTypePicker } from './modal/TaskTypePicker'
+import { TaskAttachmentSection } from './modal/TaskAttachmentSection'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -60,7 +47,7 @@ export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
 function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
   const now = new Date()
-  const currentDay = now.getDay() // 0: Dom, 1: Lun, ..., 5: Vie, 6: Sáb
+  const currentDay = now.getDay()
   const [h, m] = timeStr.split(':').map(Number)
 
   let daysToAdd = (dayOfWeek - currentDay + 7) % 7
@@ -79,29 +66,28 @@ function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
   return targetDate
 }
 
-function formatManualDateOnly(dateStr?: string | null): string {
-  if (!dateStr) return 'Elegir día'
+function formatDueDateLabel(dateStr?: string | null): string {
+  if (!dateStr) return 'Fecha'
   try {
     const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return 'Elegir día'
-    return `${DAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`
-  } catch {
-    return 'Elegir día'
-  }
-}
+    if (isNaN(d.getTime())) return 'Fecha'
+    const now = new Date()
+    const isToday = d.toDateString() === now.toDateString()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const isTomorrow = d.toDateString() === tomorrow.toDateString()
 
-function formatManualTimeOnly(dateStr?: string | null): string {
-  if (!dateStr) return '11:59 PM'
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return '11:59 PM'
     const hours = d.getHours()
-    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const mins = String(d.getMinutes()).padStart(2, '0')
     const ampm = hours >= 12 ? 'PM' : 'AM'
-    const h12 = hours % 12 || 12
-    return `${h12}:${minutes} ${ampm}`
+    const hStr = hours % 12 || 12
+    const timePart = `${hStr}:${mins} ${ampm}`
+
+    if (isToday) return `Hoy ${timePart}`
+    if (isTomorrow) return `Mañana ${timePart}`
+    return `${DAYS_SHORT[d.getDay()]} ${d.getDate()} (${timePart})`
   } catch {
-    return '11:59 PM'
+    return 'Fecha'
   }
 }
 
@@ -125,8 +111,6 @@ export function MinimalistTaskModal({
   userId,
   subjects = [],
   onClose,
-  onToggleStatus,
-  onDeleteTask,
   onTaskSaved,
   initialAttachments,
   initialTitle,
@@ -136,7 +120,6 @@ export function MinimalistTaskModal({
   const [currentView, setCurrentView] = useState<'detail' | 'form'>('detail')
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<{ uri: string; title: string } | null>(null)
   const [viewingPdf, setViewingPdf] = useState<{ uri: string; title: string } | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
 
   // Form State
@@ -149,15 +132,6 @@ export function MinimalistTaskModal({
 
   // Horarios de Clases
   const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [datePickerTab, setDatePickerTab] = useState<'class' | 'manual'>('class')
-  const [selectedClassDay, setSelectedClassDay] = useState<number>(() => {
-    const currentDay = new Date().getDay()
-    return currentDay >= 1 && currentDay <= 5 ? currentDay : 1
-  })
-
-  // Selectores Nativos de Fecha y Hora de iPhone
-  const [showNativeDatePicker, setShowNativeDatePicker] = useState(false)
-  const [showNativeTimePicker, setShowNativeTimePicker] = useState(false)
 
   const titleInputRef = useRef<TextInput>(null)
 
@@ -192,7 +166,7 @@ export function MinimalistTaskModal({
         }),
       ]).start()
     }
-  }, [activePicker, datePickerTab, showNativeDatePicker, showNativeTimePicker])
+  }, [activePicker])
 
   // Cargar horarios del usuario para el selector de clases
   useEffect(() => {
@@ -209,7 +183,7 @@ export function MinimalistTaskModal({
     }
   }, [modalVisible])
 
-  // Sincronización con el teclado de iOS (solo cuando el modal está activo)
+  // Sincronización con el teclado de iOS
   useEffect(() => {
     if (!modalVisible) return
 
@@ -246,7 +220,7 @@ export function MinimalistTaskModal({
     }
   }, [modalVisible, insets.bottom, keyboardTranslateY])
 
-  // Apertura y Cierre controlados de forma estrictamente estable
+  // Apertura y Cierre controlados
   useEffect(() => {
     if (mode !== 'none') {
       setModalVisible(true)
@@ -258,112 +232,75 @@ export function MinimalistTaskModal({
         setSelectedSubjectId(subjects.length > 0 ? subjects[0].id : null)
         setTaskType('individual')
         setDueDate('')
-        setAttachments(initialAttachments && initialAttachments.length > 0 ? initialAttachments : [])
-      } else if (task && (mode === 'edit' || mode === 'detail')) {
+        setAttachments(initialAttachments ? [...initialAttachments] : [])
+        setActivePicker(null)
+
+        setTimeout(() => {
+          titleInputRef.current?.focus()
+        }, 320)
+      } else if (mode === 'edit' && task) {
         setTitle(task.title || '')
         setDescription(task.description || '')
         setSelectedSubjectId(task.subject_id || null)
         setTaskType(task.type || 'individual')
         setDueDate(task.due_date || '')
-        setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
+        setAttachments(Array.isArray(task.attachments) ? [...task.attachments] : [])
+        setActivePicker(null)
+      } else if (mode === 'detail') {
+        setActivePicker(null)
       }
-      setActivePicker(null)
-      setShowNativeDatePicker(false)
-      setShowNativeTimePicker(false)
+
+      fadeAnim.setValue(0)
+      slideAnim.setValue(SCREEN_HEIGHT)
       panY.setValue(0)
       keyboardTranslateY.setValue(0)
-      slideAnim.setValue(SCREEN_HEIGHT)
-      fadeAnim.setValue(0)
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 180,
-          easing: APPLE_EASING,
+          duration: 240,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
+        Animated.spring(slideAnim, {
           toValue: 0,
-          duration: 220,
-          easing: APPLE_EASING,
+          stiffness: 380,
+          damping: 34,
+          mass: 0.8,
           useNativeDriver: true,
         }),
-      ]).start(({ finished }) => {
-        if (finished && mode === 'create') {
-          requestAnimationFrame(() => {
-            titleInputRef.current?.focus()
-          })
-        }
-      })
-    } else {
-      Keyboard.dismiss()
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 160,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(keyboardTranslateY, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(panY, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setModalVisible(false)
-      })
+      ]).start()
     }
-  }, [mode, task?.id, initialTitle, initialDescription, initialAttachments])
+  }, [mode, task, initialTitle, initialDescription, initialAttachments])
 
   const handleSmoothClose = () => {
     triggerHaptic('light')
     Keyboard.dismiss()
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 160,
+        duration: 180,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
-        duration: 200,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(keyboardTranslateY, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panY, {
-        toValue: 0,
-        duration: 180,
+        duration: 220,
+        easing: APPLE_EASING,
         useNativeDriver: true,
       }),
     ]).start(() => {
+      setModalVisible(false)
+      setActivePicker(null)
       onClose()
     })
   }
 
-  // PanResponder Amplio para Deslizar Hacia Abajo y Cerrar (Abarca tirador, título y botones de acción)
+  // Gesto PanResponder para arrastrar hacia abajo y cerrar
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
+        return gestureState.dy > 6 && Math.abs(gestureState.dx) < 10
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
@@ -371,12 +308,12 @@ export function MinimalistTaskModal({
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 95 || gestureState.vy > 0.45) {
+        if (gestureState.dy > 90 || gestureState.vy > 0.6) {
           handleSmoothClose()
         } else {
           Animated.spring(panY, {
             toValue: 0,
-            damping: 24,
+            damping: 25,
             stiffness: 400,
             useNativeDriver: true,
           }).start()
@@ -384,82 +321,6 @@ export function MinimalistTaskModal({
       },
     })
   ).current
-
-  const isCompleted = task?.status === 'completed'
-
-  const formatDueDate = (dateStr?: string | null) => {
-    if (!dateStr) return { text: '', isOverdue: false, isToday: false }
-    try {
-      const date = new Date(dateStr)
-      if (isNaN(date.getTime())) return { text: '', isOverdue: false, isToday: false }
-      const now = new Date()
-      const isPast = date.getTime() < now.getTime()
-      const isToday = date.toDateString() === now.toDateString()
-      const dayName = DAYS_SHORT[date.getDay()]
-      const dayNum = date.getDate()
-      const monthName = MONTHS_SHORT[date.getMonth()]
-      const hours = date.getHours()
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedHour = hours % 12 || 12
-      const timeStr = `${formattedHour}:${minutes} ${ampm}`
-
-      if (isToday) {
-        return { text: `Hoy, ${timeStr}`, isOverdue: false, isToday: true }
-      }
-      if (isPast && !isCompleted) {
-        return { text: `Venció ${dayName} ${dayNum} ${monthName}`, isOverdue: true, isToday: false }
-      }
-      return { text: `${dayName} ${dayNum} ${monthName}, ${timeStr}`, isOverdue: false, isToday: false }
-    } catch {
-      return { text: '', isOverdue: false, isToday: false }
-    }
-  }
-
-  const dueInfo = formatDueDate(task?.due_date)
-  const detailAttachments = Array.isArray(task?.attachments) ? task.attachments : []
-
-  const handleDelete = () => {
-    if (!task) return
-    Keyboard.dismiss()
-    Alert.alert(
-      '¿Eliminar esta tarea?',
-      'Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              triggerHaptic('error')
-              setDeleteLoading(true)
-              await onDeleteTask?.(task.id)
-              handleSmoothClose()
-            } catch (err) {
-              console.error('Error eliminando:', err)
-            } finally {
-              setDeleteLoading(false)
-            }
-          },
-        },
-      ]
-    )
-  }
-
-  const handleSwitchToEdit = () => {
-    triggerHaptic('light')
-    Keyboard.dismiss()
-    if (task) {
-      setTitle(task.title || '')
-      setDescription(task.description || '')
-      setSelectedSubjectId(task.subject_id || null)
-      setTaskType(task.type || 'individual')
-      setDueDate(task.due_date || '')
-      setAttachments(Array.isArray(task.attachments) ? task.attachments : [])
-    }
-    setCurrentView('form')
-  }
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -478,25 +339,22 @@ export function MinimalistTaskModal({
         subject_id: selectedSubjectId || null,
         type: taskType,
         due_date: dueDate || null,
-        attachments,
-        status: task?.status || 'pending',
-        user_id: userId,
-        updated_at: new Date().toISOString(),
+        attachments: attachments,
+        subject: selectedSubj || null,
       }
 
-      if (task?.id && (mode === 'edit' || currentView === 'form')) {
-        const fullTask: Task = {
+      if (mode === 'edit' && task) {
+        await personalStorage.saveTask({
           ...task,
           ...payload,
-          subject: selectedSubj || null,
-        }
-        await personalStorage.saveTask(fullTask)
+          updated_at: new Date().toISOString(),
+        })
       } else {
-        const newId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
         const fullTask: Task = {
-          id: newId,
+          id: Math.random().toString(36).substring(7),
+          user_id: userId || 'local_user',
           ...payload,
-          subject: selectedSubj || null,
+          status: 'pending',
           created_at: new Date().toISOString(),
         }
         await personalStorage.saveTask(fullTask)
@@ -602,67 +460,36 @@ export function MinimalistTaskModal({
       })
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]
+        const doc = result.assets[0]
         const newAttachment: TaskAttachment = {
           id: Math.random().toString(36).substring(7),
-          file_name: asset.name || 'Documento',
-          file_url: asset.uri,
+          file_name: doc.name || 'Documento',
+          file_url: doc.uri,
           file_type: 'document',
-          size_bytes: asset.size,
+          size_bytes: doc.size || 0,
         }
         setAttachments((prev) => [...prev, newAttachment])
         triggerHaptic('success')
       }
-    } catch (err: any) {
-      console.error('Error al seleccionar documento:', err)
-      Alert.alert('Error', 'No se pudo seleccionar el archivo.')
-      triggerHaptic('error')
-    }
-  }
-
-  const formatDueDateLabel = (dateStr?: string) => {
-    if (!dateStr) return 'Sin fecha'
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return 'Sin fecha'
-      const now = new Date()
-      const isToday = d.toDateString() === now.toDateString()
-      const tomorrow = new Date(now)
-      tomorrow.setDate(tomorrow.getDate() + 1)
-      const isTomorrow = d.toDateString() === tomorrow.toDateString()
-
-      const hours = d.getHours()
-      const mins = String(d.getMinutes()).padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const hStr = hours % 12 || 12
-      const timePart = `${hStr}:${mins} ${ampm}`
-
-      if (isToday) return `Hoy ${timePart}`
-      if (isTomorrow) return `Mañana ${timePart}`
-      return `${DAYS_SHORT[d.getDay()]} ${d.getDate()} (${timePart})`
-    } catch {
-      return 'Sin fecha'
+    } catch (err) {
+      console.error('Error al adjuntar documento:', err)
     }
   }
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
   const isFormSubjWhite = isWhiteColor(selectedSubject?.color)
 
-  const filteredDaySchedules = schedules
-    .filter((s) => s.day_of_week === selectedClassDay)
-    .sort((a, b) => (a.block_number || 0) - (b.block_number || 0))
-
   if (!modalVisible) return null
 
   return (
     <Modal visible={modalVisible} transparent={true} animationType="none" onRequestClose={handleSmoothClose}>
       <View style={styles.modalRoot}>
-        {/* Backdrop Estático con Fade (useNativeDriver: true) */}
+        {/* Backdrop Estático con Fade */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <Pressable style={styles.backdropTouch} onPress={handleSmoothClose} />
         </Animated.View>
 
-        {/* Hoja Inferior Deslizante con PanResponder (useNativeDriver: true 100% GPU) */}
+        {/* Hoja Inferior Deslizante con PanResponder */}
         <Animated.View
           style={[
             styles.sheetContainer,
@@ -676,229 +503,17 @@ export function MinimalistTaskModal({
             },
           ]}
         >
-          {/* ========================================================================= */}
-          {/* VISTA: DETALLE 100% SIMÉTRICO Y SIN ESPACIOS VACÍOS                       */}
-          {/* ========================================================================= */}
+          {/* MODO DETALLE MODULARIZADO */}
           {currentView === 'detail' && (
-            <>
-              {/* ZONA SUPERIOR COMPLETA CON GESTO DE DESLIZAR (Tirador + Título + Acciones) */}
-              <View {...panResponder.panHandlers}>
-                {/* Tirador Superior Grande */}
-                <View style={styles.dragHandleTopArea}>
-                  <View style={styles.dragHandle} />
-                </View>
-
-                {/* 1. TÍTULO DE LA TAREA (SIMÉTRICO Y ELEGANTE) */}
-                <View style={styles.detailTitleInlineRow}>
-                  <Text style={styles.detailHeroTitle} numberOfLines={2}>
-                    {task?.title}
-                  </Text>
-                </View>
-              </View>
-
-              <ScrollView
-                style={styles.detailScroll}
-                contentContainerStyle={styles.detailScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* 2. NOTAS / DETALLES (TEXTO DIRECTO FLUIDO ALINEADO AL MARGEN IZQUIERDO) */}
-                {Boolean(task?.description) && (
-                  <Text style={styles.detailDescriptionText}>
-                    {task?.description}
-                  </Text>
-                )}
-
-                {/* 3. METADATOS EN UNA FILA SIMÉTRICA Y UNIFICADA (FECHA > MATERIA > TIPO) */}
-                {(Boolean(dueInfo.text) || Boolean(task?.subject) || (Boolean(task?.type) && task?.type !== 'individual')) && (
-                  <View style={styles.detailUnifiedMetaRow}>
-                    {/* Fecha de Entrega */}
-                    {Boolean(dueInfo.text) && (
-                      <View style={styles.detailMetaItem}>
-                        <Clock
-                          size={12.5}
-                          color={
-                            isCompleted
-                              ? '#34D399'
-                              : dueInfo.isOverdue
-                              ? '#F87171'
-                              : dueInfo.isToday
-                              ? '#818CF8'
-                              : '#A1A1AA'
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.detailMetaText,
-                            dueInfo.isToday && styles.detailMetaTextToday,
-                            dueInfo.isOverdue && styles.detailMetaTextOverdue,
-                            isCompleted && styles.detailMetaTextCompleted,
-                          ]}
-                        >
-                          {dueInfo.text}
-                        </Text>
-                      </View>
-                    )}
-
-                    {Boolean(dueInfo.text) && (
-                      <Text style={styles.detailMetaDot}>•</Text>
-                    )}
-
-                    {/* Materia con punto de color */}
-                    <View style={styles.detailMetaItem}>
-                      <View
-                        style={[
-                          styles.detailSubjectColorDot,
-                          { backgroundColor: task?.subject?.color || '#71717A' },
-                          isWhiteColor(task?.subject?.color) && styles.whiteDotBorder,
-                        ]}
-                      />
-                      <Text style={styles.detailMetaText}>
-                        {task?.subject?.name || 'General'}
-                      </Text>
-                    </View>
-
-                    {(Boolean(dueInfo.text) || Boolean(task?.subject)) && Boolean(task?.type) && task?.type !== 'individual' && (
-                      <Text style={styles.detailMetaDot}>•</Text>
-                    )}
-
-                    {/* Tipo de Tarea */}
-                    {Boolean(task?.type) && task?.type !== 'individual' && (
-                      <View style={styles.detailMetaItem}>
-                        {task?.type === 'proyecto' ? (
-                          <Rocket size={11} color="#C084FC" />
-                        ) : task?.type === 'examen' ? (
-                          <FileText size={11} color="#FB7185" />
-                        ) : (
-                          <Users size={11} color="#38BDF8" />
-                        )}
-                        <Text style={styles.detailMetaText}>
-                          {task?.type}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* 4. PREVIEW COMPACTO DE ADJUNTOS / FOTOS */}
-                {detailAttachments.length > 0 && (
-                  <View style={styles.detailAttachmentsSection}>
-                    {detailAttachments.map((att: TaskAttachment, idx: number) => {
-                      const isImg =
-                        att.file_type === 'image' ||
-                        att.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
-
-                      if (isImg) {
-                        return (
-                          <Pressable
-                            key={idx}
-                            onPress={() =>
-                              setSelectedLightboxImage({
-                                uri: att.file_url,
-                                title: att.file_name || 'Imagen',
-                              })
-                            }
-                            style={styles.detailImagePreviewCard}
-                          >
-                            <Image
-                              source={{ uri: att.file_url }}
-                              style={styles.detailPreviewThumbnail}
-                              resizeMode="cover"
-                            />
-                            <View style={styles.detailPreviewInfo}>
-                              <Text style={styles.detailPreviewTitle} numberOfLines={1}>
-                                {att.file_name || 'Imagen'}
-                              </Text>
-                              <Text style={styles.detailPreviewSubtitle}>Toca para ampliar y hacer zoom</Text>
-                            </View>
-                            <Maximize2 size={14} color="#71717A" />
-                          </Pressable>
-                        )
-                      }
-
-                      // Documentos (PDF, Word, Excel, etc.) o Enlaces
-                      const isPdf = att.file_name?.toLowerCase().endsWith('.pdf')
-                      const isWord = Boolean(att.file_name?.toLowerCase().match(/\.(doc|docx)$/))
-                      const isExcel = Boolean(att.file_name?.toLowerCase().match(/\.(xls|xlsx)$/))
-                      const isPpt = Boolean(att.file_name?.toLowerCase().match(/\.(ppt|pptx)$/))
-
-                      const getBadgeInfo = () => {
-                        if (isPdf) return { label: 'PDF', bg: 'rgba(239, 68, 68, 0.15)', text: '#F87171' }
-                        if (isWord) return { label: 'DOC', bg: 'rgba(59, 130, 246, 0.15)', text: '#60A5FA' }
-                        if (isExcel) return { label: 'XLS', bg: 'rgba(34, 197, 94, 0.15)', text: '#4ADE80' }
-                        if (isPpt) return { label: 'PPT', bg: 'rgba(249, 115, 22, 0.15)', text: '#FB923C' }
-                        if (att.file_type === 'link' || att.file_url?.startsWith('http')) {
-                          return { label: 'LINK', bg: 'rgba(129, 140, 248, 0.15)', text: '#818CF8' }
-                        }
-                        return { label: 'FILE', bg: 'rgba(255, 255, 255, 0.1)', text: '#D4D4D8' }
-                      }
-                      const badge = getBadgeInfo()
-
-                      const formatFileSize = (bytes?: number) => {
-                        if (!bytes || bytes <= 0) return 'Toca para abrir o compartir'
-                        if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB • Toca para abrir`
-                        return `${(bytes / 1024).toFixed(0)} KB • Toca para abrir`
-                      }
-
-                      const handleOpenAttachment = async () => {
-                        triggerHaptic('light')
-                        if (isPdf && att.file_url) {
-                          setViewingPdf({ uri: att.file_url, title: att.file_name })
-                          return
-                        }
-
-                        if (att.file_url?.startsWith('http://') || att.file_url?.startsWith('https://')) {
-                          Linking.openURL(att.file_url)
-                        } else {
-                          try {
-                            const isAvailable = await Sharing.isAvailableAsync()
-                            if (isAvailable) {
-                              await Sharing.shareAsync(att.file_url, {
-                                dialogTitle: att.file_name,
-                                mimeType: isPdf ? 'application/pdf' : undefined,
-                                UTI: isPdf ? 'com.adobe.pdf' : undefined,
-                              })
-                            } else {
-                              Linking.openURL(att.file_url)
-                            }
-                          } catch (err) {
-                            console.error('Error al abrir archivo:', err)
-                            Alert.alert('Aviso', 'No se pudo abrir el archivo.')
-                          }
-                        }
-                      }
-
-                      return (
-                        <Pressable
-                          key={idx}
-                          onPress={handleOpenAttachment}
-                          style={styles.detailDocCard}
-                        >
-                          <View style={[styles.docTypeBadge, { backgroundColor: badge.bg }]}>
-                            <Text style={[styles.docTypeBadgeText, { color: badge.text }]}>
-                              {badge.label}
-                            </Text>
-                          </View>
-                          <View style={styles.detailDocInfo}>
-                            <Text style={styles.detailDocTitle} numberOfLines={1}>
-                              {att.file_name || 'Archivo adjunto'}
-                            </Text>
-                            <Text style={styles.detailDocSubtitle}>
-                              {formatFileSize(att.size_bytes)}
-                            </Text>
-                          </View>
-                          <ExternalLink size={14} color="#71717A" />
-                        </Pressable>
-                      )
-                    })}
-                  </View>
-                )}
-              </ScrollView>
-            </>
+            <TaskDetailView
+              task={task}
+              panHandlers={panResponder.panHandlers}
+              onOpenImage={setSelectedLightboxImage}
+              onOpenPdf={setViewingPdf}
+            />
           )}
 
-          {/* ========================================================================= */}
-          {/* VISTA: FORMULARIO CREAR / EDITAR ULTRA-MINIMALISTA                       */}
-          {/* ========================================================================= */}
+          {/* MODO FORMULARIO (CREAR / EDITAR) */}
           {currentView === 'form' && (
             <>
               <View style={styles.sheetHeader} {...panResponder.panHandlers}>
@@ -942,7 +557,7 @@ export function MinimalistTaskModal({
                 keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
               >
-                {/* Input de Título Grande y Limpio */}
+                {/* Input de Título */}
                 <TextInput
                   ref={titleInputRef}
                   placeholder="¿Qué tienes que hacer?"
@@ -952,7 +567,7 @@ export function MinimalistTaskModal({
                   style={styles.cleanTitleInput}
                 />
 
-                {/* Input de Descripción Limpio */}
+                {/* Input de Descripción */}
                 <TextInput
                   placeholder="Añadir notas, detalles o páginas..."
                   placeholderTextColor="#52525B"
@@ -962,7 +577,7 @@ export function MinimalistTaskModal({
                   style={styles.cleanDescInput}
                 />
 
-                {/* Barra de Atributos Rápidos (Con Espaciado Amplio y Holgado) */}
+                {/* Barra de Atributos Rápidos */}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1001,7 +616,7 @@ export function MinimalistTaskModal({
                     <ChevronDown size={12} color="#71717A" />
                   </Pressable>
 
-                  {/* Selector de Fecha (Manual o Por Clase) */}
+                  {/* Selector de Fecha */}
                   <Pressable
                     onPress={() => {
                       triggerHaptic('selection')
@@ -1049,7 +664,7 @@ export function MinimalistTaskModal({
                     <ChevronDown size={12} color="#71717A" />
                   </Pressable>
 
-                  {/* Fotos / Galería / Link */}
+                  {/* Fotos / Galería / Documento */}
                   <Pressable onPress={handleTakePhoto} style={styles.attrIconPill}>
                     <Camera size={15} color="#A1A1AA" />
                   </Pressable>
@@ -1063,453 +678,60 @@ export function MinimalistTaskModal({
                   </Pressable>
                 </ScrollView>
 
-                {/* Menús Desplegables de Selección con Transición Animada */}
+                {/* Subcomponentes de Selección */}
                 {activePicker === 'subject' && (
-                  <Animated.View
-                    style={{
-                      opacity: pickerFadeAnim,
-                      transform: [{ translateY: pickerSlideAnim }],
+                  <TaskSubjectPicker
+                    subjects={subjects}
+                    selectedSubjectId={selectedSubjectId}
+                    onSelectSubject={(id) => {
+                      setSelectedSubjectId(id)
+                      setActivePicker(null)
                     }}
-                  >
-                    <View style={styles.inlineMenu}>
-                      <Text style={styles.inlineMenuHeader}>Elegir materia</Text>
-                      <Pressable
-                        onPress={() => {
-                          triggerHaptic('selection')
-                          setSelectedSubjectId(null)
-                          setActivePicker(null)
-                        }}
-                        style={[
-                          styles.inlineMenuItem,
-                          selectedSubjectId === null && styles.inlineMenuItemActive,
-                        ]}
-                      >
-                        <Text style={styles.inlineMenuItemText}>General (Sin materia)</Text>
-                        {selectedSubjectId === null && <Check size={14} color="#FFFFFF" />}
-                      </Pressable>
-
-                      {subjects.map((s) => {
-                        const isSelected = selectedSubjectId === s.id
-                        const isSubjWhite = isWhiteColor(s.color)
-                        return (
-                          <Pressable
-                            key={s.id}
-                            onPress={() => {
-                              triggerHaptic('selection')
-                              setSelectedSubjectId(s.id)
-                              setActivePicker(null)
-                            }}
-                            style={[
-                              styles.inlineMenuItem,
-                              isSelected && styles.inlineMenuItemActive,
-                            ]}
-                          >
-                            <View style={styles.inlineMenuLeft}>
-                              <View
-                                style={[
-                                  styles.dot,
-                                  { backgroundColor: s.color || '#FFFFFF' },
-                                  isSubjWhite && styles.whiteDotBorder,
-                                ]}
-                              />
-                              <Text style={styles.inlineMenuItemText}>{s.name}</Text>
-                            </View>
-                            {isSelected && <Check size={14} color={s.color || '#FFFFFF'} />}
-                          </Pressable>
-                        )
-                      })}
-                    </View>
-                  </Animated.View>
+                    fadeAnim={pickerFadeAnim}
+                    slideAnim={pickerSlideAnim}
+                  />
                 )}
 
-                {/* SELECTOR DE FECHA CON MODO PARA CLASE Y MODO MANUAL NATIVO DE IPHONE */}
                 {activePicker === 'date' && (
-                  <Animated.View
-                    style={{
-                      opacity: pickerFadeAnim,
-                      transform: [{ translateY: pickerSlideAnim }],
-                    }}
-                  >
-                    <View style={styles.inlineDateMenu}>
-                      {/* Selector de Modo: Para Clase vs Manual */}
-                      <View style={styles.dateSegmentedRow}>
-                        <Pressable
-                          onPress={() => {
-                            triggerHaptic('selection')
-                            setDatePickerTab('class')
-                            setShowNativeDatePicker(false)
-                            setShowNativeTimePicker(false)
-                          }}
-                          style={[
-                            styles.dateSegmentBtn,
-                            datePickerTab === 'class' && styles.dateSegmentBtnActive,
-                          ]}
-                        >
-                          <GraduationCap
-                            size={13}
-                            color={datePickerTab === 'class' ? '#FFFFFF' : '#71717A'}
-                          />
-                          <Text
-                            style={[
-                              styles.dateSegmentText,
-                              datePickerTab === 'class' && styles.dateSegmentTextActive,
-                            ]}
-                          >
-                            Para Clase
-                          </Text>
-                        </Pressable>
-
-                        <Pressable
-                          onPress={() => {
-                            triggerHaptic('selection')
-                            setDatePickerTab('manual')
-                          }}
-                          style={[
-                            styles.dateSegmentBtn,
-                            datePickerTab === 'manual' && styles.dateSegmentBtnActive,
-                          ]}
-                        >
-                          <Calendar
-                            size={13}
-                            color={datePickerTab === 'manual' ? '#FFFFFF' : '#71717A'}
-                          />
-                          <Text
-                            style={[
-                              styles.dateSegmentText,
-                              datePickerTab === 'manual' && styles.dateSegmentTextActive,
-                            ]}
-                          >
-                            Manual
-                          </Text>
-                        </Pressable>
-                      </View>
-
-                      {/* MODO 1: MINI CALENDARIO / SELECCIÓN DE CLASE */}
-                      {datePickerTab === 'class' && (
-                        <View style={styles.classPickerContainer}>
-                          {/* Selector de Día de la Semana */}
-                          <View style={styles.classDayBar}>
-                            {[
-                              { day: 1, label: 'Lun' },
-                              { day: 2, label: 'Mar' },
-                              { day: 3, label: 'Mié' },
-                              { day: 4, label: 'Jue' },
-                              { day: 5, label: 'Vie' },
-                            ].map((d) => {
-                              const isSelected = selectedClassDay === d.day
-                              return (
-                                <Pressable
-                                  key={d.day}
-                                  onPress={() => {
-                                    triggerHaptic('selection')
-                                    setSelectedClassDay(d.day)
-                                  }}
-                                  style={[
-                                    styles.classDayPill,
-                                    isSelected && styles.classDayPillActive,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.classDayText,
-                                      isSelected && styles.classDayTextActive,
-                                    ]}
-                                  >
-                                    {d.label}
-                                  </Text>
-                                </Pressable>
-                              )
-                            })}
-                          </View>
-
-                          {/* Lista de Clases del Día Seleccionado */}
-                          <View style={styles.classListContainer}>
-                            {filteredDaySchedules.length === 0 ? (
-                              <View style={styles.emptyClassesBox}>
-                                <Text style={styles.emptyClassesText}>
-                                  Sin clases configuradas para este día
-                                </Text>
-                              </View>
-                            ) : (
-                              filteredDaySchedules.map((sched) => {
-                                const subj =
-                                  subjects.find((s) => s.id === sched.subject_id) ||
-                                  sched.subject
-                                const isWhite = isWhiteColor(subj?.color)
-
-                                return (
-                                  <Pressable
-                                    key={sched.id || `${sched.day_of_week}_${sched.block_number}`}
-                                    onPress={() => handleSelectClass(sched, subj)}
-                                    style={styles.classCardRow}
-                                  >
-                                    <View style={styles.classTimeBox}>
-                                      <Clock size={11} color="#818CF8" />
-                                      <Text style={styles.classTimeText}>
-                                        {sched.start_time || '07:00'}
-                                      </Text>
-                                    </View>
-
-                                    <View style={styles.classSubjectInfo}>
-                                      <View style={styles.classSubjectTitleRow}>
-                                        <View
-                                          style={[
-                                            styles.dot,
-                                            { backgroundColor: subj?.color || '#FFFFFF' },
-                                            isWhite && styles.whiteDotBorder,
-                                          ]}
-                                        />
-                                        <Text
-                                          style={styles.classSubjectName}
-                                          numberOfLines={1}
-                                        >
-                                          {subj?.name || 'Materia'}
-                                        </Text>
-                                      </View>
-                                      {sched.classroom_room && (
-                                        <Text style={styles.classRoomText}>
-                                          {sched.classroom_room}
-                                        </Text>
-                                      )}
-                                    </View>
-
-                                    <ChevronRight size={13} color="#71717A" />
-                                  </Pressable>
-                                )
-                              })
-                            )}
-                          </View>
-                        </View>
-                      )}
-
-                      {/* MODO 2: DOS BOTONES LIMPIOS (FECHA Y HORA) CON SELECTORES NATIVOS DE IPHONE */}
-                      {datePickerTab === 'manual' && (
-                        <View style={styles.nativePickerContainer}>
-                          <View style={styles.nativeButtonsRow}>
-                            {/* Botón 1: Elegir Fecha */}
-                            <Pressable
-                              onPress={() => {
-                                triggerHaptic('light')
-                                if (!dueDate) {
-                                  const now = new Date()
-                                  now.setHours(23, 59, 0, 0)
-                                  setDueDate(now.toISOString())
-                                }
-                                setShowNativeDatePicker((prev) => !prev)
-                                setShowNativeTimePicker(false)
-                              }}
-                              style={[
-                                styles.nativePickerBtn,
-                                showNativeDatePicker && styles.nativePickerBtnActive,
-                              ]}
-                            >
-                              <Calendar size={15} color={showNativeDatePicker ? '#818CF8' : '#A1A1AA'} />
-                              <View style={styles.nativeBtnInfo}>
-                                <Text style={styles.nativeBtnLabel}>Fecha</Text>
-                                <Text style={styles.nativeBtnValue} numberOfLines={1}>
-                                {formatManualDateOnly(dueDate)}
-                              </Text>
-                            </View>
-                          </Pressable>
-
-                          {/* Botón 2: Elegir Hora */}
-                          <Pressable
-                            onPress={() => {
-                              triggerHaptic('light')
-                              if (!dueDate) {
-                                const now = new Date()
-                                now.setHours(23, 59, 0, 0)
-                                setDueDate(now.toISOString())
-                              }
-                              setShowNativeTimePicker((prev) => !prev)
-                              setShowNativeDatePicker(false)
-                            }}
-                            style={[
-                              styles.nativePickerBtn,
-                              showNativeTimePicker && styles.nativePickerBtnActive,
-                            ]}
-                          >
-                            <Clock size={15} color={showNativeTimePicker ? '#818CF8' : '#A1A1AA'} />
-                            <View style={styles.nativeBtnInfo}>
-                              <Text style={styles.nativeBtnLabel}>Hora</Text>
-                              <Text style={styles.nativeBtnValue} numberOfLines={1}>
-                                {formatManualTimeOnly(dueDate)}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        </View>
-
-                        {/* Selector Nativo de Fecha de iOS */}
-                        {showNativeDatePicker && (
-                          <View style={styles.nativePickerBox}>
-                            <DateTimePicker
-                              value={dueDate ? new Date(dueDate) : new Date()}
-                              mode="date"
-                              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                              themeVariant="dark"
-                              locale="es-ES"
-                              onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-                                if (selectedDate) {
-                                  const current = dueDate ? new Date(dueDate) : new Date()
-                                  selectedDate.setHours(current.getHours(), current.getMinutes(), 0, 0)
-                                  setDueDate(selectedDate.toISOString())
-                                  triggerHaptic('selection')
-                                }
-                              }}
-                            />
-                          </View>
-                        )}
-
-                        {/* Selector Nativo de Hora de iOS */}
-                        {showNativeTimePicker && (
-                          <View style={styles.nativePickerBox}>
-                            <DateTimePicker
-                              value={dueDate ? new Date(dueDate) : new Date()}
-                              mode="time"
-                              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                              themeVariant="dark"
-                              locale="es-ES"
-                              onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-                                if (selectedDate) {
-                                  const current = dueDate ? new Date(dueDate) : new Date()
-                                  current.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0)
-                                  setDueDate(current.toISOString())
-                                  triggerHaptic('selection')
-                                }
-                              }}
-                            />
-                          </View>
-                        )}
-
-                        {/* Acciones */}
-                        {Boolean(dueDate) && (
-                          <View style={styles.manualActionsFooter}>
-                            <Pressable
-                              onPress={() => {
-                                setDueDate('')
-                                setShowNativeDatePicker(false)
-                                setShowNativeTimePicker(false)
-                                setActivePicker(null)
-                              }}
-                              style={styles.dateOptionClearBtn}
-                            >
-                              <Text style={styles.dateOptionClearText}>Quitar fecha</Text>
-                            </Pressable>
-
-                            <Pressable
-                              onPress={() => {
-                                triggerHaptic('light')
-                                setShowNativeDatePicker(false)
-                                setShowNativeTimePicker(false)
-                                setActivePicker(null)
-                              }}
-                              style={styles.dateOptionDoneBtn}
-                            >
-                              <Text style={styles.dateOptionDoneText}>Listo</Text>
-                            </Pressable>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </View>
-                </Animated.View>
+                  <TaskDatePicker
+                    dueDate={dueDate}
+                    onSelectDueDate={setDueDate}
+                    onSelectClass={handleSelectClass}
+                    schedules={schedules}
+                    subjects={subjects}
+                    fadeAnim={pickerFadeAnim}
+                    slideAnim={pickerSlideAnim}
+                    onClosePicker={() => setActivePicker(null)}
+                  />
                 )}
 
                 {activePicker === 'type' && (
-                  <Animated.View
-                    style={{
-                      opacity: pickerFadeAnim,
-                      transform: [{ translateY: pickerSlideAnim }],
+                  <TaskTypePicker
+                    taskType={taskType}
+                    onSelectType={(t) => {
+                      setTaskType(t)
+                      setActivePicker(null)
                     }}
-                  >
-                    <View style={styles.inlineMenu}>
-                      <Text style={styles.inlineMenuHeader}>Tipo de tarea</Text>
-                      <View style={styles.typeOptionsRow}>
-                        {(['individual', 'grupal', 'proyecto', 'examen'] as TaskType[]).map((t) => (
-                          <Pressable
-                            key={t}
-                            onPress={() => {
-                              triggerHaptic('selection')
-                              setTaskType(t)
-                              setActivePicker(null)
-                            }}
-                            style={[
-                              styles.typeOptionBtn,
-                              taskType === t && styles.typeOptionBtnActive,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.typeOptionText,
-                                taskType === t && styles.typeOptionTextActive,
-                              ]}
-                            >
-                              {t}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                    </View>
-                  </Animated.View>
+                    fadeAnim={pickerFadeAnim}
+                    slideAnim={pickerSlideAnim}
+                  />
                 )}
 
-                {/* Adjuntos Cargados */}
-                {attachments.length > 0 && (
-                  <View style={styles.attachmentsSection}>
-                    {attachments.map((a) => {
-                      const isImg = a.file_type === 'image' || a.file_url?.match(/\.(jpeg|jpg|png|webp|gif)/i)
-                      const isPdf = a.file_name?.toLowerCase().endsWith('.pdf')
-                      const isWord = Boolean(a.file_name?.toLowerCase().match(/\.(doc|docx)$/))
-
-                      return (
-                        <View key={a.id} style={styles.attachedPill}>
-                          <Pressable
-                            onPress={() => {
-                              if (isImg && a.file_url) {
-                                triggerHaptic('light')
-                                setSelectedLightboxImage({
-                                  uri: a.file_url,
-                                  title: a.file_name || 'Imagen',
-                                })
-                              } else if (isPdf && a.file_url) {
-                                triggerHaptic('light')
-                                setViewingPdf({
-                                  uri: a.file_url,
-                                  title: a.file_name || 'Documento PDF',
-                                })
-                              }
-                            }}
-                            style={styles.attachedPillContent}
-                          >
-                            {isImg ? (
-                              <ImageIcon size={12} color="#A1A1AA" />
-                            ) : (
-                              <FileText size={12} color={isPdf ? '#F87171' : isWord ? '#60A5FA' : '#A1A1AA'} />
-                            )}
-                            <Text style={styles.attachedPillText} numberOfLines={1}>
-                              {a.file_name}
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            onPress={() => {
-                              triggerHaptic('light')
-                              setAttachments((prev) => prev.filter((item) => item.id !== a.id))
-                            }}
-                            hitSlop={10}
-                          >
-                            <X size={12} color="#71717A" />
-                          </Pressable>
-                        </View>
-                      )
-                    })}
-                  </View>
-                )}
+                {/* Adjuntos del Formulario */}
+                <TaskAttachmentSection
+                  attachments={attachments}
+                  onRemoveAttachment={(id) =>
+                    setAttachments((prev) => prev.filter((item) => item.id !== id))
+                  }
+                  onOpenImage={setSelectedLightboxImage}
+                  onOpenPdf={setViewingPdf}
+                />
               </ScrollView>
             </>
           )}
         </Animated.View>
 
-        {/* Visor Interactivo con Zoom para Fotos (Pinch-to-zoom, doble toque, pan y compartir) */}
+        {/* Visor de Fotos con Zoom */}
         <MinimalistImageViewerModal
           visible={Boolean(selectedLightboxImage)}
           imageUri={selectedLightboxImage?.uri || null}
@@ -1517,7 +739,7 @@ export function MinimalistTaskModal({
           onClose={() => setSelectedLightboxImage(null)}
         />
 
-        {/* Visor Nativo Integrado para Documentos PDF (Solo montado cuando se necesita) */}
+        {/* Visor de Documentos PDF */}
         {Boolean(viewingPdf) && (
           <MinimalistPdfViewerModal
             visible={Boolean(viewingPdf)}
@@ -1551,186 +773,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.09)',
     maxHeight: '92%',
   },
-  dragHandleTopArea: {
-    paddingTop: 12,
-    paddingBottom: 10,
-    alignItems: 'center',
-  },
   dragHandle: {
     width: 52,
     height: 5,
     borderRadius: 3,
     backgroundColor: '#52525B',
-  },
-  detailScroll: {
-    paddingHorizontal: 22,
-  },
-  detailScrollContent: {
-    paddingTop: 8,
-    paddingBottom: 16,
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  detailTitleInlineRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 22,
-    paddingBottom: 4,
-    gap: 12,
-  },
-  detailHeroTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 30,
-    flex: 1,
-  },
-  detailInlineActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 2,
-  },
-  detailHeaderDeleteIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailHeaderEditIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailDescriptionText: {
-    color: '#D4D4D8',
-    fontSize: 14.5,
-    lineHeight: 22,
-    alignSelf: 'stretch',
-  },
-  detailUnifiedMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignSelf: 'stretch',
-    paddingTop: 2,
-  },
-  detailMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5.5,
-  },
-  detailMetaText: {
-    color: '#71717A',
-    fontSize: 12.5,
-    fontWeight: '500',
-  },
-  detailMetaTextToday: {
-    color: '#818CF8',
-    fontWeight: '600',
-  },
-  detailMetaTextOverdue: {
-    color: '#F87171',
-    fontWeight: '600',
-  },
-  detailMetaTextCompleted: {
-    color: '#34D399',
-    fontWeight: '600',
-  },
-  detailMetaDot: {
-    color: '#3F3F46',
-    fontSize: 12,
-  },
-  detailSubjectColorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  detailAttachmentsSection: {
-    gap: 8,
-    paddingTop: 4,
-    alignSelf: 'stretch',
-  },
-  detailImagePreviewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    padding: 8,
-    gap: 12,
-    alignSelf: 'stretch',
-  },
-  detailPreviewThumbnail: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: '#27272A',
-  },
-  detailPreviewInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  detailPreviewTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  detailPreviewSubtitle: {
-    color: '#818CF8',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  detailDocCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    padding: 12,
-    gap: 12,
-    alignSelf: 'stretch',
-  },
-  docTypeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docTypeBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  detailDocInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  detailDocTitle: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '600',
-  },
-  detailDocSubtitle: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '500',
   },
   sheetHeader: {
     alignItems: 'center',
@@ -1754,15 +801,15 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.4,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   saveHeaderBtn: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingVertical: 7,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   saveHeaderBtnText: {
     color: '#09090B',
@@ -1771,27 +818,22 @@ const styles = StyleSheet.create({
   },
   sheetScroll: {
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingTop: 16,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  whiteDotBorder: WHITE_DOT_BORDER,
   cleanTitleInput: {
     color: '#FFFFFF',
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: '700',
     paddingVertical: 8,
-    letterSpacing: -0.4,
+    marginBottom: 4,
   },
   cleanDescInput: {
-    color: '#A1A1AA',
+    color: '#D4D4D8',
     fontSize: 14.5,
-    lineHeight: 21,
-    paddingVertical: 8,
-    minHeight: 50,
+    lineHeight: 20,
+    minHeight: 48,
+    paddingVertical: 4,
+    marginBottom: 8,
   },
   attributeBar: {
     flexDirection: 'row',
@@ -1835,306 +877,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  inlineMenu: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 16,
-    padding: 12,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  whiteDotBorder: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginTop: 6,
-    gap: 6,
-  },
-  inlineDateMenu: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginTop: 6,
-    gap: 12,
-  },
-  dateSegmentedRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 10,
-    padding: 3,
-    gap: 4,
-  },
-  dateSegmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 7.5,
-    borderRadius: 8,
-    gap: 6,
-  },
-  dateSegmentBtnActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-  },
-  dateSegmentText: {
-    color: '#71717A',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dateSegmentTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  classPickerContainer: {
-    gap: 10,
-  },
-  classDayBar: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  classDayPill: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  classDayPillActive: {
-    backgroundColor: '#818CF8',
-  },
-  classDayText: {
-    color: '#71717A',
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  classDayTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  classListContainer: {
-    gap: 6,
-  },
-  emptyClassesBox: {
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  emptyClassesText: {
-    color: '#71717A',
-    fontSize: 12,
-  },
-  classCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 10,
-    padding: 10,
-    gap: 10,
-  },
-  classTimeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(129, 140, 248, 0.12)',
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  classTimeText: {
-    color: '#818CF8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  classSubjectInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  classSubjectTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  classSubjectName: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  classRoomText: {
-    color: '#71717A',
-    fontSize: 11,
-  },
-  nativePickerContainer: {
-    gap: 12,
-  },
-  nativeButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  nativePickerBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  nativePickerBtnActive: {
-    backgroundColor: 'rgba(129, 140, 248, 0.12)',
-    borderColor: '#818CF8',
-  },
-  nativeBtnInfo: {
-    flex: 1,
-    gap: 1,
-  },
-  nativeBtnLabel: {
-    color: '#71717A',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  nativeBtnValue: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  nativePickerBox: {
-    backgroundColor: '#18181B',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  manualActionsFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 2,
-  },
-  dateOptionDoneBtn: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 10,
-    alignSelf: 'flex-end',
-  },
-  dateOptionDoneText: {
-    color: '#09090B',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  dateOptionClearBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  dateOptionClearText: {
-    color: '#F87171',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  inlineMenuHeader: {
-    color: '#71717A',
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  inlineMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  inlineMenuItemActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  inlineMenuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  inlineMenuItemText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  typeOptionsRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  typeOptionBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  typeOptionBtnActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  typeOptionText: {
-    color: '#71717A',
-    fontSize: 11.5,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  typeOptionTextActive: {
-    color: '#09090B',
-    fontWeight: '800',
-  },
-  linkRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cleanLinkInput: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    color: '#FFFFFF',
-    fontSize: 13,
-  },
-  linkConfirmBtn: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkConfirmBtnText: {
-    color: '#09090B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  attachmentsSection: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-  attachedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    maxWidth: '100%',
-  },
-  attachedPillContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  attachedPillText: {
-    color: '#D4D4D8',
-    fontSize: 11.5,
-    maxWidth: 160,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
 })

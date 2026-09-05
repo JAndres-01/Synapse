@@ -10,7 +10,7 @@ interface MinimalistLiveHeroProps {
 }
 
 export const MinimalistLiveHero = memo(function MinimalistLiveHero({ schedulesToday = [] }: MinimalistLiveHeroProps) {
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -22,7 +22,7 @@ export const MinimalistLiveHero = memo(function MinimalistLiveHero({ schedulesTo
 
   const liveData = useMemo(
     () => calculateLiveClassStatus(schedulesToday),
-    [schedulesToday]
+    [schedulesToday, tick]
   )
 
   const isLive = liveData.status === 'active'
@@ -130,10 +130,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.035)',
     borderColor: 'rgba(16, 185, 129, 0.25)',
   },
-  heroContainerBreak: {
-    backgroundColor: 'rgba(245, 158, 11, 0.03)',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -152,9 +148,6 @@ const styles = StyleSheet.create({
   pulseDotLive: {
     backgroundColor: '#10B981',
   },
-  pulseDotBreak: {
-    backgroundColor: '#F59E0B',
-  },
   pulseDotDefault: {
     backgroundColor: '#52525B',
   },
@@ -165,9 +158,6 @@ const styles = StyleSheet.create({
   },
   badgeTextLive: {
     color: '#10B981',
-  },
-  badgeTextBreak: {
-    color: '#F59E0B',
   },
   badgeTextDefault: {
     color: '#71717A',
@@ -236,8 +226,5 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 1.5,
-  },
-  progressBarFillBreak: {
-    backgroundColor: '#F59E0B',
   },
 })

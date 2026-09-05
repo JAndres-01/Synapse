@@ -10,14 +10,9 @@
 /ios/
 /android/
 
-# Next.js
-/.next/
-/out/
-
 # Entorno y credenciales
 .env
 .env*.local
-!.env.example
 
 # Logs
 npm-debug.log*

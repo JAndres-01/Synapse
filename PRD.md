@@ -4,7 +4,7 @@
 **Versión:** 2.0 Producción  
 **Fecha:** Septiembre de 2026  
 **Estado:** Producción Final y Consolidado  
-**Plataforma:** iOS & Android (React Native 0.81 / Expo SDK 54 / Expo Router 6)  
+**Plataforma:** iOS & Android (React Native 0.86.3 / Expo SDK 57 / Expo Router 57)  
 **Arquitectura:** 100% Local-First / Privacidad Total (Cero dependencia de servidores en la nube)  
 **Audiencia:** Estudiantes Universitarios y de Nivel Superior  
 
@@ -125,11 +125,11 @@ La jornada académica universitaria se divide en **4 bloques continuos de 90 min
 ## 5. Arquitectura Técnica y Almacenamiento
 
 ### 5.1. Stack Tecnológico
-- **Framework:** React Native 0.81.5 / Expo SDK 54.0.37.
-- **Enrutamiento:** Expo Router 6.0.24 (File-based navigation con soporte de stacks y pestañas).
-- **Almacenamiento Persistente:** `@react-native-async-storage/async-storage` 2.2.0.
-- **Gestos y Animaciones:** `react-native-gesture-handler` 2.28.0.
-- **Íconos:** `lucide-react-native`.
+- **Framework:** React Native 0.86.3 / React 19.2.3 / Expo SDK 57.
+- **Enrutamiento:** Expo Router 57 (File-based navigation con pestañas desacopladas).
+- **Almacenamiento Persistente:** `@react-native-async-storage/async-storage` 2.2.0 con caché síncrona en memoria.
+- **Gestos y Animaciones:** `react-native-gesture-handler` ~2.32.0 y `Animated` nativo a 120 FPS.
+- **Íconos:** `lucide-react-native` (^0.453.0).
 
 ### 5.2. Capa de Almacenamiento Reactiva (`personalStorage`)
 Para evitar latencias y renderizados bloqueantes, el servicio `personalStorage` implementa un patrón **In-Memory Cache + Persistent Store**:

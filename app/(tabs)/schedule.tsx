@@ -15,7 +15,6 @@ import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Schedule, Subject, Task } from '@/types/personal'
-import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MinimalistDayView } from '@/components/schedule/MinimalistDayView'
 import { MinimalistWeeklyMatrix } from '@/components/schedule/MinimalistWeeklyMatrix'
 import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectModal'
@@ -28,7 +27,6 @@ import { getActiveAcademicWeek } from '@/lib/academicDateUtils'
 import {
   cancelTaskReminder,
   scheduleTaskReminder,
-  scheduleClassReminders,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 
@@ -183,58 +181,6 @@ export default function ScheduleScreen() {
       existingSchedule: existingSchedule || null,
     })
   }, [])
-
-  const handleSaveSlot = async (subjectId: string, classroom?: string) => {
-    const blockDef = PERSONAL_SCHEDULE_BLOCKS.find((b) => b.block === assignModalData.block)
-    const existingIndex = schedules.findIndex(
-      (s) => s.day_of_week === assignModalData.day && s.block_number === assignModalData.block
-    )
-
-    let updatedSchedules: Schedule[]
-    if (existingIndex >= 0) {
-      updatedSchedules = schedules.map((s, idx) =>
-        idx === existingIndex
-          ? {
-              ...s,
-              subject_id: subjectId,
-              classroom_room: classroom || null,
-            }
-          : s
-      )
-    } else {
-      const newScheduleItem: Schedule = {
-        id: `sched_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        user_id: user?.id || 'personal',
-        day_of_week: assignModalData.day,
-        block_number: assignModalData.block,
-        start_time: blockDef?.startTime || '07:00',
-        end_time: blockDef?.endTime || '08:30',
-        subject_id: subjectId,
-        classroom_room: classroom || null,
-        created_at: new Date().toISOString(),
-      }
-      updatedSchedules = [...schedules, newScheduleItem]
-    }
-
-    setSchedules(updatedSchedules)
-    await personalStorage.setSchedules(updatedSchedules)
-
-    // Re-sincronizar notificaciones de horarios
-    const prefs = await personalStorage.getPreferences()
-    await scheduleClassReminders(updatedSchedules, prefs)
-  }
-
-  const handleDeleteSlot = async () => {
-    const updated = schedules.filter(
-      (s) => !(s.day_of_week === assignModalData.day && s.block_number === assignModalData.block)
-    )
-    setSchedules(updated)
-    await personalStorage.setSchedules(updated)
-
-    // Re-sincronizar notificaciones
-    const prefs = await personalStorage.getPreferences()
-    await scheduleClassReminders(updated, prefs)
-  }
 
   const handleOpenDayTasks = useCallback((day: number, subjectId?: string | null) => {
     triggerHaptic('light')

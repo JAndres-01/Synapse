@@ -143,6 +143,7 @@ export default function TasksScreen() {
   const params = useLocalSearchParams<{
     filter?: string
     highlight?: string
+    taskId?: string
     openNewTask?: string
   }>()
 
@@ -152,8 +153,9 @@ export default function TasksScreen() {
     if (params.filter === 'pending' || params.filter === 'completed' || params.filter === 'all') {
       setStatusFilter(params.filter)
     }
-    if (params.highlight) {
-      setHighlightedTaskId(params.highlight)
+    const targetId = params.highlight || params.taskId
+    if (targetId) {
+      setHighlightedTaskId(targetId)
       const timer = setTimeout(() => setHighlightedTaskId(null), 3000)
       return () => clearTimeout(timer)
     }
@@ -161,7 +163,7 @@ export default function TasksScreen() {
       setActiveTask(null)
       setTaskModalMode('create')
     }
-  }, [params.filter, params.highlight, params.openNewTask])
+  }, [params.filter, params.highlight, params.taskId, params.openNewTask])
 
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
@@ -203,6 +205,9 @@ export default function TasksScreen() {
           personalStorage.setTasks(updated)
           return updated
         })
+        setActiveTask((prev) =>
+          prev?.id === taskId ? { ...prev, status: nextStatus as 'pending' | 'completed' } : prev
+        )
 
         setTimeout(() => {
           LayoutAnimation.configureNext({
@@ -225,6 +230,9 @@ export default function TasksScreen() {
           personalStorage.setTasks(updated)
           return updated
         })
+        setActiveTask((prev) =>
+          prev?.id === taskId ? { ...prev, status: nextStatus as 'pending' | 'completed' } : prev
+        )
       }
     },
     [statusFilter]
@@ -242,6 +250,8 @@ export default function TasksScreen() {
       personalStorage.setTasks(updated)
       return updated
     })
+    setActiveTask((prev) => (prev?.id === taskId ? null : prev))
+    setTaskModalMode('none')
   }, [])
 
   // Filtrado de Tareas
@@ -447,18 +457,18 @@ export default function TasksScreen() {
         <Text style={styles.emptyTitle}>
           {statusFilter === 'completed'
             ? 'No hay tareas completadas'
-            : searchQuery.length > 0
+            : debouncedQuery.length > 0
             ? 'No se encontraron resultados'
             : '¡Al día! No tienes tareas pendientes'}
         </Text>
         <Text style={styles.emptySub}>
-          {searchQuery.length > 0
+          {debouncedQuery.length > 0
             ? 'Intenta buscar con otro término o selecciona otra materia.'
             : 'Toca el botón + flotante para añadir un nuevo pendiente o entrega.'}
         </Text>
       </Animated.View>
     )
-  }, [cardEntranceAnims, statusFilter, searchQuery])
+  }, [cardEntranceAnims, statusFilter, debouncedQuery])
 
   return (
     <View style={styles.screenWrapper}>

@@ -22,7 +22,6 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import {
   cancelTaskReminder,
   scheduleTaskReminder,
-  syncAllNotifications,
 } from '@/lib/personalNotifications'
 
 // Control de entrada única por sesión en la pantalla Hoy
@@ -31,7 +30,7 @@ let hasPlayedTodayEntrance = false
 export default function TodayScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
-  const { user, profile } = usePersonalAuth()
+  const { user } = usePersonalAuth()
 
   const getTodayDayOfWeek = () => {
     const day = new Date().getDay()

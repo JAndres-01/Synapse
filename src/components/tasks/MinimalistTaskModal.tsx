@@ -111,6 +111,8 @@ export function MinimalistTaskModal({
   userId,
   subjects = [],
   onClose,
+  onToggleStatus,
+  onDeleteTask,
   onTaskSaved,
   initialAttachments,
   initialTitle,
@@ -510,6 +512,17 @@ export function MinimalistTaskModal({
               panHandlers={panResponder.panHandlers}
               onOpenImage={setSelectedLightboxImage}
               onOpenPdf={setViewingPdf}
+              onToggleStatus={onToggleStatus}
+              onEditTask={() => setCurrentView('form')}
+              onDeleteTask={async (taskId) => {
+                if (onDeleteTask) {
+                  await onDeleteTask(taskId)
+                } else {
+                  await personalStorage.removeTask(taskId)
+                  onTaskSaved()
+                }
+                handleSmoothClose()
+              }}
             />
           )}
 
@@ -533,7 +546,11 @@ export function MinimalistTaskModal({
                       <Text style={styles.sheetTitle}>Editar Tarea</Text>
                     </Pressable>
                   ) : (
-                    <Text style={styles.sheetTitle}>Nueva Tarea</Text>
+                    <Text style={styles.sheetTitle}>
+                      {mode === 'edit' || (task && currentView === 'form')
+                        ? 'Editar Tarea'
+                        : 'Nueva Tarea'}
+                    </Text>
                   )}
 
                   <Pressable

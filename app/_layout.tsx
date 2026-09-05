@@ -7,6 +7,7 @@ import { PersonalAuthProvider } from '@/context/PersonalAuthContext'
 import { StyleSheet } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
 import { personalStorage } from '@/lib/personalStorage'
+import { setupNotificationInfrastructure } from '@/lib/personalNotifications'
 import { logger } from '@/lib/logger'
 
 // Retener el Splash Screen nativo hasta que los datos estén 100% listos en memoria
@@ -18,6 +19,8 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
+        // Inicializar infraestructura de notificaciones de forma controlada
+        setupNotificationInfrastructure()
         // Precarga ultrarrápida en memoria (~100-200ms)
         await personalStorage.preloadAll()
       } catch (e) {

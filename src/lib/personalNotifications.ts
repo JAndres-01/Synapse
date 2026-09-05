@@ -5,32 +5,37 @@ import { personalStorage } from './personalStorage'
 import { DEFAULT_ADVANCE_REMINDER_TIME, DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 import { logger } from '@/lib/logger'
 
-// Configurar comportamiento de notificaciones para iOS y Android
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPresentAlert: true,
-    }),
-  })
-
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'Synapse',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FFFFFF',
-      sound: 'default',
-    }).catch((err) => {
-      logger.warn('[personalNotifications] Error configurando canal de notificaciones:', err)
+/**
+ * Inicializa la infraestructura de notificaciones (handler nativo y canal de Android).
+ * Debe invocarse de forma controlada durante el ciclo de arranque de la aplicación.
+ */
+export function setupNotificationInfrastructure(): void {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPresentAlert: true,
+      }),
     })
+
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'Synapse',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FFFFFF',
+        sound: 'default',
+      }).catch((err) => {
+        logger.warn('[personalNotifications] Error configurando canal de notificaciones:', err)
+      })
+    }
+  } catch (err) {
+    logger.warn('[personalNotifications] Error inicializando notification handler:', err)
   }
-} catch (err) {
-  logger.warn('[personalNotifications] Error inicializando notification handler:', err)
 }
 
 /**

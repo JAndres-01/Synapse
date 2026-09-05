@@ -102,8 +102,9 @@ export function MinimalistAssignSlotModal({
       triggerHaptic('success')
       onScheduleSaved()
       handleSmoothClose()
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo guardar la clase.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'No se pudo guardar la clase.'
+      Alert.alert('Error', msg)
       triggerHaptic('error')
     } finally {
       setLoading(false)

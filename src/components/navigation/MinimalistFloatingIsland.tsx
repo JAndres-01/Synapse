@@ -8,7 +8,7 @@ import {
   Animated,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
-import { Home, Calendar, CheckSquare, User } from 'lucide-react-native'
+import { Home, Calendar, CheckSquare, User, type LucideIcon } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
@@ -22,7 +22,7 @@ interface MinimalistFloatingIslandProps {
   visible?: boolean
 }
 
-const TABS: Array<{ key: TabKey; label: string; icon: any }> = [
+const TABS: Array<{ key: TabKey; label: string; icon: LucideIcon }> = [
   { key: 'today', label: 'Hoy', icon: Home },
   { key: 'schedule', label: 'Horario', icon: Calendar },
   { key: 'tasks', label: 'Tareas', icon: CheckSquare },

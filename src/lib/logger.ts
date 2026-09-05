@@ -5,17 +5,17 @@
  */
 
 export const logger = {
-  log: (...args: any[]): void => {
+  log: (...args: unknown[]): void => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.log(...args)
     }
   },
-  warn: (...args: any[]): void => {
+  warn: (...args: unknown[]): void => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.warn(...args)
     }
   },
-  error: (...args: any[]): void => {
+  error: (...args: unknown[]): void => {
     if (typeof __DEV__ !== 'undefined' && __DEV__) {
       console.error(...args)
     }

@@ -122,7 +122,7 @@ export default function ProfileScreen() {
         triggerHaptic('success')
         setShowCredentialModal(true)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('[ProfileScreen] Error al seleccionar credencial:', err)
       Alert.alert('Error', 'No se pudo cargar el archivo PDF de la credencial.')
       triggerHaptic('error')

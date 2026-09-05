@@ -127,8 +127,9 @@ export function MinimalistSubjectModal({
         onSubjectsUpdated()
         resetForm()
       }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo guardar la materia.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'No se pudo guardar la materia.'
+      Alert.alert('Error', msg)
       triggerHaptic('error')
     } finally {
       setLoading(false)

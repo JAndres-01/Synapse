@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
   Alert,
+  type GestureResponderHandlers,
 } from 'react-native'
 import {
   Clock,
@@ -27,7 +28,7 @@ import { logger } from '@/lib/logger'
 
 export interface TaskDetailViewProps {
   task: Task | null
-  panHandlers?: any
+  panHandlers?: GestureResponderHandlers
   onOpenImage: (image: { uri: string; title: string }) => void
   onOpenPdf: (pdf: { uri: string; title: string }) => void
 }

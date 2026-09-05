@@ -9,7 +9,6 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
-  PanResponder,
   Platform,
 } from 'react-native'
 import { WebView } from 'react-native-webview'
@@ -25,9 +24,8 @@ import {
   QrCode,
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
-import { APPLE_EASING, SPRING_PANEL_CONFIG } from '@/constants/animations'
-import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
+import { useModalAnimation } from '@/hooks/useModalAnimation'
 import { logger } from '@/lib/logger'
 
 interface MinimalistCredentialModalProps {
@@ -51,12 +49,20 @@ export function MinimalistCredentialModal({
 }: MinimalistCredentialModalProps) {
   const insets = useSafeAreaInsets()
 
-  const [modalRendered, setModalRendered] = useState(visible)
+  const {
+    modalVisible,
+    fadeAnim,
+    slideAnim,
+    panY,
+    panResponder,
+    handleSmoothClose,
+  } = useModalAnimation({
+    visible,
+    onClose,
+  })
+
   const [webViewReady, setWebViewReady] = useState(false)
-  const webViewRef = useRef<any>(null)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-  const panY = useRef(new Animated.Value(0)).current
+  const webViewRef = useRef<WebView>(null)
 
   // Normalizar ruta para mitigar cambios de UUID del sandbox en iOS
   const resolvedUrl = useMemo(() => {
@@ -75,27 +81,8 @@ export function MinimalistCredentialModal({
   useEffect(() => {
     let isCurrent = true
     let timer: ReturnType<typeof setTimeout> | undefined
-    let activeAnim: Animated.CompositeAnimation | null = null
 
     if (visible) {
-      setModalRendered(true)
-      slideAnim.setValue(SCREEN_HEIGHT)
-      fadeAnim.setValue(0)
-      panY.setValue(0)
-      activeAnim = Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          ...SPRING_PANEL_CONFIG,
-        }),
-      ])
-      activeAnim.start()
-
       // Solo diferir el montado de WebView si la plataforma y el formato lo requieren (iOS PDF)
       if (!isImage && Platform.OS === 'ios') {
         timer = setTimeout(() => {
@@ -106,36 +93,16 @@ export function MinimalistCredentialModal({
       }
     } else {
       setWebViewReady(false)
-      activeAnim = Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 160,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-      ])
-      activeAnim.start(({ finished }) => {
-        if (isCurrent && finished) {
-          setModalRendered(false)
-        }
-      })
     }
 
     return () => {
       isCurrent = false
       if (timer) clearTimeout(timer)
-      if (activeAnim) activeAnim.stop()
     }
-  }, [visible, isImage, fadeAnim, slideAnim, panY])
+  }, [visible, isImage])
 
   const handleClose = () => {
-    triggerHaptic('light')
-    onClose()
+    handleSmoothClose()
   }
 
   const handleShare = async () => {
@@ -152,7 +119,7 @@ export function MinimalistCredentialModal({
       } else {
         Alert.alert('Aviso', 'La opción de compartir no está disponible en este dispositivo.')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('[MinimalistCredentialModal] Error al compartir:', err)
       Alert.alert('Error', 'No se pudo compartir el archivo.')
     }
@@ -182,37 +149,11 @@ export function MinimalistCredentialModal({
     onChangeCredential()
   }
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 110 || gestureState.vy > 0.5) {
-          handleClose()
-        } else {
-          Animated.spring(panY, {
-            toValue: 0,
-            damping: 24,
-            stiffness: 400,
-            useNativeDriver: true,
-          }).start()
-        }
-      },
-    })
-  ).current
-
-  if (!modalRendered) return null
+  if (!modalVisible) return null
 
   return (
     <Modal
-      visible={modalRendered}
+      visible={modalVisible}
       transparent={true}
       animationType="none"
       onRequestClose={handleClose}

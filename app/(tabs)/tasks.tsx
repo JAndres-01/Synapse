@@ -79,10 +79,6 @@ export default function TasksScreen() {
   // FAB animation
   const fabScaleAnim = useRef(new Animated.Value(1)).current
 
-  // Animación de desvanecimiento sutil al cambiar panel
-  // Se aplica a cada fila: baja a 0.55 instantáneamente y regresa a 1 con spring suave
-  const panelFadeAnim = useRef(new Animated.Value(1)).current
-
   // Debounce para búsqueda fluida
   useEffect(() => {
     if (!searchQuery) {
@@ -171,13 +167,9 @@ export default function TasksScreen() {
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
 
-    // 1. Desvanecimiento rápido al iniciar cambio de panel
-    panelFadeAnim.setValue(0.55)
-
-    // 2. LayoutAnimation de spring: las filas se deslizan a su nueva posición
-    //    con un pequeño overshoot (rebote) al asentarse — springDamping < 1.0
+    // LayoutAnimation spring: las filas se deslizan a nueva posición con rebote sutil al asentarse
     LayoutAnimation.configureNext({
-      duration: 320,
+      duration: 220,
       create: {
         type: LayoutAnimation.Types.easeInEaseOut,
         property: LayoutAnimation.Properties.opacity,
@@ -192,15 +184,6 @@ export default function TasksScreen() {
       },
     })
     setStatusFilter(newStatus)
-
-    // 3. Recuperación suave de opacidad (spring sobredamped → sin rebote en fade)
-    Animated.spring(panelFadeAnim, {
-      toValue: 1,
-      stiffness: 280,
-      damping: 26,
-      mass: 0.8,
-      useNativeDriver: true,
-    }).start()
   }
 
   const handleToggleStatus = useCallback(
@@ -223,16 +206,16 @@ export default function TasksScreen() {
         }
       }
 
-      // LayoutAnimation inmediato — da el rebote spring a la fila que sale/entra/se reposiciona
+      // LayoutAnimation inmediato — animación rápida de salida/entrada al tachar/destachar
       LayoutAnimation.configureNext({
-        duration: 240,
+        duration: 130,
         create: {
           type: LayoutAnimation.Types.easeInEaseOut,
           property: LayoutAnimation.Properties.opacity,
         },
         update: {
           type: LayoutAnimation.Types.spring,
-          springDamping: 0.82,
+          springDamping: 0.88,
         },
         delete: {
           type: LayoutAnimation.Types.easeInEaseOut,
@@ -338,14 +321,10 @@ export default function TasksScreen() {
     ({ item, index }: { item: Task; index: number }) => (
       <Animated.View
         style={{
-          // Opacidad combinada: animación de entrada escalonada × fade de transición de panel
-          opacity: Animated.multiply(
-            cardEntranceAnims[2].interpolate({
-              inputRange: [0, 0.4, 1],
-              outputRange: [0, 0.7, 1],
-            }),
-            panelFadeAnim
-          ),
+          opacity: cardEntranceAnims[2].interpolate({
+            inputRange: [0, 0.4, 1],
+            outputRange: [0, 0.7, 1],
+          }),
           transform: [
             {
               translateY: cardEntranceAnims[2].interpolate({
@@ -377,7 +356,6 @@ export default function TasksScreen() {
     ),
     [
       cardEntranceAnims,
-      panelFadeAnim,
       statusFilter,
       filteredTasks.length,
       highlightedTaskId,

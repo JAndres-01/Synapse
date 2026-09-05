@@ -46,7 +46,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     }
     return finalStatus === 'granted'
   } catch (err) {
-    console.log('Error solicitando permisos de notificación:', err)
+    console.warn('[personalNotifications] Permisos no otorgados:', err)
     return false
   }
 }
@@ -113,7 +113,7 @@ export async function scheduleTaskReminder(
       },
     })
   } catch (err) {
-    console.log('Error programando recordatorio de tarea:', err)
+    console.warn('[personalNotifications] Error programando recordatorio de tarea:', err)
   }
 }
 
@@ -179,7 +179,7 @@ async function scheduleClassReminders(
         },
       })
     } catch (err) {
-      console.log('Error programando recordatorio de clase:', err)
+      console.warn('[personalNotifications] Error programando recordatorio de clase:', err)
     }
   }
 }
@@ -212,7 +212,7 @@ export async function syncAllNotifications(
     // 2. Programar avisos de clases
     await scheduleClassReminders(currentSchedules, prefs)
   } catch (err) {
-    console.log('Error sincronizando notificaciones:', err)
+    console.warn('[personalNotifications] Error sincronizando notificaciones:', err)
   }
 }
 

@@ -7,6 +7,7 @@ import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
+import { formatTime12h } from '@/lib/academicDateUtils'
 
 export interface TaskDatePickerProps {
   dueDate: string
@@ -31,18 +32,7 @@ function formatManualDateOnly(dateStr?: string | null): string {
 }
 
 function formatManualTimeOnly(dateStr?: string | null): string {
-  if (!dateStr) return '11:59 PM'
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return '11:59 PM'
-    const hours = d.getHours()
-    const minutes = String(d.getMinutes()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    const h12 = hours % 12 || 12
-    return `${h12}:${minutes} ${ampm}`
-  } catch {
-    return '11:59 PM'
-  }
+  return formatTime12h(dateStr, '11:59 PM')
 }
 
 export function TaskDatePicker({

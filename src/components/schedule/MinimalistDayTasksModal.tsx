@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Schedule } from '@/types/personal'
 import { X, Check, Clock, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
-import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
+import { getActiveAcademicWeek, isTaskForAcademicDay, formatTime12h } from '@/lib/academicDateUtils'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
 import { sortTasksByDueDate } from '@/lib/taskSort'
@@ -80,18 +80,7 @@ export function MinimalistDayTasksModal({
   const targetSubject = subjectId ? schedules.find((s) => s.subject_id === subjectId)?.subject : null
 
   const formatTaskTime = (dateStr?: string | null) => {
-    if (!dateStr) return null
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return null
-      const hours = d.getHours()
-      const mins = d.getMinutes().toString().padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedH = hours % 12 || 12
-      return `${formattedH}:${mins} ${ampm}`
-    } catch {
-      return null
-    }
+    return formatTime12h(dateStr) || null
   }
 
   if (!modalVisible) return null

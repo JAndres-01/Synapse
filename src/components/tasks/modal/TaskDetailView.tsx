@@ -22,6 +22,7 @@ import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
+import { formatTime12h } from '@/lib/academicDateUtils'
 
 export interface TaskDetailViewProps {
   task: Task | null
@@ -49,11 +50,7 @@ export function TaskDetailView({
       const dayName = DAYS_SHORT[date.getDay()]
       const dayNum = date.getDate()
       const monthName = MONTHS_SHORT[date.getMonth()]
-      const hours = date.getHours()
-      const minutes = String(date.getMinutes()).padStart(2, '0')
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      const formattedHour = hours % 12 || 12
-      const timeStr = `${formattedHour}:${minutes} ${ampm}`
+      const timeStr = formatTime12h(date)
 
       if (isToday) {
         return { text: `Hoy, ${timeStr}`, isOverdue: false, isToday: true }

@@ -93,6 +93,61 @@ export function isTaskForAcademicDay(taskDueDate?: string | null, targetDayDate?
   }
 }
 
+export interface FormattedHour12 {
+  hour12: number
+  minuteStr: string
+  ampm: 'AM' | 'PM'
+  text: string
+}
+
+/**
+ * Convierte hora y minutos de 24 horas a formato 12 horas canónico de Synapse.
+ */
+export function formatHour12(hour: number, minute: number = 0): FormattedHour12 {
+  const ampm: 'AM' | 'PM' = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  const minuteStr = String(minute).padStart(2, '0')
+  return {
+    hour12,
+    minuteStr,
+    ampm,
+    text: `${hour12}:${minuteStr} ${ampm}`,
+  }
+}
+
+/**
+ * Formatea una fecha o cadena horaria ("HH:mm" o ISO) a formato 12 horas con indicador AM/PM.
+ */
+export function formatTime12h(timeOrDate?: string | Date | null, fallback: string = ''): string {
+  if (!timeOrDate) return fallback
+  if (timeOrDate instanceof Date) {
+    if (isNaN(timeOrDate.getTime())) return fallback
+    return formatHour12(timeOrDate.getHours(), timeOrDate.getMinutes()).text
+  }
+
+  if (typeof timeOrDate === 'string') {
+    const timeMatch = timeOrDate.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+    if (timeMatch) {
+      const h = parseInt(timeMatch[1], 10)
+      const m = parseInt(timeMatch[2], 10)
+      if (!isNaN(h) && !isNaN(m)) {
+        return formatHour12(h, m).text
+      }
+    }
+
+    try {
+      const d = new Date(timeOrDate)
+      if (!isNaN(d.getTime())) {
+        return formatHour12(d.getHours(), d.getMinutes()).text
+      }
+    } catch {
+      return fallback
+    }
+  }
+
+  return fallback
+}
+
 type TaskUrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'future'
 
 interface TaskDueInfo {
@@ -165,12 +220,7 @@ export function formatTaskDueDate(
     const dayName = DAYS_SHORT[d.getDay()]
     const monthName = MONTHS_SHORT[d.getMonth()]
     const dayNum = d.getDate()
-
-    const hours = d.getHours()
-    const mins = String(d.getMinutes()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    const formattedH = hours % 12 || 12
-    const timeStr = `${formattedH}:${mins} ${ampm}`
+    const timeStr = formatTime12h(d)
 
     // 1. Tarea Vencida (Overdue)
     if (isPast && !isVisuallyDone) {

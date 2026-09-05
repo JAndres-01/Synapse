@@ -35,6 +35,7 @@ import { APPLE_EASING, SPRING_PANEL_CONFIG } from '@/constants/animations'
 import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT } from '@/constants/dates'
 import { generateId } from '@/lib/idGenerator'
+import { formatTime12h } from '@/lib/academicDateUtils'
 import { TaskDetailView } from './modal/TaskDetailView'
 import { TaskSubjectPicker } from './modal/TaskSubjectPicker'
 import { TaskDatePicker } from './modal/TaskDatePicker'
@@ -76,12 +77,7 @@ function formatDueDateLabel(dateStr?: string | null): string {
     const tomorrow = new Date(now)
     tomorrow.setDate(tomorrow.getDate() + 1)
     const isTomorrow = d.toDateString() === tomorrow.toDateString()
-
-    const hours = d.getHours()
-    const mins = String(d.getMinutes()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    const hStr = hours % 12 || 12
-    const timePart = `${hStr}:${mins} ${ampm}`
+    const timePart = formatTime12h(d)
 
     if (isToday) return `Hoy ${timePart}`
     if (isTomorrow) return `Mañana ${timePart}`

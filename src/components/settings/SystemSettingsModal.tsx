@@ -32,6 +32,7 @@ import type { PersonalProfile } from '@/types/personal'
 import { APPLE_EASING } from '@/constants/animations'
 import { MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { formatTime12h } from '@/lib/academicDateUtils'
 import { SemesterConfigCard, type SemesterPickerType } from './SemesterConfigCard'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
@@ -103,11 +104,7 @@ function formatReadableDate(str?: string, fallback: string = ''): string {
 }
 
 function formatTimeDisplay(timeStr?: string): string {
-  if (!timeStr) return '8:00 PM'
-  const [h, m] = timeStr.split(':').map(Number)
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+  return formatTime12h(timeStr, '8:00 PM')
 }
 
 export function SystemSettingsModal({

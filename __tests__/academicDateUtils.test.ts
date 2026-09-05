@@ -3,10 +3,36 @@ import {
   formatTaskDueDate,
   isTaskForAcademicDay,
   calculateAcademicVitalStats,
+  formatHour12,
+  formatTime12h,
 } from '@/lib/academicDateUtils'
 import type { Task, Subject } from '@/types/personal'
 
 describe('academicDateUtils', () => {
+  describe('formatHour12 y formatTime12h', () => {
+    test('formatHour12 formatea correctamente horas AM y PM', () => {
+      expect(formatHour12(0, 0)).toEqual({ hour12: 12, minuteStr: '00', ampm: 'AM', text: '12:00 AM' })
+      expect(formatHour12(7, 5)).toEqual({ hour12: 7, minuteStr: '05', ampm: 'AM', text: '7:05 AM' })
+      expect(formatHour12(12, 0)).toEqual({ hour12: 12, minuteStr: '00', ampm: 'PM', text: '12:00 PM' })
+      expect(formatHour12(13, 30)).toEqual({ hour12: 1, minuteStr: '30', ampm: 'PM', text: '1:30 PM' })
+      expect(formatHour12(23, 59)).toEqual({ hour12: 11, minuteStr: '59', ampm: 'PM', text: '11:59 PM' })
+    })
+
+    test('formatTime12h formatea strings HH:mm y fechas Date', () => {
+      expect(formatTime12h('20:00')).toBe('8:00 PM')
+      expect(formatTime12h('07:30')).toBe('7:30 AM')
+      expect(formatTime12h('00:15')).toBe('12:15 AM')
+      expect(formatTime12h('12:00')).toBe('12:00 PM')
+
+      const dateObj = new Date(2026, 8, 2, 16, 45)
+      expect(formatTime12h(dateObj)).toBe('4:45 PM')
+
+      // Fallbacks
+      expect(formatTime12h(null, '8:00 PM')).toBe('8:00 PM')
+      expect(formatTime12h(undefined, '11:59 PM')).toBe('11:59 PM')
+      expect(formatTime12h('invalid-string', 'Default')).toBe('Default')
+    })
+  })
   test('calcula correctamente la semana académica actual para un miércoles', () => {
     // 2026-09-02 fue miércoles
     const wednesday = new Date(2026, 8, 2, 10, 0, 0)

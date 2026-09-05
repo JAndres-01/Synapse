@@ -5,6 +5,7 @@ import { Check, CheckSquare, ChevronRight, Paperclip } from 'lucide-react-native
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { sortTasksByDueDate } from '@/lib/taskSort'
 
 interface MinimalistTodayTasksProps {
   tasks: Task[]
@@ -172,14 +173,7 @@ export function MinimalistTodayTasks({
     }
   })
 
-  const sortedTasks = [...pendingNext7DaysTasks].sort((a, b) => {
-    if (a.due_date && b.due_date) {
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-    }
-    if (a.due_date && !b.due_date) return -1
-    if (!a.due_date && b.due_date) return 1
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  })
+  const sortedTasks = sortTasksByDueDate(pendingNext7DaysTasks)
 
   return (
     <View style={styles.container}>

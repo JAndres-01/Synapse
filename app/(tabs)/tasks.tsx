@@ -29,6 +29,7 @@ import {
   scheduleTaskReminder,
 } from '@/lib/personalNotifications'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
+import { sortTasksByDueDate } from '@/lib/taskSort'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -166,10 +167,6 @@ export default function TasksScreen() {
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    LayoutAnimation.configureNext({
-      duration: 220,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-    })
     setStatusFilter(newStatus)
   }
 
@@ -254,7 +251,7 @@ export default function TasksScreen() {
 
   // Filtrado de Tareas
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    const list = tasks.filter((task) => {
       if (selectedSubjectId !== 'all' && task.subject_id !== selectedSubjectId) {
         return false
       }
@@ -280,6 +277,7 @@ export default function TasksScreen() {
 
       return true
     })
+    return sortTasksByDueDate(list)
   }, [tasks, selectedSubjectId, statusFilter, transitioningTaskIds, debouncedQuery])
 
   const selectedSubject = useMemo(

@@ -11,6 +11,8 @@ import { BlurView } from 'expo-blur'
 import { Home, Calendar, CheckSquare, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
+import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
+
 export type TabKey = 'today' | 'schedule' | 'tasks' | 'settings'
 
 interface MinimalistFloatingIslandProps {
@@ -45,24 +47,12 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
     const idx = Math.max(0, TABS.findIndex((t) => t.key === activeTab))
     Animated.spring(slideAnim, {
       toValue: idx * TAB_WIDTH,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
   }, [activeTab, slideAnim])
 
   const handleTabPress = (tabKey: TabKey) => {
-    const idx = TABS.findIndex((t) => t.key === tabKey)
-    if (idx !== -1) {
-      Animated.spring(slideAnim, {
-        toValue: idx * TAB_WIDTH,
-        stiffness: 750,
-        damping: 28,
-        mass: 0.5,
-        useNativeDriver: true,
-      }).start()
-    }
+    if (tabKey === activeTab) return
     onSelectTab(tabKey)
   }
 

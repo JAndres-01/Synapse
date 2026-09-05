@@ -30,6 +30,7 @@ import {
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
+import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -102,27 +103,13 @@ export default function ScheduleScreen() {
   useEffect(() => {
     Animated.spring(viewModeAnim, {
       toValue: viewMode === 'day' ? 0 : segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
   }, [viewMode, segmentWidth, viewModeAnim])
 
   const handleViewModeChange = (mode: 'day' | 'week') => {
     if (mode === viewMode) return
-    Animated.spring(viewModeAnim, {
-      toValue: mode === 'day' ? 0 : segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
-    }).start()
-
-    LayoutAnimation.configureNext({
-      duration: 220,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-    })
+    triggerHaptic('selection')
     setViewMode(mode)
   }
 

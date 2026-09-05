@@ -31,4 +31,16 @@ export const SPRING_TOUCH_CONFIG = {
   useNativeDriver: true,
 } as const
 
+/**
+ * Física de resorte críticamente amortiguada (damping ratio ≈ 1.0) para indicadores y barras
+ * de deslizamiento horizontal (tabs, segment controls, islas de navegación).
+ * Elimina oscilaciones y tartamudeos asegurando 60-120 FPS ultra fluidos.
+ */
+export const SPRING_SLIDE_INDICATOR = {
+  stiffness: 420,
+  damping: 32,
+  mass: 0.55,
+  useNativeDriver: true,
+} as const
+
 

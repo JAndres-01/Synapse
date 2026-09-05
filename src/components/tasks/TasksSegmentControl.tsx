@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
+import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -26,28 +27,17 @@ export function TasksSegmentControl({
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 32)
   const segmentWidth = Math.max(0, (containerWidth - 6) / 3)
   const statusIndex = statusFilter === 'pending' ? 0 : statusFilter === 'completed' ? 1 : 2
-  const slideAnim = useRef(new Animated.Value(0)).current
+  const slideAnim = useRef(new Animated.Value(statusIndex * segmentWidth)).current
 
   useEffect(() => {
     Animated.spring(slideAnim, {
       toValue: statusIndex * segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
-  }, [statusIndex, segmentWidth])
+  }, [statusIndex, segmentWidth, slideAnim])
 
   const handlePress = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    const targetIdx = newStatus === 'pending' ? 0 : newStatus === 'completed' ? 1 : 2
-    Animated.spring(slideAnim, {
-      toValue: targetIdx * segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
-    }).start()
     onStatusChange(newStatus)
   }
 

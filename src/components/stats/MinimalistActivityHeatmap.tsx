@@ -15,7 +15,7 @@ import { generateHeatmapGrid, type HeatmapDay } from '@/lib/heatmapUtils'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { Flame, Calendar, CheckCircle2 } from 'lucide-react-native'
 import { useFocusEffect } from 'expo-router'
-import { APPLE_EASING } from '@/constants/animations'
+import { APPLE_EASING, SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -106,10 +106,7 @@ export function MinimalistActivityHeatmap() {
     // Animación de resorte en la pastilla selectora
     Animated.spring(tabSlideAnim, {
       toValue: tab === 'fall' ? 0 : 80,
-      stiffness: 650,
-      damping: 34,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
 
     scrollViewRef.current?.scrollTo({ x: 0, animated: false })

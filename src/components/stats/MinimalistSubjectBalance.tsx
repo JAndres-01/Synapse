@@ -4,7 +4,7 @@ import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStora
 import type { Task, Subject } from '@/types/personal'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { BarChart2 } from 'lucide-react-native'
-import { APPLE_EASING } from '@/constants/animations'
+import { APPLE_EASING, SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 type ScopeFilter = 'pending' | 'all'
@@ -198,10 +198,7 @@ export function MinimalistSubjectBalance() {
     // Animación de pastilla con rebote físico tipo iOS
     Animated.spring(slideAnim, {
       toValue: targetOffset,
-      stiffness: 750,
-      damping: 32,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
   }
 

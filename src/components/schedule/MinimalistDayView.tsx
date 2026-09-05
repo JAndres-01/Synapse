@@ -7,7 +7,6 @@ import {
   Animated,
   Platform,
   Dimensions,
-  LayoutAnimation,
   LayoutChangeEvent,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
@@ -18,6 +17,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 import { SCHEDULE_DAYS } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -207,30 +207,12 @@ export function MinimalistDayView({
   useEffect(() => {
     Animated.spring(daySlideAnim, {
       toValue: activeDayIndex * pillWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
+      ...SPRING_SLIDE_INDICATOR,
     }).start()
   }, [activeDayIndex, pillWidth, daySlideAnim])
 
   const handleDayPress = (dayNum: number) => {
     if (dayNum === selectedDay || academicWeek.isDayDisabled(dayNum)) return
-    const idx = DAYS.findIndex((d) => d.num === dayNum)
-    if (idx !== -1) {
-      Animated.spring(daySlideAnim, {
-        toValue: idx * pillWidth,
-        stiffness: 750,
-        damping: 28,
-        mass: 0.5,
-        useNativeDriver: true,
-      }).start()
-    }
-
-    LayoutAnimation.configureNext({
-      duration: 220,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-    })
     onSelectDay(dayNum)
   }
 

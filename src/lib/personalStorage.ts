@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { Subject, Schedule, Task, PersonalProfile, AppPreferences } from '@/types/personal'
+import { sortTasksByDueDate } from './taskSort'
 
 const KEYS = {
   SUBJECTS: 'synapse_personal_subjects_v2',
@@ -50,7 +51,7 @@ export const personalStorage = {
   },
 
   getCachedTasks(): Task[] {
-    return _tasksCache !== null ? [..._tasksCache] : []
+    return _tasksCache !== null ? sortTasksByDueDate(_tasksCache) : []
   },
 
   getCachedPreferences(): AppPreferences | null {
@@ -206,15 +207,16 @@ export const personalStorage = {
   // ==========================================
   async getTasks(): Promise<Task[]> {
     if (_tasksCache !== null) {
-      return [..._tasksCache]
+      return sortTasksByDueDate(_tasksCache)
     }
     try {
       const data = await AsyncStorage.getItem(KEYS.TASKS)
       if (data) {
         const parsed = JSON.parse(data)
         if (Array.isArray(parsed)) {
-          _tasksCache = parsed
-          return [...parsed]
+          const sorted = sortTasksByDueDate(parsed)
+          _tasksCache = sorted
+          return [...sorted]
         }
       }
     } catch (err) {
@@ -225,7 +227,7 @@ export const personalStorage = {
   },
 
   async setTasks(tasks: Task[]): Promise<void> {
-    const safeList = Array.isArray(tasks) ? tasks : []
+    const safeList = sortTasksByDueDate(Array.isArray(tasks) ? tasks : [])
     _tasksCache = [...safeList]
     notifyListeners()
     try {
@@ -250,8 +252,9 @@ export const personalStorage = {
     } else {
       updated = [task, ...list]
     }
-    await this.setTasks(updated)
-    return updated
+    const sorted = sortTasksByDueDate(updated)
+    await this.setTasks(sorted)
+    return sorted
   },
 
   async removeTask(taskId: string): Promise<Task[]> {

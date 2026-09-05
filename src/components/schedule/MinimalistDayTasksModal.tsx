@@ -17,6 +17,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
+import { sortTasksByDueDate } from '@/lib/taskSort'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -176,12 +177,7 @@ export function MinimalistDayTasksModal({
     return isTaskForAcademicDay(t.due_date, targetDayDate)
   })
 
-  const sortedDayTasks = [...dayTasks].sort((a, b) => {
-    if (a.due_date && b.due_date) {
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-    }
-    return 0
-  })
+  const sortedDayTasks = sortTasksByDueDate(dayTasks)
 
   const dayName = DAY_NAMES[day] || 'Día'
   const targetSubject = subjectId ? schedules.find((s) => s.subject_id === subjectId)?.subject : null

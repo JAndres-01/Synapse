@@ -4,6 +4,7 @@ import {
   Text,
   Modal,
   Pressable,
+  Image,
   StyleSheet,
   Animated,
   ActivityIndicator,
@@ -14,7 +15,6 @@ import {
 } from 'react-native'
 import { WebView } from 'react-native-webview'
 import * as Sharing from 'expo-sharing'
-import * as FileSystem from 'expo-file-system/legacy'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   IdCard,
@@ -49,86 +49,19 @@ export function MinimalistCredentialModal({
   const insets = useSafeAreaInsets()
 
   const [modalRendered, setModalRendered] = useState(visible)
-  const [webViewSource, setWebViewSource] = useState<{ uri: string } | null>(null)
-  const [shareableUri, setShareableUri] = useState<string | null>(null)
-  const [loadingPdf, setLoadingPdf] = useState(false)
+  const [webViewReady, setWebViewReady] = useState(false)
+  const webViewRef = useRef<any>(null)
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(600)).current
   const panY = useRef(new Animated.Value(0)).current
 
-  useEffect(() => {
-    let isMounted = true
-    const preparePdf = async () => {
-      if (!credentialUrl) {
-        setWebViewSource(null)
-        setShareableUri(null)
-        return
-      }
-      setLoadingPdf(true)
-      try {
-        let safeShareUri = credentialUrl
-
-        // Asegurar copia en directorio seguro del sistema
-        if (credentialUrl.startsWith('file://')) {
-          try {
-            const destDir = `${FileSystem.documentDirectory ?? ''}credentials/`
-            const dirInfo = await FileSystem.getInfoAsync(destDir)
-            if (!dirInfo.exists) {
-              await FileSystem.makeDirectoryAsync(destDir, { intermediates: true })
-            }
-            const safeName = (credentialName || 'credencial.pdf').replace(/[^a-zA-Z0-9._-]/g, '_')
-            const destFile = `${destDir}${safeName}`
-            if (credentialUrl !== destFile) {
-              await FileSystem.copyAsync({ from: credentialUrl, to: destFile })
-            }
-            safeShareUri = destFile
-          } catch (copyErr) {
-            console.warn('[CredentialModal] Copia permanente:', copyErr)
-          }
-
-          // Para evitar restricciones de sandbox en iOS WebKit, leer en base64
-          try {
-            const base64 = await FileSystem.readAsStringAsync(safeShareUri, {
-              encoding: FileSystem.EncodingType.Base64,
-            })
-            if (isMounted) {
-              setWebViewSource({ uri: `data:application/pdf;base64,${base64}` })
-              setShareableUri(safeShareUri)
-              setLoadingPdf(false)
-              return
-            }
-          } catch (readErr) {
-            console.warn('[CredentialModal] Lectura base64 falló:', readErr)
-          }
-        }
-
-        if (isMounted) {
-          setWebViewSource({ uri: safeShareUri })
-          setShareableUri(safeShareUri)
-          setLoadingPdf(false)
-        }
-      } catch (err) {
-        console.error('[CredentialModal] Error preparando PDF:', err)
-        if (isMounted) {
-          setWebViewSource({ uri: credentialUrl })
-          setShareableUri(credentialUrl)
-          setLoadingPdf(false)
-        }
-      }
-    }
-
-    if (visible && credentialUrl) {
-      preparePdf()
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [visible, credentialUrl, credentialName])
+  const isImage = Boolean(credentialUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i))
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
     if (visible) {
       setModalRendered(true)
+      setWebViewReady(false)
       panY.setValue(0)
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -144,8 +77,16 @@ export function MinimalistCredentialModal({
           mass: 0.8,
           useNativeDriver: true,
         }),
-      ]).start()
+      ]).start(() => {
+        setWebViewReady(true)
+      })
+
+      // Fallback timer para montar el WebView tras estabilizar el layout nativo de la hoja
+      timer = setTimeout(() => {
+        setWebViewReady(true)
+      }, 250)
     } else {
+      setWebViewReady(false)
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -161,6 +102,10 @@ export function MinimalistCredentialModal({
         setModalRendered(false)
       })
     }
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
   }, [visible, fadeAnim, slideAnim, panY])
 
   const handleClose = () => {
@@ -169,16 +114,15 @@ export function MinimalistCredentialModal({
   }
 
   const handleShare = async () => {
-    const uriToShare = shareableUri || credentialUrl
-    if (!uriToShare) return
+    if (!credentialUrl) return
     triggerHaptic('light')
     try {
       const isAvailable = await Sharing.isAvailableAsync()
       if (isAvailable) {
-        await Sharing.shareAsync(uriToShare, {
+        await Sharing.shareAsync(credentialUrl, {
           dialogTitle: `Credencial Digital - ${studentName}`,
-          mimeType: 'application/pdf',
-          UTI: 'com.adobe.pdf',
+          mimeType: isImage ? 'image/jpeg' : 'application/pdf',
+          UTI: isImage ? 'public.image' : 'com.adobe.pdf',
         })
       } else {
         Alert.alert('Aviso', 'La opción de compartir no está disponible en este dispositivo.')
@@ -282,7 +226,7 @@ export function MinimalistCredentialModal({
                   <View style={styles.titleRow}>
                     <Text style={styles.headerTitle}>Credencial Digital</Text>
                     <View style={styles.pdfPill}>
-                      <Text style={styles.pdfPillText}>PDF</Text>
+                      <Text style={styles.pdfPillText}>{isImage ? 'IMG' : 'PDF'}</Text>
                     </View>
                   </View>
                   <Text style={styles.headerSubtitle} numberOfLines={1}>
@@ -301,31 +245,44 @@ export function MinimalistCredentialModal({
             </View>
           </View>
 
-          {/* Visor de PDF Integrado con WebView */}
+          {/* Visor de Credencial con Soporte Nativo para PDF e Imagen */}
           <View style={styles.viewerWrapper}>
-            {loadingPdf ? (
+            {!credentialUrl ? (
+              <View style={styles.errorOverlay}>
+                <IdCard size={36} color="#71717A" />
+                <Text style={styles.errorTitle}>Sin credencial seleccionada</Text>
+              </View>
+            ) : isImage ? (
+              <View style={styles.imageViewerContainer}>
+                <Image
+                  source={{ uri: credentialUrl }}
+                  style={styles.credentialImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : !webViewReady ? (
               <View style={styles.loaderOverlay}>
                 <ActivityIndicator size="small" color="#FFFFFF" />
                 <Text style={styles.loaderText}>Cargando credencial digital...</Text>
               </View>
-            ) : webViewSource ? (
+            ) : (
               <WebView
-                source={webViewSource}
+                ref={webViewRef}
+                source={{ uri: credentialUrl }}
                 style={styles.webView}
                 originWhitelist={['*']}
                 allowFileAccess={true}
                 allowFileAccessFromFileURLs={true}
                 allowUniversalAccessFromFileURLs={true}
-                scalesPageToFit={true}
                 bounces={false}
-                startInLoadingState={true}
-                renderLoading={() => (
-                  <View style={styles.loaderOverlay}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.loaderText}>Cargando credencial digital...</Text>
-                  </View>
-                )}
-                renderError={(errorName) => (
+                onContentProcessDidTerminate={() => {
+                  console.warn('[CredentialModal] WebContent process terminated, recargando...')
+                  webViewRef.current?.reload()
+                }}
+                onError={(e) => {
+                  console.warn('[CredentialModal] Error en visor:', e.nativeEvent)
+                }}
+                renderError={() => (
                   <View style={styles.errorOverlay}>
                     <QrCode size={36} color="#71717A" />
                     <Text style={styles.errorTitle}>Credencial Digital Lista</Text>
@@ -339,11 +296,6 @@ export function MinimalistCredentialModal({
                   </View>
                 )}
               />
-            ) : (
-              <View style={styles.errorOverlay}>
-                <IdCard size={36} color="#71717A" />
-                <Text style={styles.errorTitle}>Sin credencial seleccionada</Text>
-              </View>
             )}
           </View>
 
@@ -551,6 +503,17 @@ const styles = StyleSheet.create({
     color: '#09090B',
     fontSize: 13,
     fontWeight: '700',
+  },
+  imageViewerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    padding: 12,
+  },
+  credentialImage: {
+    width: '100%',
+    height: '100%',
   },
   actionBar: {
     flexDirection: 'row',

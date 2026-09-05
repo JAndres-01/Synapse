@@ -106,6 +106,12 @@ jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn().mockResolvedValue('mock-content'),
   writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
   deleteAsync: jest.fn().mockResolvedValue(undefined),
+  getInfoAsync: jest.fn().mockResolvedValue({ exists: true }),
+  makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
+  EncodingType: {
+    UTF8: 'utf8',
+    Base64: 'base64',
+  },
 }))
 
 // Mock Safe Area Insets

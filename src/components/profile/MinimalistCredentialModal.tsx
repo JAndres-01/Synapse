@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useRef, useEffect, useState, useMemo } from 'react'
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   ActivityIndicator,
   Alert,
   PanResponder,
+  Platform,
 } from 'react-native'
 import { WebView } from 'react-native-webview'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system/legacy'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   IdCard,
@@ -53,15 +55,29 @@ export function MinimalistCredentialModal({
   const slideAnim = useRef(new Animated.Value(600)).current
   const panY = useRef(new Animated.Value(0)).current
 
-  const isImage = Boolean(credentialUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i))
+  // Normalizar ruta para mitigar cambios de UUID del sandbox en iOS
+  const resolvedUrl = useMemo(() => {
+    if (!credentialUrl) return null
+    if (FileSystem.documentDirectory && credentialUrl.includes('credentials/')) {
+      const match = credentialUrl.match(/credentials\/[^/]+$/)
+      if (match) {
+        return `${FileSystem.documentDirectory}${match[0]}`
+      }
+    }
+    return credentialUrl
+  }, [credentialUrl])
+
+  const isImage = Boolean(resolvedUrl?.match(/\.(jpeg|jpg|png|webp|gif)/i))
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
+    let isCurrent = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let activeAnim: Animated.CompositeAnimation | null = null
+
     if (visible) {
       setModalRendered(true)
-      setWebViewReady(false)
       panY.setValue(0)
-      Animated.parallel([
+      activeAnim = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 200,
@@ -75,17 +91,20 @@ export function MinimalistCredentialModal({
           mass: 0.8,
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setWebViewReady(true)
-      })
+      ])
+      activeAnim.start()
 
-      // Fallback timer para montar el WebView tras estabilizar el layout nativo de la hoja
-      timer = setTimeout(() => {
-        setWebViewReady(true)
-      }, 250)
+      // Solo diferir el montado de WebView si la plataforma y el formato lo requieren (iOS PDF)
+      if (!isImage && Platform.OS === 'ios') {
+        timer = setTimeout(() => {
+          if (isCurrent) {
+            setWebViewReady(true)
+          }
+        }, 250)
+      }
     } else {
       setWebViewReady(false)
-      Animated.parallel([
+      activeAnim = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 160,
@@ -96,15 +115,20 @@ export function MinimalistCredentialModal({
           duration: 190,
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        setModalRendered(false)
+      ])
+      activeAnim.start(({ finished }) => {
+        if (isCurrent && finished) {
+          setModalRendered(false)
+        }
       })
     }
 
     return () => {
+      isCurrent = false
       if (timer) clearTimeout(timer)
+      if (activeAnim) activeAnim.stop()
     }
-  }, [visible, fadeAnim, slideAnim, panY])
+  }, [visible, isImage, fadeAnim, slideAnim, panY])
 
   const handleClose = () => {
     triggerHaptic('light')
@@ -112,12 +136,12 @@ export function MinimalistCredentialModal({
   }
 
   const handleShare = async () => {
-    if (!credentialUrl) return
+    if (!resolvedUrl) return
     triggerHaptic('light')
     try {
       const isAvailable = await Sharing.isAvailableAsync()
       if (isAvailable) {
-        await Sharing.shareAsync(credentialUrl, {
+        await Sharing.shareAsync(resolvedUrl, {
           dialogTitle: `Credencial Digital - ${studentName}`,
           mimeType: isImage ? 'image/jpeg' : 'application/pdf',
           UTI: isImage ? 'public.image' : 'com.adobe.pdf',
@@ -245,7 +269,7 @@ export function MinimalistCredentialModal({
 
           {/* Visor de Credencial con Soporte Nativo para PDF e Imagen */}
           <View style={styles.viewerWrapper}>
-            {!credentialUrl ? (
+            {!resolvedUrl ? (
               <View style={styles.errorOverlay}>
                 <IdCard size={36} color="#71717A" />
                 <Text style={styles.errorTitle}>Sin credencial seleccionada</Text>
@@ -253,10 +277,30 @@ export function MinimalistCredentialModal({
             ) : isImage ? (
               <View style={styles.imageViewerContainer}>
                 <Image
-                  source={{ uri: credentialUrl }}
+                  source={{ uri: resolvedUrl }}
                   style={styles.credentialImage}
                   resizeMode="contain"
                 />
+              </View>
+            ) : Platform.OS === 'android' ? (
+              /* En Android, WebView no renderiza PDFs locales y produce crasheos o errores. Se ofrece visor nativo seguro. */
+              <View style={styles.errorOverlay}>
+                <View style={styles.androidPdfCard}>
+                  <View style={styles.androidPdfIconBadge}>
+                    <IdCard size={32} color="#FFFFFF" strokeWidth={2} />
+                  </View>
+                  <Text style={styles.errorTitle}>Credencial Digital Vinculada</Text>
+                  <Text style={styles.androidPdfFileName} numberOfLines={1}>
+                    {credentialName || 'Credencial_Digital.pdf'}
+                  </Text>
+                  <Text style={styles.errorSub}>
+                    En Android, los documentos PDF se visualizan directamente en tu aplicación predeterminada del sistema (Google Drive, Adobe Reader o visor nativo).
+                  </Text>
+                  <Pressable onPress={handleShare} style={styles.shareFallbackBtn}>
+                    <Share2 size={15} color="#09090B" />
+                    <Text style={styles.shareFallbackBtnText}>Abrir en Visor del Sistema</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : !webViewReady ? (
               <View style={styles.loaderOverlay}>
@@ -266,7 +310,7 @@ export function MinimalistCredentialModal({
             ) : (
               <WebView
                 ref={webViewRef}
-                source={{ uri: credentialUrl }}
+                source={{ uri: resolvedUrl }}
                 style={styles.webView}
                 originWhitelist={['*']}
                 allowFileAccess={true}
@@ -474,6 +518,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     gap: 8,
+  },
+  androidPdfCard: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    maxWidth: 340,
+  },
+  androidPdfIconBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: '#1C1C22',
+    borderWidth: 1,
+    borderColor: '#2E2E38',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  androidPdfFileName: {
+    color: '#FAFAFA',
+    fontSize: 13.5,
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   errorTitle: {
     color: '#FFFFFF',

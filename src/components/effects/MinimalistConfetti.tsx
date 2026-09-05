@@ -112,9 +112,14 @@ export const MinimalistConfetti = memo(function MinimalistConfetti({ burstTrigge
       ])
     )
 
-    Animated.parallel(anims).start(() => {
+    const parallelAnim = Animated.parallel(anims)
+    parallelAnim.start(() => {
       setBursts((prev) => prev.filter((b) => b.id !== burstId))
     })
+
+    return () => {
+      parallelAnim.stop()
+    }
   }, [burstTrigger])
 
   if (bursts.length === 0) return null

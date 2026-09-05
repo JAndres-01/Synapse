@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { personalStorage } from '@/lib/personalStorage'
+import { cancelAllNotifications } from '@/lib/personalNotifications'
 import type { PersonalProfile } from '@/types/personal'
 
 interface PersonalAuthContextType {
   user: { id: string } | null
   profile: PersonalProfile | null
-  updateProfile: (fullName: string, email?: string) => Promise<void>
+  updateProfile: (fullName: string) => Promise<void>
   updateCredential: (credentialUrl: string | null, credentialName?: string | null) => Promise<void>
   clearData: () => Promise<void>
 }
@@ -24,12 +25,11 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     loadLocalProfile()
   }, [])
 
-  const updateProfile = async (fullName: string, email?: string) => {
+  const updateProfile = async (fullName: string) => {
     const current = profile || (await personalStorage.getProfile())
     const updated: PersonalProfile = {
       ...current,
       full_name: fullName.trim() || 'Estudiante',
-      ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
       updated_at: new Date().toISOString(),
     }
     await personalStorage.setProfile(updated)
@@ -50,6 +50,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
   }
 
   const clearData = async () => {
+    await cancelAllNotifications()
     await personalStorage.clearAll()
     const defaultProfile: PersonalProfile = {
       id: 'local_user',

@@ -18,11 +18,13 @@ describe('MinimalistCredentialModal Component', () => {
       />
     )
 
-    expect(getByText('Credencial Digital')).toBeTruthy()
-    expect(getByText(/José Andrés/i)).toBeTruthy()
-    expect(getByText('PDF')).toBeTruthy()
-    expect(getByText('Cambiar PDF')).toBeTruthy()
-    expect(getByText('Compartir')).toBeTruthy()
+    await waitFor(() => {
+      expect(getByText('Credencial Digital')).toBeTruthy()
+      expect(getByText(/José Andrés/i)).toBeTruthy()
+      expect(getByText('PDF')).toBeTruthy()
+      expect(getByText('Cambiar PDF')).toBeTruthy()
+      expect(getByText('Compartir')).toBeTruthy()
+    })
   })
 
   test('renderiza credencial en formato imagen con etiqueta IMG', async () => {
@@ -38,8 +40,10 @@ describe('MinimalistCredentialModal Component', () => {
       />
     )
 
-    expect(getByText('Credencial Digital')).toBeTruthy()
-    expect(getByText('IMG')).toBeTruthy()
+    await waitFor(() => {
+      expect(getByText('Credencial Digital')).toBeTruthy()
+      expect(getByText('IMG')).toBeTruthy()
+    })
   })
 
   test('al pulsar compartir ejecuta Sharing.shareAsync', async () => {

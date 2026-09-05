@@ -23,17 +23,21 @@ export function MinimalistVitalStats() {
   const cardScale = useRef(new Animated.Value(0.97)).current
 
   useEffect(() => {
+    let isMounted = true
     const updateData = () => {
       personalStorage.getTasks().then((t) => {
-        if (t && Array.isArray(t)) setTasks(t)
+        if (isMounted && t && Array.isArray(t)) setTasks(t)
       })
       personalStorage.getSubjects().then((s) => {
-        if (s && Array.isArray(s)) setSubjects(s)
+        if (isMounted && s && Array.isArray(s)) setSubjects(s)
       })
     }
     updateData()
     const unsubscribe = subscribeToPersonalStorage(updateData)
-    return unsubscribe
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [])
 
   const stats = useMemo(() => {

@@ -32,16 +32,22 @@ export function MinimalistPdfViewerModal({
   const [webViewReady, setWebViewReady] = useState(false)
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>
+    let isCurrent = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+
     if (visible && pdfUri) {
       setWebViewReady(false)
       timer = setTimeout(() => {
-        setWebViewReady(true)
+        if (isCurrent) {
+          setWebViewReady(true)
+        }
       }, 250)
     } else {
       setWebViewReady(false)
     }
+
     return () => {
+      isCurrent = false
       if (timer) clearTimeout(timer)
     }
   }, [visible, pdfUri])
@@ -103,9 +109,26 @@ export function MinimalistPdfViewerModal({
           </View>
         </View>
 
-        {/* Visor Nativo de PDF (Apple WKWebView Engine) */}
+        {/* Visor de PDF: En iOS usa WKWebView nativo; en Android usa tarjeta segura del sistema */}
         <View style={styles.webviewContainer}>
-          {!webViewReady ? (
+          {Platform.OS === 'android' ? (
+            <View style={styles.androidFallbackBox}>
+              <View style={styles.androidIconBadge}>
+                <FileText size={32} color="#EF4444" strokeWidth={2} />
+              </View>
+              <Text style={styles.androidTitle}>Documento PDF Adjunto</Text>
+              <Text style={styles.androidFileName} numberOfLines={2}>
+                {pdfTitle || 'Documento.pdf'}
+              </Text>
+              <Text style={styles.androidSub}>
+                En Android, los documentos PDF se abren directamente con el visor nativo de tu dispositivo (Google Drive o visor del sistema).
+              </Text>
+              <Pressable onPress={handleShare} style={styles.androidOpenBtn}>
+                <Share2 size={15} color="#09090B" />
+                <Text style={styles.androidOpenBtnText}>Abrir en Visor del Sistema</Text>
+              </Pressable>
+            </View>
+          ) : !webViewReady ? (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="small" color="#FFFFFF" />
               <Text style={styles.loadingText}>Cargando PDF...</Text>
@@ -125,6 +148,19 @@ export function MinimalistPdfViewerModal({
               onError={(e) => {
                 console.warn('[PdfViewer] Error:', e.nativeEvent)
               }}
+              renderError={() => (
+                <View style={styles.androidFallbackBox}>
+                  <FileText size={32} color="#EF4444" />
+                  <Text style={styles.androidTitle}>Documento Listo</Text>
+                  <Text style={styles.androidSub}>
+                    Pulsa abrir para visualizar este documento con la aplicación del sistema.
+                  </Text>
+                  <Pressable onPress={handleShare} style={styles.androidOpenBtn}>
+                    <Share2 size={15} color="#09090B" />
+                    <Text style={styles.androidOpenBtnText}>Abrir Documento</Text>
+                  </Pressable>
+                </View>
+              )}
             />
           )}
         </View>
@@ -218,5 +254,59 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 12,
     fontWeight: '500',
+  },
+  androidFallbackBox: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#09090B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  androidIconBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  androidTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  androidFileName: {
+    color: '#A1A1AA',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 4,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  androidSub: {
+    color: '#71717A',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 300,
+    marginBottom: 20,
+  },
+  androidOpenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  androidOpenBtnText: {
+    color: '#09090B',
+    fontSize: 13.5,
+    fontWeight: '700',
   },
 })

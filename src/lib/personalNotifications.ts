@@ -61,6 +61,17 @@ export async function cancelTaskReminder(taskId: string): Promise<void> {
 }
 
 /**
+ * Cancela absolutamente todos los recordatorios programados en el sistema operativo
+ */
+export async function cancelAllNotifications(): Promise<void> {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync()
+  } catch (err) {
+    console.warn('[personalNotifications] Error cancelando todas las notificaciones:', err)
+  }
+}
+
+/**
  * Programa el recordatorio con antelación de 1 día a la hora fijada para una tarea
  */
 export async function scheduleTaskReminder(

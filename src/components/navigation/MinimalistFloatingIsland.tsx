@@ -99,7 +99,7 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
         tint="dark"
         style={styles.blurContainer}
       >
-        {/* Pastilla activa deslizante con GPU Spring a 120 FPS */}
+        {/* Indicador de pestaña activa animado con resorte */}
         <Animated.View
           style={[
             styles.activePill,
@@ -109,7 +109,7 @@ export const MinimalistFloatingIsland = memo(function MinimalistFloatingIsland({
           ]}
         />
 
-        {/* Botones de navegación con respuesta táctil instantánea a 0ms */}
+        {/* Botones de navegación de las pestañas principales */}
         {TABS.map((tab) => {
           const IconComponent = tab.icon
           const isActive = tab.key === activeTab

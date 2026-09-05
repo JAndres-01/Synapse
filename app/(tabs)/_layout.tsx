@@ -39,12 +39,15 @@ export default function TabLayout() {
   }, [pathnameTab])
 
   useEffect(() => {
+    let isMounted = true
     const updateData = () => {
       personalStorage.getTasks().then((tasks) => {
+        if (!isMounted) return
         const pending = tasks.filter((t) => t.status === 'pending').length
         setPendingCount(pending)
       })
       personalStorage.getSubjects().then((subjs) => {
+        if (!isMounted) return
         if (subjs && Array.isArray(subjs)) {
           setSubjects(subjs)
         }
@@ -52,7 +55,10 @@ export default function TabLayout() {
     }
     updateData()
     const unsubscribe = subscribeToPersonalStorage(updateData)
-    return unsubscribe
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [])
 
   const handleSelectTab = (tab: TabKey) => {

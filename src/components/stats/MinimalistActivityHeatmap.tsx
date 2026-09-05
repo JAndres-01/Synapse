@@ -41,13 +41,21 @@ export function MinimalistActivityHeatmap() {
   const scrollViewRef = useRef<ScrollView>(null)
   const tabSlideAnim = useRef(new Animated.Value(defaultTab === 'fall' ? 0 : 80)).current
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const updateData = useCallback(() => {
     personalStorage.getTasks().then((t) => {
-      if (t && Array.isArray(t)) setTasks(t)
+      if (isMountedRef.current && t && Array.isArray(t)) setTasks(t)
     })
     personalStorage.getPreferences().then((p) => {
-      if (p) setPrefs(p)
+      if (isMountedRef.current && p) setPrefs(p)
     })
   }, [])
 

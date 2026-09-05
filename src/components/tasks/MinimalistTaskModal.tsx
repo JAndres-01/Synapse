@@ -224,6 +224,8 @@ export function MinimalistTaskModal({
 
   // Apertura y Cierre controlados
   useEffect(() => {
+    let focusTimer: ReturnType<typeof setTimeout> | undefined
+
     if (mode !== 'none') {
       setModalVisible(true)
       setCurrentView(mode === 'detail' ? 'detail' : 'form')
@@ -237,7 +239,7 @@ export function MinimalistTaskModal({
         setAttachments(initialAttachments ? [...initialAttachments] : [])
         setActivePicker(null)
 
-        setTimeout(() => {
+        focusTimer = setTimeout(() => {
           titleInputRef.current?.focus()
         }, 320)
       } else if (mode === 'edit' && task) {
@@ -271,6 +273,10 @@ export function MinimalistTaskModal({
           useNativeDriver: true,
         }),
       ]).start()
+    }
+
+    return () => {
+      if (focusTimer) clearTimeout(focusTimer)
     }
   }, [mode, task, initialTitle, initialDescription, initialAttachments])
 

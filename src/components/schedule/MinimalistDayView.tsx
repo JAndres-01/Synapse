@@ -250,7 +250,7 @@ export function MinimalistDayView({
           }
         }}
       >
-        {/* Pastilla deslizante GPU a 120 FPS idéntica a la de tareas */}
+        {/* Indicador deslizante de día seleccionado */}
         <Animated.View
           style={[
             styles.activeDayIndicator,

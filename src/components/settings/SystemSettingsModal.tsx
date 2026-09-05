@@ -83,9 +83,14 @@ function formatReadableDate(str?: string, fallback: string = ''): string {
   if (!str) return fallback
   try {
     const parts = str.split('-').map((n) => parseInt(n, 10))
+    if (parts.length < 3 || isNaN(parts[1]) || isNaN(parts[2])) {
+      return fallback
+    }
     const m = parts[1]
     const d = parts[2]
-    return `${d} ${MONTHS_SHORT[m - 1]}`
+    const monthName = MONTHS_SHORT[m - 1]
+    if (!monthName) return fallback
+    return `${d} ${monthName}`
   } catch {
     return fallback
   }

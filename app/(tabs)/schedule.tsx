@@ -165,7 +165,6 @@ export default function ScheduleScreen() {
   )
 
   useEffect(() => {
-    loadData()
     const unsubscribe = subscribeToPersonalStorage(() => {
       loadData()
     })
@@ -388,7 +387,6 @@ export default function ScheduleScreen() {
           {viewMode === 'day' ? (
             <MinimalistDayView
               schedules={schedules}
-              subjects={subjects}
               tasks={tasks}
               selectedDay={selectedDay}
               onSelectDay={setSelectedDay}
@@ -398,7 +396,6 @@ export default function ScheduleScreen() {
           ) : (
             <MinimalistWeeklyMatrix
               schedules={schedules}
-              subjects={subjects}
               tasks={tasks}
               onAssignSlot={handleOpenAssign}
             />

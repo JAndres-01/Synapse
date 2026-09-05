@@ -28,13 +28,7 @@ import { ProfileHeroCard } from '@/components/settings/ProfileHeroCard'
 import { SystemSettingsModal } from '@/components/settings/SystemSettingsModal'
 import { EditProfileModal } from '@/components/settings/EditProfileModal'
 import { ReminderTimeModal } from '@/components/settings/ReminderTimeModal'
-
-function formatDateToKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
+import { formatDateKey } from '@/lib/heatmapUtils'
 
 // Control de entrada única por sesión en la pantalla de Perfil
 let hasPlayedProfileEntrance = false
@@ -112,9 +106,6 @@ export default function ProfileScreen() {
     }, [loadData])
   )
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
 
   // Handlers para el Perfil
   const handleSaveProfileName = async (newName: string) => {
@@ -227,7 +218,7 @@ export default function ProfileScreen() {
     target: 'fall_start' | 'fall_end' | 'spring_start' | 'spring_end',
     selectedDate: Date
   ) => {
-    const dateKey = formatDateToKey(selectedDate)
+    const dateKey = formatDateKey(selectedDate)
     triggerHaptic('selection')
     const current = await personalStorage.getPreferences()
     const updated = { ...current }

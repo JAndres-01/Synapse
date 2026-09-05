@@ -11,7 +11,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
-import type { Schedule, Subject, Task } from '@/types/personal'
+import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -23,7 +23,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 interface MinimalistDayViewProps {
   schedules: Schedule[]
-  subjects: Subject[]
   tasks?: Task[]
   selectedDay: number // 1: Lun ... 5: Vie
   onSelectDay: (day: number) => void
@@ -189,7 +188,6 @@ const DayClassRow = memo(function DayClassRow({
 
 export function MinimalistDayView({
   schedules = [],
-  subjects = [],
   tasks = [],
   selectedDay,
   onSelectDay,

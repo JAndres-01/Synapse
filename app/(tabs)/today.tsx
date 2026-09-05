@@ -119,7 +119,6 @@ export default function TodayScreen() {
   )
 
   useEffect(() => {
-    loadData()
     const unsubscribe = subscribeToPersonalStorage(() => {
       loadData()
     })

@@ -7,7 +7,7 @@ import {
   ScrollView,
   Animated,
 } from 'react-native'
-import type { Schedule, Subject, Task } from '@/types/personal'
+import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
@@ -17,7 +17,6 @@ import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
-  subjects: Subject[]
   tasks?: Task[]
   onAssignSlot: (day: number, block: number, existing?: Schedule | null) => void
 }
@@ -25,13 +24,11 @@ interface MinimalistWeeklyMatrixProps {
 const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.matrixShort }))
 
 const MatrixSlotCard = memo(function MatrixSlotCard({
-  dayNum,
   blockNum,
   schedule,
   pendingTaskCount = 0,
   onPress,
 }: {
-  dayNum: number
   blockNum: number
   schedule?: Schedule | null
   pendingTaskCount?: number
@@ -129,7 +126,6 @@ const MatrixSlotCard = memo(function MatrixSlotCard({
 
 export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
   schedules = [],
-  subjects = [],
   tasks = [],
   onAssignSlot,
 }: MinimalistWeeklyMatrixProps) {
@@ -209,7 +205,6 @@ export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
                       return (
                         <MatrixSlotCard
                           key={blockDef.block}
-                          dayNum={d.num}
                           blockNum={blockDef.block}
                           schedule={item}
                           pendingTaskCount={pendingTaskCount}

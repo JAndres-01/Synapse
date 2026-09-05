@@ -17,13 +17,15 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { X, Check, Trash2 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
+import { SCHEDULE_DAYS } from '@/constants/dates'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface MinimalistAssignSlotModalProps {
   visible: boolean
   onClose: () => void
-  userId: string
+  userId?: string
   subjects: Subject[]
   initialDay?: number
   initialBlock?: number
@@ -31,13 +33,7 @@ interface MinimalistAssignSlotModalProps {
   onScheduleSaved: () => void
 }
 
-const DAYS = [
-  { num: 1, name: 'Lunes' },
-  { num: 2, name: 'Martes' },
-  { num: 3, name: 'Miércoles' },
-  { num: 4, name: 'Jueves' },
-  { num: 5, name: 'Viernes' },
-]
+const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name }))
 
 export function MinimalistAssignSlotModal({
   visible,
@@ -341,7 +337,7 @@ export function MinimalistAssignSlotModal({
                 <View style={styles.subjectsGrid}>
                   {subjects.map((s) => {
                     const isSelected = selectedSubjectId === s.id
-                    const isWhite = s.color === '#FFFFFF'
+                    const isWhite = isWhiteColor(s.color)
                     return (
                       <Pressable
                         key={s.id}
@@ -588,10 +584,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   emptySubjsNotice: {
     color: '#52525B',
     fontSize: 12.5,

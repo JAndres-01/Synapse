@@ -4,6 +4,7 @@ import type { Task } from '@/types/personal'
 import { Check, CheckSquare, ChevronRight, Paperclip } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistTodayTasksProps {
   tasks: Task[]
@@ -27,7 +28,7 @@ const TodayTaskItem = memo(function TodayTaskItem({
   const checkBounceAnim = useRef(new Animated.Value(1)).current
   const isDone = task.status === 'completed'
   const subjColor = task.subject?.color || '#71717A'
-  const isWhite = task.subject?.color === '#FFFFFF'
+  const isWhite = isWhiteColor(task.subject?.color)
   const attachCount = Array.isArray(task.attachments) ? task.attachments.length : 0
 
   const handlePressIn = () => {
@@ -320,10 +321,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   subjectName: {
     color: '#71717A',
     fontSize: 11,

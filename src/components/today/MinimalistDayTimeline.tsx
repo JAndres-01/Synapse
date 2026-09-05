@@ -4,6 +4,7 @@ import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, User, Check } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistDayTimelineProps {
   schedulesToday: Schedule[]
@@ -104,7 +105,7 @@ export const MinimalistDayTimeline = memo(function MinimalistDayTimeline({
 
           const sched = schedulesToday.find((s) => s.block_number === blockDef.block)
           const subjColor = sched?.subject?.color || '#FFFFFF'
-          const isWhite = subjColor === '#FFFFFF'
+          const isWhite = isWhiteColor(subjColor)
 
           const classTasks = tasks.filter((t) => {
             if (!t.due_date || !sched?.subject_id) return false
@@ -297,10 +298,7 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
     backgroundColor: '#3F3F46',
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   lineDotCurrent: {
     backgroundColor: '#FFFFFF',
     transform: [{ scale: 1.25 }],

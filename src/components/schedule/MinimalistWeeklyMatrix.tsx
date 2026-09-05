@@ -12,6 +12,8 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
+import { SCHEDULE_DAYS } from '@/constants/dates'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
@@ -20,13 +22,7 @@ interface MinimalistWeeklyMatrixProps {
   onAssignSlot: (day: number, block: number, existing?: Schedule | null) => void
 }
 
-const DAYS = [
-  { num: 1, name: 'Lunes', short: 'LUN' },
-  { num: 2, name: 'Martes', short: 'MAR' },
-  { num: 3, name: 'Miércoles', short: 'MIÉ' },
-  { num: 4, name: 'Jueves', short: 'JUE' },
-  { num: 5, name: 'Viernes', short: 'VIE' },
-]
+const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.matrixShort }))
 
 const MatrixSlotCard = memo(function MatrixSlotCard({
   dayNum,
@@ -44,7 +40,7 @@ const MatrixSlotCard = memo(function MatrixSlotCard({
   const scaleAnim = useRef(new Animated.Value(1)).current
   const hasSubj = Boolean(schedule?.subject)
   const subjColor = schedule?.subject?.color || '#FFFFFF'
-  const isWhite = subjColor === '#FFFFFF'
+  const isWhite = isWhiteColor(subjColor)
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -341,10 +337,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   slotBlockBadge: {
     color: '#52525B',
     fontSize: 9.5,

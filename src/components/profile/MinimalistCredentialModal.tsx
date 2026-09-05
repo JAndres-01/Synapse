@@ -25,8 +25,7 @@ import {
   QrCode,
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
-
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+import { APPLE_EASING } from '@/constants/animations'
 
 interface MinimalistCredentialModalProps {
   visible: boolean

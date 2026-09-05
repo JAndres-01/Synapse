@@ -1,4 +1,5 @@
 import type { Task } from '@/types/personal'
+import { MONTHS_SHORT, DAYS_SHORT } from '@/constants/dates'
 
 export interface HeatmapDay {
   date: Date
@@ -27,8 +28,6 @@ export interface HeatmapGridData {
   daysInRange: number
 }
 
-const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-const DAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 function formatDateKey(d: Date): string {
   const y = d.getFullYear()

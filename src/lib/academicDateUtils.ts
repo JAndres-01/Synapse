@@ -9,13 +9,7 @@ export interface AcademicWeekInfo {
   isDayDisabled: (dayNum: number) => boolean
   defaultSelectedDay: number
 }
-
-const MONTHS_SHORT = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-]
-
-const DAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+import { MONTHS_SHORT, DAYS_SHORT } from '@/constants/dates'
 
 /**
  * Resuelve la semana académica activa (Lunes a Viernes).

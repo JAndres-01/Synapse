@@ -21,8 +21,8 @@ import { useFocusEffect } from 'expo-router'
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
+import { APPLE_EASING } from '@/constants/animations'
 
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const CELL_SIZE = 11
 const CELL_GAP = 3
 const COL_WIDTH = CELL_SIZE + CELL_GAP

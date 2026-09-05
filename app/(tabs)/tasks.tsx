@@ -21,6 +21,7 @@ import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
@@ -438,7 +439,7 @@ export default function TasksScreen() {
   }, [tasks, selectedSubjectId, debouncedQuery, statusFilter, transitioningTaskIds])
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-  const isSelectedWhite = selectedSubject?.color === '#FFFFFF'
+  const isSelectedWhite = isWhiteColor(selectedSubject?.color)
 
   const handleFabPressIn = () => {
     Animated.spring(fabScaleAnim, {
@@ -916,7 +917,7 @@ export default function TasksScreen() {
 
                 {subjects.map((subj) => {
                   const isSelected = selectedSubjectId === subj.id
-                  const isWhite = subj.color === '#FFFFFF'
+                  const isWhite = isWhiteColor(subj.color)
                   const count = tasks.filter((t) => t.subject_id === subj.id).length
 
                   return (
@@ -1187,10 +1188,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   tasksListWrapper: {
     marginTop: 4,
   },

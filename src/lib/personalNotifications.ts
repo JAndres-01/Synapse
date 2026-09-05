@@ -216,29 +216,3 @@ export async function syncAllNotifications(
   }
 }
 
-/**
- * Dispara una notificación de prueba instantánea (en 1 segundo) para verificar permisos y sonido
- */
-export async function sendTestNotification(): Promise<boolean> {
-  try {
-    const hasPermission = await requestNotificationPermissions()
-    if (!hasPermission) return false
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🔔 Synapse Notificaciones',
-        body: '¡Todo listo! Las notificaciones de tareas y clases están funcionando correctamente.',
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: 1,
-        repeats: false,
-      },
-    })
-    return true
-  } catch (err) {
-    console.log('Error enviando notificación de prueba:', err)
-    return false
-  }
-}

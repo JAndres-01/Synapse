@@ -16,6 +16,8 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, Clock, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
+import { SCHEDULE_DAYS } from '@/constants/dates'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -29,13 +31,7 @@ interface MinimalistDayViewProps {
   onAssignSlot?: (day: number, block: number) => void
 }
 
-const DAYS = [
-  { num: 1, name: 'Lunes', short: 'Lun' },
-  { num: 2, name: 'Martes', short: 'Mar' },
-  { num: 3, name: 'Miércoles', short: 'Mié' },
-  { num: 4, name: 'Jueves', short: 'Jue' },
-  { num: 5, name: 'Viernes', short: 'Vie' },
-]
+const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.short }))
 
 const DayClassRow = memo(function DayClassRow({
   blockDef,
@@ -55,7 +51,7 @@ const DayClassRow = memo(function DayClassRow({
   const scaleAnim = useRef(new Animated.Value(1)).current
   const isAssigned = Boolean(schedule?.subject)
   const subjColor = schedule?.subject?.color || '#FFFFFF'
-  const isWhite = subjColor === '#FFFFFF'
+  const isWhite = isWhiteColor(subjColor)
   const pendingTasks = classTasks.filter((t) => t.status === 'pending')
 
   const handlePressIn = () => {
@@ -461,10 +457,7 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   subjectTitle: {
     color: '#FFFFFF',
     fontSize: 15,

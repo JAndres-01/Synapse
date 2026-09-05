@@ -12,8 +12,9 @@ import type { Task } from '@/types/personal'
 import { Check, Paperclip, Edit2, Trash2, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
+import { APPLE_EASING } from '@/constants/animations'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const ACTION_BUTTON_WIDTH = 56
 const TOTAL_ACTIONS_WIDTH = 112
 const SWIPE_THRESHOLD = 75
@@ -430,7 +431,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
                   style={[
                     styles.dot,
                     { backgroundColor: task.subject?.color || '#71717A' },
-                    task.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                    isWhiteColor(task.subject?.color) && styles.whiteDotBorder,
                   ]}
                 />
                 <Text style={styles.subjectName}>{task.subject?.name || 'General'}</Text>
@@ -594,10 +595,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   subjectName: {
     color: '#A1A1AA',
     fontSize: 12,

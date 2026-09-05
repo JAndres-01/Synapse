@@ -133,7 +133,7 @@ La jornada académica universitaria se divide en **4 bloques continuos de 90 min
 
 ### 5.2. Capa de Almacenamiento Reactiva (`personalStorage`)
 Para evitar latencias y renderizados bloqueantes, el servicio `personalStorage` implementa un patrón **In-Memory Cache + Persistent Store**:
-1. **Acceso síncrono:** Métodos de caché (`getCachedSubjects`, `getCachedSchedules`, `getCachedTasks`, `getCachedProfile`) devuelven al instante los datos ya parseados.
+1. **Acceso síncrono:** Métodos de caché (`getCachedSubjects`, `getCachedSchedules`, `getCachedTasks`, `getCachedPreferences`) devuelven al instante los datos ya parseados.
 2. **Notificación pub/sub:** Todos los componentes se suscriben a actualizaciones de almacenamiento mediante `subscribeToPersonalStorage(listener)` para sincronizar la UI en caliente sin depender de contextos pesados.
 3. **Escritura asíncrona segura:** Cada mutación actualiza la memoria atómicamente y persiste el JSON en AsyncStorage en segundo plano.
 

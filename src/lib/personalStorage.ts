@@ -53,16 +53,8 @@ export const personalStorage = {
     return _tasksCache !== null ? [..._tasksCache] : []
   },
 
-  getCachedProfile(): PersonalProfile | null {
-    return _profileCache !== null ? { ..._profileCache } : null
-  },
-
   getCachedPreferences(): AppPreferences | null {
     return _preferencesCache !== null ? { ..._preferencesCache } : null
-  },
-
-  isPreloaded(): boolean {
-    return _subjectsCache !== null && _schedulesCache !== null && _tasksCache !== null
   },
 
   async preloadAll(): Promise<void> {

@@ -5,8 +5,8 @@ import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStora
 import type { Task, Subject } from '@/types/personal'
 import { calculateAcademicVitalStats } from '@/lib/academicDateUtils'
 import { Award } from 'lucide-react-native'
+import { APPLE_EASING } from '@/constants/animations'
 
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 const RING_SIZE = 88
 const STROKE_WIDTH = 7.5
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2

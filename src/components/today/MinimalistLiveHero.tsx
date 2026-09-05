@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { calculateLiveClassStatus } from '@/lib/scheduleEngine'
 import { MapPin, User, Clock } from 'lucide-react-native'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistLiveHeroProps {
   schedulesToday: Schedule[]
@@ -27,7 +28,7 @@ export const MinimalistLiveHero = memo(function MinimalistLiveHero({ schedulesTo
   const isLive = liveData.status === 'active'
   const activeSched = liveData.activeSchedule
   const subjColor = activeSched?.subject?.color || '#FFFFFF'
-  const isWhite = subjColor === '#FFFFFF'
+  const isWhite = isWhiteColor(subjColor)
 
   return (
     <View
@@ -195,10 +196,7 @@ const styles = StyleSheet.create({
     height: 9,
     borderRadius: 4.5,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   headline: {
     color: '#FFFFFF',
     fontSize: 19,

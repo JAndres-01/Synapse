@@ -15,6 +15,7 @@ import type { Task, Schedule, Subject } from '@/types/personal'
 import { X, Check, Clock, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -251,7 +252,7 @@ export function MinimalistDayTasksModal({
               <View style={styles.tasksList}>
                 {sortedDayTasks.map((t, idx) => {
                   const isDone = t.status === 'completed'
-                  const isWhite = t.subject?.color === '#FFFFFF'
+                  const isWhite = isWhiteColor(t.subject?.color)
                   const attachCount = Array.isArray(t.attachments) ? t.attachments.length : 0
                   const timeLabel = formatTaskTime(t.due_date)
                   const isLast = idx === sortedDayTasks.length - 1
@@ -475,10 +476,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   taskSubjName: {
     color: '#71717A',
     fontSize: 11,

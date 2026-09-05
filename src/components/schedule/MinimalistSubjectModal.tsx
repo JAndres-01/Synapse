@@ -17,6 +17,7 @@ import type { Subject } from '@/types/personal'
 import { X, Plus, Trash2, BookOpen, Check, User, Pencil, RotateCcw } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -425,7 +426,7 @@ export function MinimalistSubjectModal({
                 <View style={styles.subjectsList}>
                   {localSubjects.map((s, idx) => {
                     const isEditing = editingSubject?.id === s.id
-                    const isWhite = s.color === '#FFFFFF'
+                    const isWhite = isWhiteColor(s.color)
                     const isLast = idx === localSubjects.length - 1
 
                     return (
@@ -711,8 +712,5 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontStyle: 'italic',
   },
-  whiteDotBorder: {
-    borderWidth: 1,
-    borderColor: '#52525B',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
 })

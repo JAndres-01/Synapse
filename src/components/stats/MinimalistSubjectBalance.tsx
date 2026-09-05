@@ -14,9 +14,10 @@ interface SubjectStat {
   count: number
   percentage: number
 }
+import { APPLE_EASING } from '@/constants/animations'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const TOGGLE_WIDTH = 70
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 
 export function MinimalistSubjectBalance() {
   const [scope, setScope] = useState<ScopeFilter>('pending')
@@ -329,7 +330,7 @@ export function MinimalistSubjectBalance() {
                       style={[
                         styles.colorDot,
                         { backgroundColor: item.color },
-                        item.color === '#FFFFFF' && styles.whiteDotBorder,
+                        isWhiteColor(item.color) && styles.whiteDotBorder,
                       ]}
                     />
                     <Text style={styles.subjectNameText} numberOfLines={1}>
@@ -464,10 +465,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  whiteDotBorder: {
-    borderColor: '#3F3F46',
-    borderWidth: 1,
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   subjectNameText: {
     fontSize: 13,
     fontWeight: '500',

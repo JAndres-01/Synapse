@@ -16,8 +16,7 @@ import {
   Easing,
   PanResponder,
 } from 'react-native'
-
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+import { APPLE_EASING } from '@/constants/animations'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage } from '@/lib/personalStorage'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

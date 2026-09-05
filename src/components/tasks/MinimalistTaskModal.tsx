@@ -51,12 +51,13 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { MinimalistPdfViewerModal } from '@/components/common/MinimalistPdfViewerModal'
 import { MinimalistImageViewerModal } from '@/components/common/MinimalistImageViewerModal'
+import { APPLE_EASING } from '@/constants/animations'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
-
-const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
 
 function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
   const now = new Date()
@@ -84,9 +85,7 @@ function formatManualDateOnly(dateStr?: string | null): string {
   try {
     const d = new Date(dateStr)
     if (isNaN(d.getTime())) return 'Elegir día'
-    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`
+    return `${DAYS_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`
   } catch {
     return 'Elegir día'
   }
@@ -396,13 +395,9 @@ export function MinimalistTaskModal({
       const now = new Date()
       const isPast = date.getTime() < now.getTime()
       const isToday = date.toDateString() === now.toDateString()
-
-      const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-
-      const dayName = daysOfWeek[date.getDay()]
+      const dayName = DAYS_SHORT[date.getDay()]
       const dayNum = date.getDate()
-      const monthName = months[date.getMonth()]
+      const monthName = MONTHS_SHORT[date.getMonth()]
       const hours = date.getHours()
       const minutes = String(date.getMinutes()).padStart(2, '0')
       const ampm = hours >= 12 ? 'PM' : 'AM'
@@ -644,15 +639,14 @@ export function MinimalistTaskModal({
 
       if (isToday) return `Hoy ${timePart}`
       if (isTomorrow) return `Mañana ${timePart}`
-      const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-      return `${days[d.getDay()]} ${d.getDate()} (${timePart})`
+      return `${DAYS_SHORT[d.getDay()]} ${d.getDate()} (${timePart})`
     } catch {
       return 'Sin fecha'
     }
   }
 
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-  const isFormSubjWhite = selectedSubject?.color === '#FFFFFF'
+  const isFormSubjWhite = isWhiteColor(selectedSubject?.color)
 
   const filteredDaySchedules = schedules
     .filter((s) => s.day_of_week === selectedClassDay)
@@ -755,7 +749,7 @@ export function MinimalistTaskModal({
                         style={[
                           styles.detailSubjectColorDot,
                           { backgroundColor: task?.subject?.color || '#71717A' },
-                          task?.subject?.color === '#FFFFFF' && styles.whiteDotBorder,
+                          isWhiteColor(task?.subject?.color) && styles.whiteDotBorder,
                         ]}
                       />
                       <Text style={styles.detailMetaText}>
@@ -1096,7 +1090,7 @@ export function MinimalistTaskModal({
 
                       {subjects.map((s) => {
                         const isSelected = selectedSubjectId === s.id
-                        const isSubjWhite = s.color === '#FFFFFF'
+                        const isSubjWhite = isWhiteColor(s.color)
                         return (
                           <Pressable
                             key={s.id}
@@ -1241,7 +1235,7 @@ export function MinimalistTaskModal({
                                 const subj =
                                   subjects.find((s) => s.id === sched.subject_id) ||
                                   sched.subject
-                                const isWhite = subj?.color === '#FFFFFF'
+                                const isWhite = isWhiteColor(subj?.color)
 
                                 return (
                                   <Pressable
@@ -1784,10 +1778,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
-  whiteDotBorder: {
-    borderWidth: 0.8,
-    borderColor: '#71717A',
-  },
+  whiteDotBorder: WHITE_DOT_BORDER,
   cleanTitleInput: {
     color: '#FFFFFF',
     fontSize: 21,

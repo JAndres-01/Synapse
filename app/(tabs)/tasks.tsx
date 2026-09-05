@@ -30,6 +30,7 @@ import {
 } from '@/lib/personalNotifications'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
 import { sortTasksByDueDate } from '@/lib/taskSort'
+import { LAYOUT_EASE } from '@/constants/animations'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -166,22 +167,7 @@ export default function TasksScreen() {
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-
-    // Deslizamiento suave sin rebote al cambiar panel
-    LayoutAnimation.configureNext({
-      duration: 240,
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      update: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
+    LAYOUT_EASE(240)
     setStatusFilter(newStatus)
   }
 
@@ -205,16 +191,15 @@ export default function TasksScreen() {
         }
       }
 
-      // LayoutAnimation inmediato — animación rápida de salida/entrada al tachar/destachar
+      // Desaparición rápida (90ms) + reposicionamiento fluido easeInEaseOut de las demás filas
       LayoutAnimation.configureNext({
-        duration: 130,
+        duration: 180,
         create: {
           type: LayoutAnimation.Types.easeInEaseOut,
           property: LayoutAnimation.Properties.opacity,
         },
         update: {
-          type: LayoutAnimation.Types.spring,
-          springDamping: 0.88,
+          type: LayoutAnimation.Types.easeInEaseOut,
         },
         delete: {
           type: LayoutAnimation.Types.easeInEaseOut,
@@ -238,11 +223,7 @@ export default function TasksScreen() {
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     cancelTaskReminder(taskId)
-    LayoutAnimation.configureNext({
-      duration: 260,
-      update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-    })
+    LAYOUT_EASE(200)
     setTasks((prevTasks) => {
       const updated = prevTasks.filter((t) => t.id !== taskId)
       personalStorage.setTasks(updated)

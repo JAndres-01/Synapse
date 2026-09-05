@@ -1,6 +1,43 @@
-import { Easing } from 'react-native'
+import { Easing, LayoutAnimation } from 'react-native'
 
 export const APPLE_EASING = Easing.bezier(0.16, 1, 0.3, 1)
+
+/**
+ * ─── FILOSOFÍA DE ANIMACIONES — SYNAPSE ────────────────────────────────────
+ *
+ * Estilo canónico: easeInEaseOut
+ * ─────────────────────────────
+ * Todas las animaciones de la app usan easeInEaseOut como base.
+ * - Sin rebote (springDamping ≥ 1.0 o evitar spring por completo)
+ * - Sin sacudida ni brusquedad
+ * - Rápidas: 180–260ms para transiciones de layout, 120–160ms para fade
+ * - La velocidad transmite fluidez y respuesta instantánea
+ *
+ * Usar spring SOLO para microinteracciones táctiles (press feedback, FAB),
+ * nunca para reposicionamiento de listas ni cambios de panel.
+ */
+
+/**
+ * Configuración LayoutAnimation estándar de Synapse.
+ * Usar para reposicionamiento de listas, cambios de panel, entrada/salida de filas.
+ * - update: easeInEaseOut (sin rebote)
+ * - create/delete: easeInEaseOut con opacity
+ */
+export const LAYOUT_EASE = (duration: number = 220) =>
+  LayoutAnimation.configureNext({
+    duration,
+    create: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+    },
+    delete: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+  })
 
 /**
  * Física de resorte ultra-rápida y fluida para paneles inferiores (60-120 FPS)
@@ -42,5 +79,3 @@ export const SPRING_SLIDE_INDICATOR = {
   mass: 0.55,
   useNativeDriver: true,
 } as const
-
-

@@ -167,16 +167,15 @@ export default function TasksScreen() {
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
 
-    // LayoutAnimation spring: las filas se deslizan a nueva posición con rebote sutil al asentarse
+    // Deslizamiento suave sin rebote al cambiar panel
     LayoutAnimation.configureNext({
-      duration: 220,
+      duration: 240,
       create: {
         type: LayoutAnimation.Types.easeInEaseOut,
         property: LayoutAnimation.Properties.opacity,
       },
       update: {
-        type: LayoutAnimation.Types.spring,
-        springDamping: 0.78,
+        type: LayoutAnimation.Types.easeInEaseOut,
       },
       delete: {
         type: LayoutAnimation.Types.easeInEaseOut,

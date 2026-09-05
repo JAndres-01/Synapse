@@ -3,6 +3,7 @@ import { Platform } from 'react-native'
 import type { Task, Schedule, AppPreferences } from '@/types/personal'
 import { personalStorage } from './personalStorage'
 import { DEFAULT_ADVANCE_REMINDER_TIME, DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
+import { logger } from '@/lib/logger'
 
 // Configurar comportamiento de notificaciones para iOS y Android
 try {
@@ -25,11 +26,11 @@ try {
       lightColor: '#FFFFFF',
       sound: 'default',
     }).catch((err) => {
-      console.warn('[personalNotifications] Error configurando canal de notificaciones:', err)
+      logger.warn('[personalNotifications] Error configurando canal de notificaciones:', err)
     })
   }
 } catch (err) {
-  console.warn('[personalNotifications] Error inicializando notification handler:', err)
+  logger.warn('[personalNotifications] Error inicializando notification handler:', err)
 }
 
 /**
@@ -51,7 +52,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     }
     return finalStatus === 'granted'
   } catch (err) {
-    console.warn('[personalNotifications] Permisos no otorgados:', err)
+    logger.warn('[personalNotifications] Permisos no otorgados:', err)
     return false
   }
 }
@@ -63,7 +64,7 @@ export async function cancelTaskReminder(taskId: string): Promise<void> {
   try {
     await Notifications.cancelScheduledNotificationAsync(`task_adv_${taskId}`)
   } catch (err) {
-    console.warn('[personalNotifications] Error cancelando recordatorio de tarea:', err)
+    logger.warn('[personalNotifications] Error cancelando recordatorio de tarea:', err)
   }
 }
 
@@ -74,7 +75,7 @@ export async function cancelAllNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync()
   } catch (err) {
-    console.warn('[personalNotifications] Error cancelando todas las notificaciones:', err)
+    logger.warn('[personalNotifications] Error cancelando todas las notificaciones:', err)
   }
 }
 
@@ -131,7 +132,7 @@ export async function scheduleTaskReminder(
       },
     })
   } catch (err) {
-    console.warn('[personalNotifications] Error programando recordatorio de tarea:', err)
+    logger.warn('[personalNotifications] Error programando recordatorio de tarea:', err)
   }
 }
 
@@ -151,7 +152,7 @@ async function scheduleClassReminders(
       }
     }
   } catch (err) {
-    console.warn('[personalNotifications] Error cancelando notificaciones de clases previas:', err)
+    logger.warn('[personalNotifications] Error cancelando notificaciones de clases previas:', err)
   }
 
   if (!prefs.class_reminder_enabled) return
@@ -199,7 +200,7 @@ async function scheduleClassReminders(
         },
       })
     } catch (err) {
-      console.warn('[personalNotifications] Error programando recordatorio de clase:', err)
+      logger.warn('[personalNotifications] Error programando recordatorio de clase:', err)
     }
   }
 }
@@ -232,7 +233,7 @@ export async function syncAllNotifications(
     // 2. Programar avisos de clases
     await scheduleClassReminders(currentSchedules, prefs)
   } catch (err) {
-    console.warn('[personalNotifications] Error sincronizando notificaciones:', err)
+    logger.warn('[personalNotifications] Error sincronizando notificaciones:', err)
   }
 }
 

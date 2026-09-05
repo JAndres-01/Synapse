@@ -43,6 +43,7 @@ import { TaskTypePicker } from './modal/TaskTypePicker'
 import { TaskAttachmentSection } from './modal/TaskAttachmentSection'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_USER_ID, DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
+import { logger } from '@/lib/logger'
 
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
@@ -171,7 +172,7 @@ export function MinimalistTaskModal({
     let isMounted = true
     if (modalVisible) {
       personalStorage.getSchedules().then((list) => {
-        if (isMounted && list && Array.isArray(list)) {
+        if (isMounted && list) {
           setSchedules(list)
         }
       })
@@ -383,7 +384,7 @@ export function MinimalistTaskModal({
       onTaskSaved?.()
       handleSmoothClose()
     } catch (err) {
-      console.error('Error al guardar tarea:', err)
+      logger.error('Error al guardar tarea:', err)
       Alert.alert('Error', 'No se pudo guardar la tarea.')
     } finally {
       setSaveLoading(false)
@@ -491,7 +492,7 @@ export function MinimalistTaskModal({
         triggerHaptic('success')
       }
     } catch (err) {
-      console.error('Error al adjuntar documento:', err)
+      logger.error('Error al adjuntar documento:', err)
     }
   }
 

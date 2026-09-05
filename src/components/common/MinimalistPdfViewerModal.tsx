@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Share2, FileText } from 'lucide-react-native'
 import * as Sharing from 'expo-sharing'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { logger } from '@/lib/logger'
 
 interface MinimalistPdfViewerModalProps {
   visible: boolean
@@ -68,7 +69,7 @@ export function MinimalistPdfViewerModal({
         Alert.alert('Aviso', 'La opción de compartir no está disponible.')
       }
     } catch (err) {
-      console.error('Error al compartir PDF:', err)
+      logger.error('Error al compartir PDF:', err)
     }
   }
 
@@ -143,10 +144,10 @@ export function MinimalistPdfViewerModal({
               allowUniversalAccessFromFileURLs={true}
               bounces={false}
               onContentProcessDidTerminate={() => {
-                console.warn('[PdfViewer] WebContent process terminated')
+                logger.warn('[PdfViewer] WebContent process terminated')
               }}
               onError={(e) => {
-                console.warn('[PdfViewer] Error:', e.nativeEvent)
+                logger.warn('[PdfViewer] Error:', e.nativeEvent)
               }}
               renderError={() => (
                 <View style={styles.androidFallbackBox}>

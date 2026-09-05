@@ -23,6 +23,7 @@ import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 import { formatTime12h } from '@/lib/academicDateUtils'
+import { logger } from '@/lib/logger'
 
 export interface TaskDetailViewProps {
   task: Task | null
@@ -253,7 +254,7 @@ export function TaskDetailView({
                       Linking.openURL(att.file_url)
                     }
                   } catch (err) {
-                    console.error('Error al abrir archivo:', err)
+                    logger.error('Error al abrir archivo:', err)
                     Alert.alert('Aviso', 'No se pudo abrir el archivo.')
                   }
                 }

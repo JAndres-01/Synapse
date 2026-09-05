@@ -47,7 +47,7 @@ export const MinimalistConfetti = memo(function MinimalistConfetti({ burstTrigge
     const burstId = Date.now() + Math.random()
     const particles = []
 
-    // 24 micro-partículas estéticas balanceadas en abanico (alta fidelidad y 60 FPS)
+    // 24 micro-partículas distribuidas en abanico
     for (let i = 0; i < 24; i++) {
       const angle = -Math.PI / 2 + (Math.random() * 1.4 - 0.7) // Abanico hacia arriba
       const launchPower = Math.random() * (SCREEN_HEIGHT * 0.52) + SCREEN_HEIGHT * 0.32
@@ -77,7 +77,7 @@ export const MinimalistConfetti = memo(function MinimalistConfetti({ burstTrigge
     const newBurst: SingleBurst = { id: burstId, particles }
     setBursts((prev) => [...prev, newBurst])
 
-    // Animación idéntica al commit 1f65da0
+    // Animación de dispersión balística y desvanecimiento progresivo
     const anims = particles.map((p) =>
       Animated.parallel([
         Animated.timing(p.animX, {

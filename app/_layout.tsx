@@ -7,6 +7,7 @@ import { PersonalAuthProvider } from '@/context/PersonalAuthContext'
 import { StyleSheet } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
 import { personalStorage } from '@/lib/personalStorage'
+import { logger } from '@/lib/logger'
 
 // Retener el Splash Screen nativo hasta que los datos estén 100% listos en memoria
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -20,7 +21,7 @@ export default function RootLayout() {
         // Precarga ultrarrápida en memoria (~100-200ms)
         await personalStorage.preloadAll()
       } catch (e) {
-        console.warn('[RootLayout] Error precargando datos:', e)
+        logger.warn('[RootLayout] Error precargando datos:', e)
       } finally {
         setAppIsReady(true)
       }

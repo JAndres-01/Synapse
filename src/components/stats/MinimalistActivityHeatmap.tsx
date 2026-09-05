@@ -52,7 +52,7 @@ export function MinimalistActivityHeatmap() {
 
   const updateData = useCallback(() => {
     personalStorage.getTasks().then((t) => {
-      if (isMountedRef.current && t && Array.isArray(t)) setTasks(t)
+      if (isMountedRef.current && t) setTasks(t)
     })
     personalStorage.getPreferences().then((p) => {
       if (isMountedRef.current && p) setPrefs(p)

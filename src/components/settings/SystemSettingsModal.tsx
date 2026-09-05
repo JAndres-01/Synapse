@@ -37,6 +37,7 @@ import { SemesterConfigCard, type SemesterPickerType } from './SemesterConfigCar
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
+import { logger } from '@/lib/logger'
 
 export interface SystemSettingsModalProps {
   visible: boolean
@@ -175,7 +176,7 @@ export function SystemSettingsModal({
       await onSaveProfileName?.(trimmed)
       setIsEditingName(false)
     } catch (err) {
-      console.error('Error al guardar nombre:', err)
+      logger.error('Error al guardar nombre:', err)
     } finally {
       setIsSavingName(false)
     }

@@ -22,6 +22,7 @@ import { generateId } from '@/lib/idGenerator'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_USER_ID } from '@/constants/defaults'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
+import { logger } from '@/lib/logger'
 
 interface MinimalistSubjectModalProps {
   visible: boolean
@@ -157,7 +158,7 @@ export function MinimalistSubjectModal({
               setLocalSubjects(updatedList)
               onSubjectsUpdated()
             } catch (err) {
-              console.error('Error eliminando materia:', err)
+              logger.error('Error eliminando materia:', err)
             }
           },
         },

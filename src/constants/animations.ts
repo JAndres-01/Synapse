@@ -73,7 +73,7 @@ export const PANEL_SWITCH_LAYOUT = (
   })
 
 /**
- * Física de resorte ultra-rápida y fluida para paneles inferiores (60-120 FPS)
+ * Física de resorte para paneles modales inferiores.
  */
 export const SPRING_PANEL_CONFIG = {
   stiffness: 750,
@@ -83,7 +83,7 @@ export const SPRING_PANEL_CONFIG = {
 } as const
 
 /**
- * Física de resorte para animación de entrada escalonada en pantallas principales
+ * Física de resorte para animación de entrada escalonada en pantallas principales.
  */
 export const SPRING_ENTRANCE_CONFIG = {
   stiffness: 320,
@@ -93,7 +93,7 @@ export const SPRING_ENTRANCE_CONFIG = {
 } as const
 
 /**
- * Física de resorte táctil para retroalimentación interactiva (botones, fab, etc.)
+ * Física de resorte táctil para retroalimentación interactiva (botones, fab, etc.).
  */
 export const SPRING_TOUCH_CONFIG = {
   stiffness: 500,
@@ -104,7 +104,6 @@ export const SPRING_TOUCH_CONFIG = {
 /**
  * Física de resorte críticamente amortiguada (damping ratio ≈ 1.0) para indicadores y barras
  * de deslizamiento horizontal (tabs, segment controls, islas de navegación).
- * Elimina oscilaciones y tartamudeos asegurando 60-120 FPS ultra fluidos.
  */
 export const SPRING_SLIDE_INDICATOR = {
   stiffness: 420,

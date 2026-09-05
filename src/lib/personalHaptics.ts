@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics'
 import { Platform } from 'react-native'
+import { logger } from '@/lib/logger'
 
 type HapticType =
   | 'light'
@@ -44,6 +45,6 @@ export function triggerHaptic(type: HapticType = 'light') {
         break
     }
   } catch (err) {
-    console.warn('[personalHaptics] Error ejecutando haptic:', err)
+    logger.warn('[personalHaptics] Error ejecutando haptic:', err)
   }
 }

@@ -28,6 +28,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { APPLE_EASING, SPRING_PANEL_CONFIG } from '@/constants/animations'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
+import { logger } from '@/lib/logger'
 
 interface MinimalistCredentialModalProps {
   visible: boolean
@@ -152,7 +153,7 @@ export function MinimalistCredentialModal({
         Alert.alert('Aviso', 'La opción de compartir no está disponible en este dispositivo.')
       }
     } catch (err: any) {
-      console.error('[MinimalistCredentialModal] Error al compartir:', err)
+      logger.error('[MinimalistCredentialModal] Error al compartir:', err)
       Alert.alert('Error', 'No se pudo compartir el archivo.')
     }
   }
@@ -320,11 +321,11 @@ export function MinimalistCredentialModal({
                 allowUniversalAccessFromFileURLs={true}
                 bounces={false}
                 onContentProcessDidTerminate={() => {
-                  console.warn('[CredentialModal] WebContent process terminated, recargando...')
+                  logger.warn('[CredentialModal] WebContent process terminated, recargando...')
                   webViewRef.current?.reload()
                 }}
                 onError={(e) => {
-                  console.warn('[CredentialModal] Error en visor:', e.nativeEvent)
+                  logger.warn('[CredentialModal] Error en visor:', e.nativeEvent)
                 }}
                 renderError={() => (
                   <View style={styles.errorOverlay}>

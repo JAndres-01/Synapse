@@ -17,6 +17,7 @@ import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
+import { logger } from '@/lib/logger'
 
 export interface EditProfileModalProps {
   visible: boolean
@@ -105,7 +106,7 @@ export function EditProfileModal({
       await onSaveName(trimmed)
       handleClose()
     } catch (err) {
-      console.error('Error guardando perfil:', err)
+      logger.error('Error guardando perfil:', err)
     } finally {
       setSaving(false)
     }

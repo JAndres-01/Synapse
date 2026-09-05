@@ -31,6 +31,7 @@ import { ReminderTimeModal } from '@/components/settings/ReminderTimeModal'
 import { formatDateKey } from '@/lib/heatmapUtils'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
 import { DEFAULT_ADVANCE_REMINDER_TIME, DEFAULT_STUDENT_NAME } from '@/constants/defaults'
+import { logger } from '@/lib/logger'
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
@@ -114,7 +115,7 @@ export default function ProfileScreen() {
           await FileSystem.copyAsync({ from: asset.uri, to: destUri })
           permanentUri = destUri
         } catch (copyErr) {
-          console.warn('[ProfileScreen] Copia permanente:', copyErr)
+          logger.warn('[ProfileScreen] Copia permanente:', copyErr)
         }
 
         await updateCredential(permanentUri, asset.name || 'Credencial_Digital.pdf')
@@ -122,7 +123,7 @@ export default function ProfileScreen() {
         setShowCredentialModal(true)
       }
     } catch (err: any) {
-      console.error('[ProfileScreen] Error al seleccionar credencial:', err)
+      logger.error('[ProfileScreen] Error al seleccionar credencial:', err)
       Alert.alert('Error', 'No se pudo cargar el archivo PDF de la credencial.')
       triggerHaptic('error')
     }

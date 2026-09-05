@@ -6,6 +6,7 @@ import {
   DEFAULT_STUDENT_NAME,
   DEFAULT_ADVANCE_REMINDER_TIME,
 } from '@/constants/defaults'
+import { logger } from './logger'
 
 const KEYS = {
   SUBJECTS: 'synapse_personal_subjects_v2',
@@ -38,7 +39,7 @@ function notifyListeners() {
     try {
       cb()
     } catch (e) {
-      console.error('[personalStorage] Error en listener:', e)
+      logger.error('[personalStorage] Error en listener:', e)
     }
   })
 }
@@ -90,7 +91,7 @@ export const personalStorage = {
         }
       }
     } catch (err) {
-      console.error('[personalStorage] Error leyendo materias:', err)
+      logger.error('[personalStorage] Error leyendo materias:', err)
     }
     _subjectsCache = []
     return []
@@ -103,7 +104,7 @@ export const personalStorage = {
     try {
       await AsyncStorage.setItem(KEYS.SUBJECTS, JSON.stringify(safeList))
     } catch (err) {
-      console.error('[personalStorage] Error guardando materias:', err)
+      logger.error('[personalStorage] Error guardando materias:', err)
     }
   },
 
@@ -165,7 +166,7 @@ export const personalStorage = {
         }
       }
     } catch (err) {
-      console.error('[personalStorage] Error leyendo horarios:', err)
+      logger.error('[personalStorage] Error leyendo horarios:', err)
     }
     _schedulesCache = []
     return []
@@ -178,7 +179,7 @@ export const personalStorage = {
     try {
       await AsyncStorage.setItem(KEYS.SCHEDULES, JSON.stringify(safeList))
     } catch (err) {
-      console.error('[personalStorage] Error guardando horarios:', err)
+      logger.error('[personalStorage] Error guardando horarios:', err)
     }
   },
 
@@ -225,7 +226,7 @@ export const personalStorage = {
         }
       }
     } catch (err) {
-      console.error('[personalStorage] Error leyendo tareas:', err)
+      logger.error('[personalStorage] Error leyendo tareas:', err)
     }
     _tasksCache = []
     return []
@@ -243,7 +244,7 @@ export const personalStorage = {
       })
       await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(storageList))
     } catch (err) {
-      console.error('[personalStorage] Error guardando tareas:', err)
+      logger.error('[personalStorage] Error guardando tareas:', err)
     }
   },
 
@@ -286,7 +287,7 @@ export const personalStorage = {
         }
       }
     } catch (err) {
-      console.warn('[personalStorage] Error leyendo perfil, usando valor por defecto:', err)
+      logger.warn('[personalStorage] Error leyendo perfil, usando valor por defecto:', err)
     }
     const defaultProfile: PersonalProfile = {
       id: DEFAULT_USER_ID,
@@ -303,7 +304,7 @@ export const personalStorage = {
     try {
       await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile))
     } catch (err) {
-      console.error('[personalStorage] Error guardando perfil:', err)
+      logger.error('[personalStorage] Error guardando perfil:', err)
     }
   },
 
@@ -332,7 +333,7 @@ export const personalStorage = {
       _preferencesCache = prefs
       return prefs
     } catch (err) {
-      console.warn('[personalStorage] Error leyendo preferencias, usando valores por defecto:', err)
+      logger.warn('[personalStorage] Error leyendo preferencias, usando valores por defecto:', err)
       const currentYear = new Date().getFullYear()
       const defaultPrefs: AppPreferences = {
         haptics_enabled: true,
@@ -356,7 +357,7 @@ export const personalStorage = {
     try {
       await AsyncStorage.setItem(KEYS.PREFERENCES, JSON.stringify(prefs))
     } catch (err) {
-      console.error('[personalStorage] Error guardando preferencias:', err)
+      logger.error('[personalStorage] Error guardando preferencias:', err)
     }
   },
 
@@ -397,7 +398,7 @@ export const personalStorage = {
       if (data.preferences) await this.setPreferences(data.preferences)
       return true
     } catch (err) {
-      console.error('[personalStorage] Error procesando backup JSON:', err)
+      logger.error('[personalStorage] Error procesando backup JSON:', err)
       return false
     }
   },
@@ -418,7 +419,7 @@ export const personalStorage = {
         KEYS.PREFERENCES,
       ])
     } catch (err) {
-      console.error('[personalStorage] Error limpiando storage:', err)
+      logger.error('[personalStorage] Error limpiando storage:', err)
     }
   },
 }

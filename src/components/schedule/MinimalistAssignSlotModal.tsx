@@ -23,6 +23,7 @@ import { generateId } from '@/lib/idGenerator'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_USER_ID } from '@/constants/defaults'
 import { useModalAnimation } from '@/hooks/useModalAnimation'
+import { logger } from '@/lib/logger'
 
 interface MinimalistAssignSlotModalProps {
   visible: boolean
@@ -119,7 +120,7 @@ export function MinimalistAssignSlotModal({
       onScheduleSaved()
       handleSmoothClose()
     } catch (err) {
-      console.error('Error limpiando bloque:', err)
+      logger.error('Error limpiando bloque:', err)
     } finally {
       setLoading(false)
     }

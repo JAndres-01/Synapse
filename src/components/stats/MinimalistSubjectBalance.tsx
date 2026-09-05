@@ -41,10 +41,10 @@ export function MinimalistSubjectBalance() {
     let isMounted = true
     const updateData = () => {
       personalStorage.getTasks().then((t) => {
-        if (isMounted && t && Array.isArray(t)) setTasks(t)
+        if (isMounted && t) setTasks(t)
       })
       personalStorage.getSubjects().then((s) => {
-        if (isMounted && s && Array.isArray(s)) setSubjects(s)
+        if (isMounted && s) setSubjects(s)
       })
     }
     updateData()

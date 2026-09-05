@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking'
 import type { TaskAttachment } from '@/types/personal'
 import { triggerHaptic } from './personalHaptics'
 import { generateId } from './idGenerator'
+import { logger } from './logger'
 
 function cleanFileNameToTitle(fileName: string): string {
   if (!fileName) return ''
@@ -153,7 +154,7 @@ export function useIncomingShareIntent() {
           }
         }
       } catch (err) {
-        console.warn('[useIncomingShareIntent] Error procesando deep link:', err)
+        logger.warn('[useIncomingShareIntent] Error procesando deep link:', err)
       }
     }
 
@@ -161,7 +162,7 @@ export function useIncomingShareIntent() {
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url })
     }).catch((err) => {
-      console.warn('[useIncomingShareIntent] Error leyendo getInitialURL:', err)
+      logger.warn('[useIncomingShareIntent] Error leyendo getInitialURL:', err)
     })
 
     const subscription = Linking.addEventListener('url', handleDeepLink)

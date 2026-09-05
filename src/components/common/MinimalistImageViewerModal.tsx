@@ -23,6 +23,7 @@ import {
 import * as Sharing from 'expo-sharing'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from '@/constants/layout'
+import { logger } from '@/lib/logger'
 
 const MIN_SCALE = 1
 const MAX_SCALE = 5
@@ -151,7 +152,7 @@ export function MinimalistImageViewerModal({
         Alert.alert('Aviso', 'La opción de compartir no está disponible en este dispositivo.')
       }
     } catch (err) {
-      console.error('[MinimalistImageViewerModal] Error al compartir:', err)
+      logger.error('[MinimalistImageViewerModal] Error al compartir:', err)
       Alert.alert('Error', 'No se pudo compartir la imagen.')
     }
   }

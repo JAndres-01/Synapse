@@ -14,7 +14,7 @@ import { Settings as SettingsIcon } from 'lucide-react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
-import { personalStorage } from '@/lib/personalStorage'
+import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import { triggerHaptic, setGlobalHapticsEnabled } from '@/lib/personalHaptics'
 import {
   syncAllNotifications,
@@ -106,6 +106,12 @@ export default function ProfileScreen() {
     }, [loadData])
   )
 
+  useEffect(() => {
+    const unsubscribe = subscribeToPersonalStorage(() => {
+      loadData()
+    })
+    return unsubscribe
+  }, [loadData])
 
   // Handlers para el Perfil
   const handleSaveProfileName = async (newName: string) => {
@@ -393,6 +399,7 @@ export default function ProfileScreen() {
         visible={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
         profile={profile}
+        onSaveProfileName={handleSaveProfileName}
         onOpenEditName={() => setShowEditProfileModal(true)}
         onOpenCredential={() => setShowCredentialModal(true)}
         onUploadCredential={handlePickCredential}

@@ -255,21 +255,21 @@ export function MinimalistTaskModal({
       }
 
       fadeAnim.setValue(0)
-      slideAnim.setValue(SCREEN_HEIGHT)
+      slideAnim.setValue(450)
       panY.setValue(0)
       keyboardTranslateY.setValue(0)
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 240,
+          duration: 180,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 380,
-          damping: 34,
-          mass: 0.8,
+          stiffness: 750,
+          damping: 32,
+          mass: 0.5,
           useNativeDriver: true,
         }),
       ]).start()
@@ -287,12 +287,12 @@ export function MinimalistTaskModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 220,
+        toValue: 450,
+        duration: 180,
         easing: APPLE_EASING,
         useNativeDriver: true,
       }),
@@ -518,17 +518,6 @@ export function MinimalistTaskModal({
               panHandlers={panResponder.panHandlers}
               onOpenImage={setSelectedLightboxImage}
               onOpenPdf={setViewingPdf}
-              onToggleStatus={onToggleStatus}
-              onEditTask={() => setCurrentView('form')}
-              onDeleteTask={async (taskId) => {
-                if (onDeleteTask) {
-                  await onDeleteTask(taskId)
-                } else {
-                  await personalStorage.removeTask(taskId)
-                  onTaskSaved()
-                }
-                handleSmoothClose()
-              }}
             />
           )}
 

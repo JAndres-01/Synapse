@@ -30,7 +30,6 @@ export function MinimalistSubjectBalance() {
   // Animaciones de entrada suave (Barra + Lista de materias)
   const barScaleXAnim = useRef(new Animated.Value(0)).current
   const barOpacityAnim = useRef(new Animated.Value(0)).current
-  const rowsContainerOpacity = useRef(new Animated.Value(0)).current
 
   // Animaciones individuales para cada fila (hasta 12 materias)
   const rowAnims = useRef<Animated.Value[]>(
@@ -119,7 +118,6 @@ export function MinimalistSubjectBalance() {
       const isFirst = isInitialMount.current
       barScaleXAnim.setValue(0)
       barOpacityAnim.setValue(0)
-      rowsContainerOpacity.setValue(1)
       rowAnims.forEach((anim) => anim.setValue(0))
 
       if (isFirst) {

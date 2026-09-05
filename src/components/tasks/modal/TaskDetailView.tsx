@@ -15,10 +15,6 @@ import {
   Rocket,
   FileText,
   Users,
-  CheckCircle2,
-  Circle,
-  Pencil,
-  Trash2,
 } from 'lucide-react-native'
 import * as Sharing from 'expo-sharing'
 import * as Linking from 'expo-linking'
@@ -32,9 +28,6 @@ export interface TaskDetailViewProps {
   panHandlers?: any
   onOpenImage: (image: { uri: string; title: string }) => void
   onOpenPdf: (pdf: { uri: string; title: string }) => void
-  onToggleStatus?: (taskId: string, currentStatus: string) => void
-  onEditTask?: () => void
-  onDeleteTask?: (taskId: string) => Promise<void> | void
 }
 
 export function TaskDetailView({
@@ -42,9 +35,6 @@ export function TaskDetailView({
   panHandlers,
   onOpenImage,
   onOpenPdf,
-  onToggleStatus,
-  onEditTask,
-  onDeleteTask,
 }: TaskDetailViewProps) {
   const isCompleted = task?.status === 'completed'
 
@@ -87,78 +77,6 @@ export function TaskDetailView({
         {/* Tirador Superior Grande */}
         <View style={styles.dragHandleTopArea}>
           <View style={styles.dragHandle} />
-        </View>
-
-        {/* Barra de Acciones: Toggle Estado + Editar + Eliminar */}
-        <View style={styles.detailTopActionBar}>
-          <Pressable
-            onPress={() => {
-              if (!task) return
-              triggerHaptic('selection')
-              onToggleStatus?.(task.id, task.status)
-            }}
-            style={[
-              styles.detailStatusBadge,
-              isCompleted && styles.detailStatusBadgeCompleted,
-            ]}
-          >
-            {isCompleted ? (
-              <CheckCircle2 size={13} color="#10B981" />
-            ) : (
-              <Circle size={13} color="#A1A1AA" />
-            )}
-            <Text
-              style={[
-                styles.detailStatusText,
-                isCompleted && styles.detailStatusTextCompleted,
-              ]}
-            >
-              {isCompleted ? 'Completada' : 'Pendiente'}
-            </Text>
-          </Pressable>
-
-          <View style={styles.detailTopRightActions}>
-            {Boolean(onEditTask) && (
-              <Pressable
-                onPress={() => {
-                  triggerHaptic('light')
-                  onEditTask?.()
-                }}
-                hitSlop={10}
-                style={styles.actionIconBtn}
-              >
-                <Pencil size={15} color="#D4D4D8" />
-              </Pressable>
-            )}
-
-            {Boolean(onDeleteTask) && (
-              <Pressable
-                onPress={() => {
-                  if (!task) return
-                  triggerHaptic('warning')
-                  Alert.alert(
-                    'Eliminar Tarea',
-                    '¿Estás seguro de que deseas eliminar esta tarea?',
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      {
-                        text: 'Eliminar',
-                        style: 'destructive',
-                        onPress: async () => {
-                          triggerHaptic('medium')
-                          await onDeleteTask?.(task.id)
-                        },
-                      },
-                    ]
-                  )
-                }}
-                hitSlop={10}
-                style={styles.actionIconBtn}
-              >
-                <Trash2 size={15} color="#F87171" />
-              </Pressable>
-            )}
-          </View>
         </View>
 
         {/* 1. TÍTULO DE LA TAREA */}
@@ -533,50 +451,5 @@ const styles = StyleSheet.create({
     color: '#71717A',
     fontSize: 11,
     fontWeight: '500',
-  },
-  detailTopActionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingBottom: 10,
-  },
-  detailStatusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 9999,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  detailStatusBadgeCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  detailStatusText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#A1A1AA',
-  },
-  detailStatusTextCompleted: {
-    color: '#10B981',
-  },
-  detailTopRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 })

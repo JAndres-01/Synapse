@@ -52,7 +52,7 @@ export function MinimalistCredentialModal({
   const [webViewReady, setWebViewReady] = useState(false)
   const webViewRef = useRef<any>(null)
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(600)).current
+  const slideAnim = useRef(new Animated.Value(450)).current
   const panY = useRef(new Animated.Value(0)).current
 
   // Normalizar ruta para mitigar cambios de UUID del sandbox en iOS
@@ -76,19 +76,21 @@ export function MinimalistCredentialModal({
 
     if (visible) {
       setModalRendered(true)
+      slideAnim.setValue(450)
+      fadeAnim.setValue(0)
       panY.setValue(0)
       activeAnim = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 200,
+          duration: 180,
           easing: APPLE_EASING,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 420,
-          damping: 28,
-          mass: 0.8,
+          stiffness: 750,
+          damping: 32,
+          mass: 0.5,
           useNativeDriver: true,
         }),
       ])
@@ -107,12 +109,13 @@ export function MinimalistCredentialModal({
       activeAnim = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 160,
+          duration: 150,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
-          toValue: 600,
-          duration: 190,
+          toValue: 450,
+          duration: 180,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }),
       ])

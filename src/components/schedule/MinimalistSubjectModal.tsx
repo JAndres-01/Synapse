@@ -18,6 +18,7 @@ import { X, Plus, Trash2, BookOpen, Check, User, Pencil, RotateCcw } from 'lucid
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { APPLE_EASING } from '@/constants/animations'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -55,7 +56,7 @@ export function MinimalistSubjectModal({
   const [loading, setLoading] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
+  const slideAnim = useRef(new Animated.Value(450)).current
   const panY = useRef(new Animated.Value(0)).current
   const [modalVisible, setModalVisible] = useState(visible)
 
@@ -76,18 +77,20 @@ export function MinimalistSubjectModal({
   useEffect(() => {
     if (visible) {
       setModalVisible(true)
+      slideAnim.setValue(450)
+      fadeAnim.setValue(0)
       panY.setValue(0)
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 200,
+          duration: 180,
           useNativeDriver: true,
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 480,
+          stiffness: 750,
           damping: 32,
-          mass: 0.8,
+          mass: 0.5,
           useNativeDriver: true,
         }),
       ]).start()
@@ -95,17 +98,18 @@ export function MinimalistSubjectModal({
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 180,
+          duration: 150,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 220,
+          toValue: 450,
+          duration: 180,
+          easing: APPLE_EASING,
           useNativeDriver: true,
         }),
         Animated.timing(panY, {
           toValue: 0,
-          duration: 180,
+          duration: 150,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -120,17 +124,18 @@ export function MinimalistSubjectModal({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 160,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 200,
+        toValue: 450,
+        duration: 180,
+        easing: APPLE_EASING,
         useNativeDriver: true,
       }),
       Animated.timing(panY, {
         toValue: 0,
-        duration: 160,
+        duration: 150,
         useNativeDriver: true,
       }),
     ]).start(() => {

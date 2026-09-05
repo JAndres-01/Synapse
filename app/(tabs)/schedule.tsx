@@ -217,7 +217,6 @@ export default function ScheduleScreen() {
         pathname: '/(tabs)/tasks',
         params: {
           taskId: task.id,
-          highlightTimestamp: Date.now().toString(),
         },
       })
     }, 120)

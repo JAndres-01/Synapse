@@ -200,7 +200,7 @@ export function MinimalistAssignSlotModal({
         classroom_room: existingSchedule?.classroom_room || '',
       }
 
-      await personalStorage.setScheduleSlot(slotData)
+      await personalStorage.saveScheduleSlot(slotData)
       triggerHaptic('success')
       onScheduleSaved()
       handleSmoothClose()

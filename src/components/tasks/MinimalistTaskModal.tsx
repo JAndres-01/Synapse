@@ -2146,20 +2146,4 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     maxWidth: 160,
   },
-  lightboxBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.96)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  lightboxImage: {
-    width: '100%',
-    height: '82%',
-  },
-  lightboxTip: {
-    color: '#71717A',
-    fontSize: 12,
-    marginTop: 16,
-  },
 })

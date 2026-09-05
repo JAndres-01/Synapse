@@ -36,7 +36,7 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     const updated: PersonalProfile = {
       ...current,
       full_name: fullName.trim() || 'Estudiante',
-      email: email ? email.trim() : current.email,
+      ...(email !== undefined ? { email: email ? email.trim() : null } : {}),
       updated_at: new Date().toISOString(),
     }
     await personalStorage.setProfile(updated)
@@ -66,8 +66,6 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     const defaultProfile: PersonalProfile = {
       id: 'local_user',
       full_name: 'Estudiante',
-      email: '',
-      theme: 'dark',
       student_credential_url: null,
       student_credential_name: null,
       student_credential_updated_at: null,

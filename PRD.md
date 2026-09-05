@@ -1,337 +1,221 @@
-# PRD — Synapse: Control y Gestión Colaborativa de Clases (Mobile-First)
+# PRD — Synapse: Asistente Académico Personal Local-First (Mobile Native)
 
-**Documento de Requisitos de Producto (Product Requirements Document)**  
-**Versión:** 1.0 Final (Master Spec)  
-**Fecha:** 27 de Agosto de 2026  
-**Estado:** Aprobado y Consolidado para Desarrollo  
-**Plataforma:** Web App Mobile-First / Progressive Web App (PWA)  
-**Audiencia Objetivo:** Salón de Clases Universitario / Escolar (Alumnos y Delegados)  
+**Documento de Requisitos de Producto y Arquitectura Maestra**  
+**Versión:** 2.0 Producción  
+**Fecha:** Septiembre de 2026  
+**Estado:** Producción Final y Consolidado  
+**Plataforma:** iOS & Android (React Native 0.81 / Expo SDK 54 / Expo Router 6)  
+**Arquitectura:** 100% Local-First / Privacidad Total (Cero dependencia de servidores en la nube)  
+**Audiencia:** Estudiantes Universitarios y de Nivel Superior  
 
 ---
 
 ## 1. Resumen Ejecutivo y Visión del Producto
 
 ### 1.1. Declaración del Problema
-Actualmente, toda la dinámica y coordinación académica del salón de clases se realiza a través de un grupo de WhatsApp compartido. Esta dinámica genera tres problemas críticos en el día a día escolar:
-1. **Pérdida de fotos de pizarra y apuntes:** Las fotos tomadas en clase quedan sepultadas rápidamente entre cientos de mensajes, stickers y conversaciones ajenas.
-2. **Olvido frecuente de fechas de entrega:** Los estudiantes pierden el rastro de cuándo vencen las tareas individuales, entregas grupales y proyectos de fin de curso.
-3. **Desorden de avisos importantes:** Los mensajes urgentes de los delegados (cambios imprevistos de aula, eventos institucionales, avisos de profesores) se ignoran o se pierden en el chat grupal.
+Los estudiantes universitarios se enfrentan a una fragmentación constante de información académica:
+1. **Desorden de archivos y tareas:** Las tareas, imágenes de apuntes, documentos PDF y links quedan dispersos entre chats efímeros y plataformas institucionales complejas.
+2. **Dependencia de conectividad inestable:** Las plataformas en la nube o apps web fallan en campus universitarios, auditorios o zonas con baja cobertura celular.
+3. **Pérdida de identidad y accesos rápidos:** Portar la credencial escolar física o buscar el PDF con el código QR en carpetas de archivos del teléfono durante el ingreso al campus resulta ineficiente.
 
-### 1.2. Propuesta de Valor y Visión
-**Synapse** es un centro de mando colaborativo, limpio y mobile-first diseñado a la medida de la jornada del salón. Reemplaza el caos de WhatsApp por una Progressive Web App (PWA) instalable en el celular que ofrece:
-- Detección automática en tiempo real de la clase en curso en los 4 bloques diarios del horario.
-- Seguimiento personalizado de tareas (individuales, grupales, proyectos y exámenes) con estado privado por estudiante.
-- Galería organizada de fotos de pizarras en alta resolución con visor táctil de zoom y descarga inmediata.
-- Canal oficial de avisos de delegados con hilos de respuestas directas.
-- Funcionamiento garantizado 100% sin conexión a internet (Offline First) dentro del campus escolar.
-
----
-
-## 2. Contexto Operativo y Dinámica Escolar Real
-
-### 2.1. Estructura de Horario Oficial (4 Bloques de 90 minutos)
-La jornada escolar consta exactamente de **4 bloques de 1.5 horas (90 minutos)** continuos de lunes a viernes/sábado:
-- ⏰ **Bloque #1:** `07:00 AM – 08:30 AM`
-- ⏰ **Bloque #2:** `08:30 AM – 10:00 AM`
-- ⏰ **Bloque #3:** `10:00 AM – 11:30 AM`
-- ⏰ **Bloque #4:** `11:30 AM – 01:00 PM`
-
-### 2.2. Modalidad de Clases Virtuales / Asíncronas ("Horas Libres")
-Dos días a la semana, uno de los bloques corresponde a una materia virtual que el salón toma como hora libre/asíncrona. La plataforma soporta la etiqueta `Virtual / Asíncrona` para diferenciar visualmente este bloque sin generar alarmas innecesarias de asistencia presencial.
-
-### 2.3. Clasificación Exacta de Entregas y Evaluaciones
-1. 👤 **Tarea Individual:** Entregable personal con fecha y hora límite.
-2. 👥 **Tarea Grupal:** Trabajo en equipo con especificación de integrantes, pautas grupales y archivos adjuntos.
-3. 🚀 **Proyecto:** Trabajo de ciclo con entregables continuos o hitos.
-4. 📝 **Examen:** Evaluación oficial (parcial, final o examen de unidad) con temario y recursos de estudio.
+### 1.2. Propuesta de Valor y Filosofía
+**Synapse 2.0** es un asistente académico personal, nativo y ultra minimalista para dispositivos móviles. Diseñado bajo la premisa de **soberanía de datos y cero latencia**:
+- **100% Local-First:** Todos los datos (materias, horarios, tareas, credencial digital y preferencias) residen y persisten de forma privada en el almacenamiento local del dispositivo mediante `@react-native-async-storage/async-storage`.
+- **Cero latencia:** Arquitectura de caché reactivo en memoria con listeners síncronos, garantizando transiciones a 60/120 FPS sin pantallas de carga de red.
+- **Identificación escolar inmediata:** Visor integrado de credencial digital estudiantil en PDF con acceso directo a código QR.
+- **Visor multimedia de alto rendimiento:** Inspección de imágenes de tareas y apuntes con gestos fluidos de *pinch-to-zoom* y doble toque, además de visor nativo de PDFs vía WebView.
+- **Portabilidad total:** Sistema de exportación e importación de respaldos en formato estándar JSON.
 
 ---
 
-## 3. Personas y Matriz de Permisos
+## 2. Estructura Académica y Contexto Operativo
 
-| Funcionalidad / Acción | Delegado / Administrador | Estudiante / Compañero |
-| :--- | :---: | :---: |
-| Autenticación con Google / Email | ✅ | ✅ |
-| Unirse al salón con PIN de 6 caracteres | ✅ | ✅ |
-| Visualizar horario diario (Hoy) y semanal | ✅ | ✅ |
-| Crear, editar y eliminar materias | ✅ | ❌ (Solo lectura) |
-| Asignar bloques de horario y aulas | ✅ | ❌ (Solo lectura) |
-| Publicar tareas, proyectos y exámenes oficiales | ✅ | ❌ (Solo lectura) |
-| Marcar tareas como completadas (personal) | ✅ | ✅ (Privado para cada alumno) |
-| Subir fotos de pizarra, apuntes, PDFs y links | ✅ | ✅ (Colaborativo y abierto) |
-| Eliminar adjuntos propios subidos | ✅ | ✅ |
-| Publicar avisos en el feed del salón | ✅ | ✅ |
-| Comentar en los hilos de avisos de delegados | ✅ | ✅ |
-| Activar Notificaciones Web Push en el teléfono | ✅ | ✅ |
-| Consultar horario y tareas sin internet (Offline) | ✅ | ✅ |
-| Modificar nombre y regenerar PIN del salón | ✅ | ❌ |
+### 2.1. Bloques de Horario Oficiales (Bloques C1 a C4)
+La jornada académica universitaria se divide en **4 bloques continuos de 90 minutos (1.5 horas)**:
+- ⏰ **Bloque C1:** `07:00 – 08:30`
+- ⏰ **Bloque C2:** `08:30 – 10:00`
+- ⏰ **Bloque C3:** `10:00 – 11:30`
+- ⏰ **Bloque C4:** `11:30 – 13:00`
+
+### 2.2. Clasificación de Entregas y Evaluaciones
+1. 👤 **Individual:** Tareas y lecturas personales con fecha y hora de vencimiento.
+2. 👥 **Grupal:** Trabajos colaborativos con requerimientos específicos.
+3. 🚀 **Proyecto:** Entregables de ciclo e investigación a largo plazo.
+4. 📝 **Examen:** Evaluaciones oficiales parciales o finales con temarios y recursos de estudio adjuntos.
 
 ---
 
-## 4. Sistema de Diseño Visual y UI/UX
+## 3. Sistema de Diseño Visual (UI/UX)
 
-### 4.1. Filosofía Estética: *Notion / Linear Dark Minimalist*
+### 3.1. Filosofía Estética: *OLED Black & Precision Minimalist*
 - **Paleta de Colores:** 
-  - Fondos en grises oscuros / zinc (`#09090b`, `#18181b`, `#27272a`).
-  - Bordes tenues de 1px (`border-zinc-800`).
-  - Sombras tipo papel y acentos monocromáticos con alto contraste.
-- **Tipografía:** Tipografía geométrica sans-serif ultra nítida (`Inter`, `Geist`, `-apple-system`) con tracking compacto.
-- **Identificación de Materias:** Dots (puntos de color) discretos asignados a cada materia (`#3B82F6`, `#10B981`, `#8B5CF6`, `#F59E0B`, `#EC4899`, etc.).
-- **Fechas Neutras y Limpias:** Fechas formateadas de forma calmada (ej: `Jueves 28 ago • 11:59 PM` o `En 2 días`), sin badges estridentes ni falsas alarmas de urgencia.
-
-### 4.2. Componentes Clave de Navegación e Interacción
-- **Floating Island Bar (Barra Inferior Flotante):**
-  - Barra flotante con esquinas redondeadas (`rounded-2xl`), fondo translúcido con desenfoque (`backdrop-blur-md`), borde sutil de 1px, punto indicador bajo la pestaña activa y badge numérico en la pestaña de Tareas.
-- **Bottom Sheets Táctiles Deslizables:**
-  - Los formularios de creación (`+ Crear Tarea`, `+ Añadir Materia`, `+ Compartir Aviso`) y los detalles de tareas se despliegan desde la parte inferior con un tirador (drag handle), ocupando el 85% de la pantalla, con cierre por deslizamiento hacia abajo.
-- **Microinteracciones y Gestos Táctiles:**
-  - *Swipe to Complete:* Deslizar suavemente una tarea hacia la derecha para marcarla como completada.
-  - *Pull to Refresh:* Deslizar hacia abajo en el tope de la pantalla para sincronizar datos en tiempo real.
-  - *Checkbox Háptico:* Checkbox circular con micro-animación de llenado suave.
-- **Visores Integrados:**
-  - *Lightbox Táctil a Pantalla Completa:* Para fotos de pizarra, con soporte de zoom táctil (pinch-to-zoom), desplazamiento y botón de descarga directa.
-  - *Previsualizador de PDF:* Visor embebido para leer guías y documentos con botón de descarga rápida.
+  - Fondo primario: Negro absoluto (`#000000`) y zinc profundo (`#09090b`, `#18181b`).
+  - Bordes y separadores: Acentos sutiles de 1px (`#27272a`).
+  - Tipografía: Jerarquía limpia con colores de alto contraste (`#FFFFFF`, `#D4D4D8`, `#A1A1AA`, `#71717A`).
+- **Barra de Navegación Flotante (Dock):**
+  - Barra inferior flotante con desenfoque de vidrio (`expo-blur`), bordes tenues, indicador reactivo en la pestaña activa y badge numérico dinámico de tareas pendientes.
+- **Gestos y Hápticos:**
+  - Integración háptica (`expo-haptics`) en pulsaciones clave, cambios de pestaña y confirmación de tareas.
+  - Modales deslizables desde abajo (*Bottom Sheets*) con animación elástica e indicador superior de arrastre.
 
 ---
 
-## 5. Arquitectura de Información y Pantallas
+## 4. Módulos y Arquitectura de Pantallas
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│                       SYNAPSE PWA                         │
+│                    SYNAPSE 2.0 (EXPO)                     │
 ├───────────────────────────────────────────────────────────┤
 │                                                           │
-│  [ Pantalla Activa: Hoy | Horario | Tareas | Salón ]      │
+│  [ (tabs): Cronograma | Horario | Tareas | Ajustes ]      │
 │                                                           │
 ├───────────────────────────────────────────────────────────┤
-│  [ 🏠 Hoy ]   [ 📅 Horario ]   [ ✅ Tareas ]   [ ⚙️ Salón ]  │
+│  [ 🕒 Cronograma ] [ 📅 Horario ] [ ✅ Tareas ] [ ⚙️ Ajustes ] │
 └───────────────────────────────────────────────────────────┘
 ```
 
-### 5.1. Flujo de Entrada y Onboarding (2 Pasos)
-1. **Paso 1 (Bienvenida & Auth):** Pantalla minimalista con el isotipo de Synapse y botón de un toque `Continuar con Google` (o Magic Link de Email).
-2. **Paso 2 (Código del Salón):**
-   - Campo para ingresar el **PIN del Salón (6 dígitos)** (ej. `SYN-402`).
-   - Para delegados/creadores: Enlace secundario `+ Crear Nuevo Salón`.
-3. Al ingresar el PIN, el estudiante accede inmediatamente a la pestaña **Hoy**.
+### 4.1. Pestaña 1: 🕒 Cronograma (Dashboard Académico)
+- **Header:** Saludo dinámico según la hora del día, nombre del estudiante editable y avatar/ícono de perfil con badge interactivo de credencial digital.
+- **Hero Card en Vivo:**
+  - Detección automática en tiempo real del bloque actual (C1 a C4).
+  - Indicador dinámico de estado: *En Curso*, *Próxima Clase*, o *Jornada Finalizada*.
+  - Desglose de materia, aula asignada, profesor y tiempo restante en minutos con barra de progreso.
+- **Mapa de Calor Académico (Heatmap):**
+  - Visualizador de intensidad y regularidad académica a lo largo de los días de la semana y semestres.
+- **Línea de Tiempo Diaria:** Lista cronológica de las 4 sesiones del día con sus códigos de aula física.
+
+### 4.2. Pestaña 2: 📅 Horario (Gestión Semanal y Grilla)
+- **Selector de Días:** Carrusel horizontal de días (Lunes a Viernes / Sábado).
+- **Asignador de Bloques:** Modal para vincular cualquier materia creada a los bloques C1-C4 de un día determinado, especificando el aula correspondiente.
+- **Gestor de Materias:**
+  - Creación y edición de materias con selector de paleta cromática identificadora, nombre del curso, código y nombre del docente.
+- **Grilla Semanal Completa:** Vista panorámica compacta para revisar el horario general de toda la semana de un vistazo.
+
+### 4.3. Pestaña 3: ✅ Tareas & Visor Multimedia
+- **Filtros Inteligentes:** Pestañas de estado (`Pendientes`, `Exámenes`, `Completadas`) y chips de filtrado por materia.
+- **Listado y Checkbox Háptico:**
+  - Marcado instantáneo de completado con retroalimentación háptica.
+  - Indicadores visuales de tipo de tarea y cantidad de adjuntos.
+- **Modal de Creación / Edición:**
+  - Selección de materia asociada, título, descripción y fecha/hora límite mediante `DateTimePicker` nativo.
+  - Selección de adjuntos multimedia:
+    - 📷 Fotos de apuntes e imágenes (`expo-image-picker`).
+    - 📄 Documentos PDF (`expo-document-picker`).
+    - 🔗 Enlaces web y repositorios externos.
+- **Visores Multimedia Integrados:**
+  - *Visor de Imagen con Zoom Táctil:* Modal a pantalla completa impulsado por `react-native-gesture-handler` con gestos de pellizco (*pinch-to-zoom*) de hasta 4x, doble toque para zoom inmediato y navegación fluida con fondos transparentes.
+  - *Visor de Documentos PDF:* Lector integrado vía `react-native-webview` con opción para compartir/abrir en visor externo del sistema (`expo-sharing`).
+
+### 4.4. Pestaña 4: ⚙️ Ajustes & Credencial Digital
+- **Identificación Estudiantil:**
+  - Opción de subir y almacenar el archivo PDF de la credencial oficial de la institución universitaria.
+  - Visualización rápida de la credencial o modal directo de acceso al código QR para escáneres de acceso físico.
+  - Opción para reemplazar o eliminar la credencial digital cargada.
+- **Edición de Perfil:** Modificación local de nombre completo del estudiante.
+- **Preferencias del Sistema:**
+  - Interruptores de respuesta háptica y animaciones.
+  - Configuración de fechas de inicio y fin de ciclos lectivos (Semestre Otoño / Primavera).
+- **Copia de Seguridad y Migración:**
+  - `Exportar Respaldo JSON`: Generación y descarga/compartición de archivo `.json` con todo el estado del usuario.
+  - `Importar Respaldo JSON`: Restauración instantánea y segura de materias, horarios, tareas y configuraciones.
+  - `Limpiar Datos`: Opción protegida para restablecer la aplicación a su estado inicial de fábrica.
 
 ---
 
-### 5.2. Pestaña 1: 🏠 Hoy (Dashboard en Tiempo Real)
-- **Header:** Saludo cordial, fecha actual en formato extendido y botón contextual `+ Compartir Aviso`.
-- **Hero Card Adaptativo (4 Estados en Vivo):**
-  1. *Estado 1: En Clase:* Badge vibrante `● EN CURSO`, nombre de la materia, aula física o enlace virtual, profesor, barra de progreso sutil y tiempo restante (`Termina en 25 min`).
-  2. *Estado 2: Receso / Próxima Clase:* Badge `PRÓXIMA CLASE`, hora de inicio del siguiente bloque de 90 min y cuenta regresiva (`Comienza en 15 min`).
-  3. *Estado 3: Clase Virtual / Libre:* Badge `MODALIDAD VIRTUAL / ASÍNCRONA` con recordatorio de enlaces o actividades libres.
-  4. *Estado 4: Fin de Jornada / Fin de Semana:* Mensaje de jornada concluida con resumen de entregas para la siguiente jornada escolar.
-- **Carrusel de Tareas Próximas:** Tarjetas horizontales de entregas para hoy y mañana con badge de tipo (`Individual` / `Grupal`) y checkbox rápido.
-- **Timeline de los 4 Bloques del Día:** Lista vertical limpia con los 4 bloques cronológicos de 7:00 a 13:00 con su aula y docente.
-- **Feed Oficial de Avisos de Delegados (Timeline):**
-  - Tarjetas clasificadas por categoría:
-    - 🚪 `Cambio de Aula` (destacado si aplica para la clase de hoy).
-    - 📢 `Aviso General` (noticias de profesores, pautas de examen).
-    - 🎓 `Evento Escolar` (ferias, charlas, suspensiones).
-  - Cada aviso incluye autor, hora, contenido e hilo expandible de comentarios/respuestas.
+## 5. Arquitectura Técnica y Almacenamiento
 
----
+### 5.1. Stack Tecnológico
+- **Framework:** React Native 0.81.5 / Expo SDK 54.0.37.
+- **Enrutamiento:** Expo Router 6.0.24 (File-based navigation con soporte de stacks y pestañas).
+- **Almacenamiento Persistente:** `@react-native-async-storage/async-storage` 2.2.0.
+- **Gestos y Animaciones:** `react-native-gesture-handler` 2.28.0.
+- **Íconos:** `lucide-react-native`.
 
-### 5.3. Pestaña 2: 📅 Horario (Gestión Semanal y Materias)
-- **Header:** Selector de días horizontal deslizable (Lunes a Sábado) + botón `Vista Grilla Completa`.
-- **Botón Contextual (Delegado):** `+ Añadir Materia / Horario`.
-- **Vista Diaria Detallada:**
-  - Tarjetas de los 4 bloques del día seleccionado con aula, profesor y accesos directos:
-    - 💬 **Grupo de WhatsApp** de la materia.
-    - 📁 **Carpeta de Google Drive**.
-    - 🎓 **Google Classroom / Canvas**.
-    - 📹 **Enlace de Videollamada (Meet / Zoom / Teams)**.
-- **Vista Grilla Semanal Completa:**
-  - Matriz interactiva de scroll horizontal autosuficiente y directa (Columnas = Días, Filas = Los 4 Bloques de 90 min) con bloques compactos para consulta visual rápida de horario y aula sin necesidad de abrir modales.
+### 5.2. Capa de Almacenamiento Reactiva (`personalStorage`)
+Para evitar latencias y renderizados bloqueantes, el servicio `personalStorage` implementa un patrón **In-Memory Cache + Persistent Store**:
+1. **Acceso síncrono:** Métodos de caché (`getCachedSubjects`, `getCachedSchedules`, `getCachedTasks`, `getCachedProfile`) devuelven al instante los datos ya parseados.
+2. **Notificación pub/sub:** Todos los componentes se suscriben a actualizaciones de almacenamiento mediante `subscribeToPersonalStorage(listener)` para sincronizar la UI en caliente sin depender de contextos pesados.
+3. **Escritura asíncrona segura:** Cada mutación actualiza la memoria atómicamente y persiste el JSON en AsyncStorage en segundo plano.
 
----
-
-### 5.4. Pestaña 3: ✅ Tareas & Galería de Pizarras
-- **Pestañas Superiores:** `Pendientes`, `Exámenes`, `Completadas`.
-- **Filtros por Materia y Modalidad:** Chips con el dot de color de cada curso y selector `Todas` | `Individuales` | `Grupales` | `Proyectos`.
-- **Botón Contextual:** `+ Crear Tarea / Examen`.
-- **Tarjeta de Tarea:**
-  - Checkbox circular a la izquierda con animación táctil (guarda el estado privado de cada alumno).
-  - Título, materia con punto de color, fecha/hora límite en formato limpio (ej. `Jueves 28 ago • 11:59 PM`).
-  - Indicadores de adjuntos (ej. `📷 4 fotos de pizarra` `📄 1 PDF` `🔗 1 link`).
-- **Bottom Sheet de Detalle de Tarea:**
-  - Descripción completa con soporte Markdown.
-  - Sección colaborativa abierta para que alumnos y delegados suban:
-    - 📷 **Fotos de Pizarra y Apuntes:** Subida directa desde cámara o galería.
-    - 📄 **Archivos PDF:** Guías de ejercicios, temarios y soluciones.
-    - 🔗 **Enlaces Web:** Recursos complementarios de estudio.
-  - Visor integrado con Lightbox táctil y lector PDF.
-
----
-
-### 5.5. Pestaña 4: ⚙️ Salón & Ajustes
-- **Perfil de Usuario:** Nombre, correo, avatar y rol (`Estudiante` / `Delegado`).
-- **Información del Salón:**
-  - Nombre del grupo (ej. *Ingeniería de Software - 6to Ciclo*).
-  - PIN de Invitación con botón `Copiar Enlace / PIN` para compartir por WhatsApp en 1 toque.
-- **Configuración:**
-  - Switch de **Notificaciones Web Push** (recordatorios antes de vencimientos y avisos de delegados).
-  - Selector de **Tema Visual** (Modo Oscuro Notion / Modo Claro / Sistema).
-  - Estado del **Modo Offline** (indicador de datos en caché local IndexedDB).
-- **Herramientas de Delegado:**
-  - Directorio de compañeros registrados.
-  - Regenerar o actualizar PIN del salón.
-  - Exportar horario y entregas a formato calendario `.ics`.
-
----
-
-## 6. Arquitectura Técnica y Modelo de Datos (PostgreSQL en Supabase)
+### 5.3. Modelo de Datos Local (TypeScript)
 
 ```mermaid
 erDiagram
-    PROFILES ||--o{ CLASSROOMS : "administra"
-    PROFILES ||--o{ CLASSROOM_MEMBERS : "pertenece a"
-    CLASSROOMS ||--o{ CLASSROOM_MEMBERS : "tiene"
-    CLASSROOMS ||--o{ SUBJECTS : "contiene"
-    SUBJECTS ||--o{ SCHEDULES : "tiene"
-    CLASSROOMS ||--o{ TASKS : "contiene"
-    SUBJECTS ||--o{ TASKS : "asigna"
-    TASKS ||--o{ TASK_ATTACHMENTS : "adjunta"
-    PROFILES ||--o{ TASK_ATTACHMENTS : "sube"
-    PROFILES ||--o{ USER_TASK_STATUS : "marca"
-    TASKS ||--o{ USER_TASK_STATUS : "rastrea"
-    CLASSROOMS ||--o{ NOTICES : "publica"
-    PROFILES ||--o{ NOTICES : "escribe"
-    NOTICES ||--o{ NOTICE_COMMENTS : "recibe"
-    PROFILES ||--o{ NOTICE_COMMENTS : "comenta"
-    PROFILES ||--o{ PUSH_SUBSCRIPTIONS : "registra"
+    PERSONAL_PROFILE ||--o{ SUBJECT : "gestiona"
+    PERSONAL_PROFILE ||--o{ SCHEDULE : "organiza"
+    PERSONAL_PROFILE ||--o{ TASK : "crea"
+    SUBJECT ||--o{ SCHEDULE : "asigna_en"
+    SUBJECT ||--o{ TASK : "clasifica"
+    TASK ||--o{ TASK_ATTACHMENT : "contiene"
 
-    PROFILES {
-        uuid id PK
-        text email
-        text full_name
-        text avatar_url
-        text role "admin | student"
-        timestamp created_at
+    PERSONAL_PROFILE {
+        string id PK
+        string full_name
+        string student_credential_url
+        string student_credential_name
+        string student_credential_updated_at
+        string created_at
+        string updated_at
     }
 
-    CLASSROOMS {
-        uuid id PK
-        text name
-        text invite_code
-        uuid created_by FK
-        timestamp created_at
+    SUBJECT {
+        string id PK
+        string name
+        string code
+        string teacher_name
+        string color
+        string classroom_room
+        string created_at
     }
 
-    CLASSROOM_MEMBERS {
-        uuid id PK
-        uuid classroom_id FK
-        uuid user_id FK
-        timestamp joined_at
-    }
-
-    SUBJECTS {
-        uuid id PK
-        uuid classroom_id FK
-        text name
-        text code
-        text teacher_name
-        text color
-        jsonb links
-        timestamp created_at
-    }
-
-    SCHEDULES {
-        uuid id PK
-        uuid subject_id FK
-        uuid classroom_id FK
-        int block_number "1..4"
+    SCHEDULE {
+        string id PK
         int day_of_week "1=Lun..6=Sab"
-        time start_time "07:00, 08:30, 10:00, 11:30"
-        time end_time "08:30, 10:00, 11:30, 13:00"
-        text classroom_room
+        int block_number "1..4 (C1..C4)"
+        string subject_id FK
+        string start_time "07:00..11:30"
+        string end_time "08:30..13:00"
+        string classroom_room
         boolean is_virtual
     }
 
-    TASKS {
-        uuid id PK
-        uuid classroom_id FK
-        uuid subject_id FK
-        text title
-        text description
-        text type "individual | grupal | proyecto | examen"
-        timestamp due_date
-        uuid created_by FK
-        timestamp created_at
+    TASK {
+        string id PK
+        string subject_id FK
+        string title
+        string description
+        string type "individual | grupal | proyecto | examen"
+        string status "pending | completed"
+        string due_date
+        string created_at
     }
 
-    TASK_ATTACHMENTS {
-        uuid id PK
-        uuid task_id FK
-        uuid uploaded_by FK
-        text file_type "image | pdf | link"
-        text file_url
-        text file_name
-        timestamp created_at
+    TASK_ATTACHMENT {
+        string id PK
+        string file_name
+        string file_url
+        string file_type "image | link | document"
+        int size_bytes
     }
 
-    USER_TASK_STATUS {
-        uuid id PK
-        uuid user_id FK
-        uuid task_id FK
-        text status "pending | completed"
-        timestamp completed_at
-    }
-
-    NOTICES {
-        uuid id PK
-        uuid classroom_id FK
-        uuid author_id FK
-        text category "cambio_aula | aviso_general | evento_escolar"
-        text content
-        boolean is_urgent
-        timestamp created_at
-    }
-
-    NOTICE_COMMENTS {
-        uuid id PK
-        uuid notice_id FK
-        uuid author_id FK
-        text content
-        timestamp created_at
-    }
-
-    PUSH_SUBSCRIPTIONS {
-        uuid id PK
-        uuid user_id FK
-        text endpoint
-        jsonb keys
-        timestamp created_at
+    APP_PREFERENCES {
+        boolean haptics_enabled
+        boolean confetti_enabled
+        boolean advance_reminder_enabled
+        string advance_reminder_time
+        boolean class_reminder_enabled
+        string semester_fall_start
+        string semester_fall_end
+        string semester_spring_start
+        string semester_spring_end
     }
 ```
 
 ---
 
-## 7. Estrategia PWA, Soporte Offline y Notificaciones Push
+## 6. Criterios de Calidad y Producción
 
-1. **Manifiesto Web (`manifest.json`):**
-   - `display: standalone` (pantalla completa sin barra de URL del navegador).
-   - `theme_color: #09090b` y `background_color: #09090b`.
-   - Iconos adaptativos PWA para Android (192x192, 512x512) y `apple-touch-icon` para iPhone.
-2. **Estrategia Offline-First:**
-   - Sincronización automática de materias, los 4 bloques de horarios, tareas y avisos recientes en `Dexie.js` (IndexedDB).
-   - Service Worker con estrategia `StaleWhileRevalidate` para que la app abra instantáneamente incluso con modo avión o mala cobertura en las aulas.
-3. **Notificaciones Push Web (VAPID):**
-   - Suscripción opcional desde el teléfono.
-   - Envío de recordatorios automáticos 24h y 2h antes de entregas de tareas y exámenes.
-   - Alerta inmediata cuando un delegado publica un `Cambio de Aula` o `Aviso Urgente`.
-
----
-
-## 8. Criterios de Aceptación del MVP
-
-1. **Acceso:** Cualquier compañero de clase puede iniciar sesión con Google y unirse en segundos con el PIN del salón.
-2. **Horario en Vivo:** El Hero Card identifica correctamente en qué bloque de 90 minutos se encuentra la jornada actual y cuántos minutos le quedan a la clase.
-3. **Gestión de Tareas:** El delegado puede publicar tareas individuales, grupales, proyectos y exámenes; cada estudiante puede marcar su estado completado de forma independiente y privada.
-4. **Fotos de Pizarra:** Estudiantes y delegados pueden subir fotos de la pizarra tomadas con la cámara a cualquier tarea o clase; las fotos se pueden abrir en pantalla completa con zoom táctil y descargar sin perder calidad.
-5. **Avisos Oficiales:** Los delegados pueden publicar avisos categorizados (Cambio de Aula, General, Eventos) y los estudiantes pueden responder en hilos directos.
-6. **Modo Offline:** La app permite consultar todo el horario semanal y la lista de tareas guardadas sin conexión a internet.
-7. **PWA Instalable:** Se puede agregar a la pantalla de inicio de Android e iOS comportándose como una aplicación nativa.
+1. **Cero Dependencias Obsoletas:** Ningún artefacto de navegador web, PWA o Service Workers residuales en el repositorio.
+2. **Robustez de Tipos:** Compilación limpia con 0 errores bajo TypeScript (`npx tsc --noEmit`).
+3. **Resiliencia sin Conexión:** Funcionamiento 100% operativo sin necesidad de acceso a red o credenciales de servicios de terceros.
+4. **Experiencia de Usuario Fluida:** Respuesta háptica precisa, animaciones consistentes de 60 FPS y rendimiento óptimo en dispositivos móviles.

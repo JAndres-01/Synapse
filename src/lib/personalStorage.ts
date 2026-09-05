@@ -50,10 +50,7 @@ export const personalStorage = {
   },
 
   getCachedTasks(): Task[] {
-    if (_tasksCache !== null) {
-      return _tasksCache.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
-    }
-    return []
+    return _tasksCache !== null ? [..._tasksCache] : []
   },
 
   getCachedProfile(): PersonalProfile | null {
@@ -126,14 +123,6 @@ export const personalStorage = {
     return updated
   },
 
-  async addSubject(subject: Subject): Promise<Subject[]> {
-    return this.saveSubject(subject)
-  },
-
-  async updateSubject(subject: Subject): Promise<Subject[]> {
-    return this.saveSubject(subject)
-  },
-
   async removeSubject(subjectId: string): Promise<Subject[]> {
     const list = await this.getSubjects()
     const updated = list.filter((s) => s.id !== subjectId)
@@ -159,10 +148,6 @@ export const personalStorage = {
     await this.setTasks(updatedTasks)
 
     return updated
-  },
-
-  async deleteSubject(subjectId: string): Promise<Subject[]> {
-    return this.removeSubject(subjectId)
   },
 
   // ==========================================
@@ -215,10 +200,6 @@ export const personalStorage = {
     return updated
   },
 
-  async setScheduleSlot(schedule: Schedule): Promise<Schedule[]> {
-    return this.saveScheduleSlot(schedule)
-  },
-
   async clearScheduleSlot(dayOfWeek: number, blockNumber: number): Promise<Schedule[]> {
     const list = await this.getSchedules()
     const updated = list.filter(
@@ -228,20 +209,11 @@ export const personalStorage = {
     return updated
   },
 
-  async deleteScheduleSlot(dayOfWeek: number, blockNumber: number): Promise<Schedule[]> {
-    return this.clearScheduleSlot(dayOfWeek, blockNumber)
-  },
-
   // ==========================================
   // TAREAS (TASKS)
   // ==========================================
   async getTasks(): Promise<Task[]> {
     if (_tasksCache !== null) {
-      if (_tasksCache.some((t) => t.id?.startsWith('test-heatmap-') || t.id?.startsWith('test-'))) {
-        const cleaned = _tasksCache.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
-        _tasksCache = cleaned
-        this.setTasks(cleaned)
-      }
       return [..._tasksCache]
     }
     try {
@@ -249,12 +221,8 @@ export const personalStorage = {
       if (data) {
         const parsed = JSON.parse(data)
         if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter((t) => !t.id?.startsWith('test-heatmap-') && !t.id?.startsWith('test-'))
-          _tasksCache = cleaned
-          if (cleaned.length !== parsed.length) {
-            await AsyncStorage.setItem(KEYS.TASKS, JSON.stringify(cleaned))
-          }
-          return [...cleaned]
+          _tasksCache = parsed
+          return [...parsed]
         }
       }
     } catch (err) {
@@ -280,10 +248,6 @@ export const personalStorage = {
     }
   },
 
-  async saveTasks(tasks: Task[]): Promise<void> {
-    await this.setTasks(tasks)
-  },
-
   async saveTask(task: Task): Promise<Task[]> {
     const list = await this.getTasks()
     const index = list.findIndex((t) => t.id === task.id)
@@ -298,23 +262,11 @@ export const personalStorage = {
     return updated
   },
 
-  async addTask(task: Task): Promise<Task[]> {
-    return this.saveTask(task)
-  },
-
-  async updateTask(task: Task): Promise<Task[]> {
-    return this.saveTask(task)
-  },
-
   async removeTask(taskId: string): Promise<Task[]> {
     const list = await this.getTasks()
     const updated = list.filter((t) => t.id !== taskId)
     await this.setTasks(updated)
     return updated
-  },
-
-  async deleteTask(taskId: string): Promise<Task[]> {
-    return this.removeTask(taskId)
   },
 
   // ==========================================
@@ -337,8 +289,6 @@ export const personalStorage = {
     const defaultProfile: PersonalProfile = {
       id: 'local_user',
       full_name: 'Estudiante',
-      email: '',
-      theme: 'dark',
       created_at: new Date().toISOString(),
     }
     await this.setProfile(defaultProfile)

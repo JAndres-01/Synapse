@@ -14,6 +14,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 import { DAYS_WITH_MATRIX_SHORT } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { SPRING_TOUCH_CONFIG } from '@/constants/animations'
 
 interface MinimalistWeeklyMatrixProps {
   schedules: Schedule[]
@@ -51,9 +52,7 @@ const MatrixSlotCard = memo(function MatrixSlotCard({
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      stiffness: 500,
-      damping: 22,
-      useNativeDriver: true,
+      ...SPRING_TOUCH_CONFIG,
     }).start()
   }
 

@@ -25,7 +25,7 @@ import {
   QrCode,
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
-import { APPLE_EASING } from '@/constants/animations'
+import { APPLE_EASING, SPRING_PANEL_CONFIG } from '@/constants/animations'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
@@ -90,10 +90,7 @@ export function MinimalistCredentialModal({
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 750,
-          damping: 32,
-          mass: 0.5,
-          useNativeDriver: true,
+          ...SPRING_PANEL_CONFIG,
         }),
       ])
       activeAnim.start()

@@ -16,6 +16,7 @@ import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { SCREEN_HEIGHT } from '@/constants/layout'
+import { useModalAnimation } from '@/hooks/useModalAnimation'
 
 export interface EditProfileModalProps {
   visible: boolean
@@ -31,48 +32,29 @@ export function EditProfileModal({
   onSaveName,
 }: EditProfileModalProps) {
   const insets = useSafeAreaInsets()
-  const [modalVisible, setModalVisible] = useState(visible)
   const [editName, setEditName] = useState(currentName)
   const [saving, setSaving] = useState(false)
   const nameInputRef = useRef<TextInput>(null)
-
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
   const keyboardTranslateY = useRef(new Animated.Value(0)).current
+
+  const {
+    modalVisible,
+    fadeAnim,
+    slideAnim,
+    handleSmoothClose: handleClose,
+  } = useModalAnimation({
+    visible,
+    onClose,
+  })
 
   useEffect(() => {
     if (visible) {
-      setModalVisible(true)
       setEditName(currentName)
-      fadeAnim.setValue(0)
-      slideAnim.setValue(SCREEN_HEIGHT)
       keyboardTranslateY.setValue(0)
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          stiffness: 450,
-          damping: 30,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
+      const timer = setTimeout(() => {
         nameInputRef.current?.focus()
-      })
-    } else if (modalVisible) {
-      Keyboard.dismiss()
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-      ]).start(() => {
-        setModalVisible(false)
-      })
+      }, 180)
+      return () => clearTimeout(timer)
     }
   }, [visible, currentName])
 
@@ -112,18 +94,6 @@ export function EditProfileModal({
       hideSub.remove()
     }
   }, [visible, insets.bottom])
-
-  const handleClose = () => {
-    triggerHaptic('light')
-    Keyboard.dismiss()
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-    ]).start(() => {
-      onClose()
-      setModalVisible(false)
-    })
-  }
 
   const handleSave = async () => {
     const trimmed = editName.trim()

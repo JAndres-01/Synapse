@@ -13,6 +13,7 @@ import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_ADVANCE_REMINDER_TIME } from '@/constants/defaults'
+import { useModalAnimation } from '@/hooks/useModalAnimation'
 
 const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
@@ -36,51 +37,16 @@ export function ReminderTimeModal({
   onSelectTime,
 }: ReminderTimeModalProps) {
   const insets = useSafeAreaInsets()
-  const [modalVisible, setModalVisible] = useState(visible)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
-  useEffect(() => {
-    if (visible) {
-      setModalVisible(true)
-      fadeAnim.setValue(0)
-      slideAnim.setValue(SCREEN_HEIGHT)
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          stiffness: 450,
-          damping: 30,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else if (modalVisible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-      ]).start(() => {
-        setModalVisible(false)
-      })
-    }
-  }, [visible])
-
-  const handleClose = () => {
-    triggerHaptic('light')
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-    ]).start(() => {
-      onClose()
-      setModalVisible(false)
-    })
-  }
+  const {
+    modalVisible,
+    fadeAnim,
+    slideAnim,
+    handleSmoothClose: handleClose,
+  } = useModalAnimation({
+    visible,
+    onClose,
+  })
 
   const handleSelect = (time: string) => {
     triggerHaptic('selection')

@@ -19,6 +19,7 @@ import { APPLE_EASING } from '@/constants/animations'
 import { sortTasksByDueDate } from '@/lib/taskSort'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
+import { useModalAnimation } from '@/hooks/useModalAnimation'
 
 interface MinimalistDayTasksModalProps {
   visible: boolean
@@ -51,120 +52,17 @@ export function MinimalistDayTasksModal({
 }: MinimalistDayTasksModalProps) {
   const insets = useSafeAreaInsets()
 
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-  const panY = useRef(new Animated.Value(0)).current
-  const [modalVisible, setModalVisible] = useState(visible)
-
-  useEffect(() => {
-    if (visible) {
-      setModalVisible(true)
-      slideAnim.setValue(SCREEN_HEIGHT)
-      fadeAnim.setValue(0)
-      panY.setValue(0)
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          stiffness: 750,
-          damping: 32,
-          mass: 0.5,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 160,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 200,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-        Animated.timing(panY, {
-          toValue: 0,
-          duration: 160,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setModalVisible(false)
-      })
-    }
-  }, [visible, fadeAnim, slideAnim])
-
-  const handleSmoothClose = () => {
-    triggerHaptic('light')
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: SCREEN_HEIGHT,
-        duration: 200,
-        easing: APPLE_EASING,
-        useNativeDriver: true,
-      }),
-      Animated.timing(panY, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose()
-      setModalVisible(false)
-    })
-  }
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100 || gestureState.vy > 0.8) {
-          triggerHaptic('light')
-          Animated.parallel([
-            Animated.timing(fadeAnim, {
-              toValue: 0,
-              duration: 140,
-              useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-              toValue: SCREEN_HEIGHT,
-              duration: 180,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            onClose()
-            setModalVisible(false)
-          })
-        } else {
-          Animated.spring(panY, {
-            toValue: 0,
-            stiffness: 450,
-            damping: 28,
-            useNativeDriver: true,
-          }).start()
-        }
-      },
-    })
-  ).current
+  const {
+    modalVisible,
+    fadeAnim,
+    slideAnim,
+    panY,
+    panResponder,
+    handleSmoothClose,
+  } = useModalAnimation({
+    visible,
+    onClose,
+  })
 
   const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
   const targetDayDate = academicWeek.getDayDate(day)

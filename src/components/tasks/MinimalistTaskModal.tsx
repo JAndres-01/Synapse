@@ -31,7 +31,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { MinimalistPdfViewerModal } from '@/components/common/MinimalistPdfViewerModal'
 import { MinimalistImageViewerModal } from '@/components/common/MinimalistImageViewerModal'
-import { APPLE_EASING } from '@/constants/animations'
+import { APPLE_EASING, SPRING_PANEL_CONFIG } from '@/constants/animations'
 import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT } from '@/constants/dates'
 import { generateId } from '@/lib/idGenerator'
@@ -267,10 +267,7 @@ export function MinimalistTaskModal({
         }),
         Animated.spring(slideAnim, {
           toValue: 0,
-          stiffness: 750,
-          damping: 32,
-          mass: 0.5,
-          useNativeDriver: true,
+          ...SPRING_PANEL_CONFIG,
         }),
       ]).start()
     } else if (modalVisible) {

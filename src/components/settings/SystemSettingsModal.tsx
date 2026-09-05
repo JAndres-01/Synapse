@@ -35,6 +35,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { SemesterConfigCard, type SemesterPickerType } from './SemesterConfigCard'
 import { SCREEN_HEIGHT } from '@/constants/layout'
 import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
+import { useModalAnimation } from '@/hooks/useModalAnimation'
 
 export interface SystemSettingsModalProps {
   visible: boolean
@@ -150,60 +151,23 @@ export function SystemSettingsModal({
     setNameInput(profile?.full_name || '')
   }, [profile?.full_name])
 
-  const [modalVisible, setModalVisible] = useState(visible)
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-  const panY = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    if (visible) {
-      setModalVisible(true)
-      slideAnim.setValue(SCREEN_HEIGHT)
-      fadeAnim.setValue(0)
-      panY.setValue(0)
+  const {
+    modalVisible,
+    fadeAnim,
+    slideAnim,
+    panY,
+    panResponder,
+    handleSmoothClose: handleClose,
+  } = useModalAnimation({
+    visible,
+    onClose,
+    onClosed: () => {
       setActiveDatePicker(null)
       setIsEditingName(false)
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          easing: APPLE_EASING,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          stiffness: 750,
-          damping: 32,
-          mass: 0.5,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else if (modalVisible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-        Animated.timing(panY, { toValue: 0, duration: 160, useNativeDriver: true }),
-      ]).start(() => {
-        setModalVisible(false)
-      })
-    }
-  }, [visible])
-
-  const handleClose = (callback?: (() => void) | unknown) => {
-    triggerHaptic('light')
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, easing: APPLE_EASING, useNativeDriver: true }),
-      Animated.timing(panY, { toValue: 0, duration: 160, useNativeDriver: true }),
-    ]).start(() => {
-      onClose()
-      setModalVisible(false)
-      if (typeof callback === 'function') {
-        setTimeout(callback, 80)
-      }
-    })
-  }
+    },
+    dismissThreshold: 90,
+    dismissVelocity: 0.45,
+  })
 
   const handleSaveNameInline = async () => {
     const trimmed = nameInput.trim()
@@ -219,32 +183,6 @@ export function SystemSettingsModal({
       setIsSavingName(false)
     }
   }
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx)
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 90 || gestureState.vy > 0.45) {
-          handleClose()
-        } else {
-          Animated.spring(panY, {
-            toValue: 0,
-            damping: 25,
-            stiffness: 400,
-            useNativeDriver: true,
-          }).start()
-        }
-      },
-    })
-  ).current
 
   return (
     <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleClose}>

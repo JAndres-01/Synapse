@@ -46,6 +46,33 @@ export const LAYOUT_EASE = (
   })
 
 /**
+ * LayoutAnimation para switches de panel (Pendientes/Completadas/Todas).
+ * - update: easeOut (arranca rápido y suaviza al llegar a destino → deslizamiento fluido)
+ * - create/delete: easeInEaseOut con opacity (fade rápido)
+ */
+export const PANEL_SWITCH_LAYOUT = (
+  fadeDuration: number = 100,
+  updateDuration: number = 150
+) =>
+  LayoutAnimation.configureNext({
+    duration: Math.max(fadeDuration, updateDuration),
+    create: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+      duration: fadeDuration,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeOut,
+      duration: updateDuration,
+    },
+    delete: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+      duration: fadeDuration,
+    },
+  })
+
+/**
  * Física de resorte ultra-rápida y fluida para paneles inferiores (60-120 FPS)
  */
 export const SPRING_PANEL_CONFIG = {

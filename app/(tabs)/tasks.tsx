@@ -30,7 +30,7 @@ import {
 } from '@/lib/personalNotifications'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
 import { sortTasksByDueDate } from '@/lib/taskSort'
-import { LAYOUT_EASE } from '@/constants/animations'
+import { LAYOUT_EASE, PANEL_SWITCH_LAYOUT } from '@/constants/animations'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -167,9 +167,9 @@ export default function TasksScreen() {
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    // Panel switch: fade de entrada/salida rápido (100ms) + reposicionamiento suave (160ms)
-    // para que el barrido entre Pendientes/Completadas/Todas se sienta fluido.
-    LAYOUT_EASE(100, { create: 100, update: 60, delete: 100 })
+    // Panel switch: easeOut para reposicionamiento fluido (desliza sin trabarse)
+    // + fade rápido de entrada/salida de filas
+    PANEL_SWITCH_LAYOUT(100, 150)
     setStatusFilter(newStatus)
   }
 

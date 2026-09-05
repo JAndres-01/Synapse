@@ -2,48 +2,32 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
-  ScrollView,
   FlatList,
-  TextInput,
   Pressable,
   StyleSheet,
   Animated,
-  Modal,
-  Dimensions,
-  LayoutChangeEvent,
   Keyboard,
   LayoutAnimation,
   Platform,
   UIManager,
 } from 'react-native'
-import { BlurView } from 'expo-blur'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useLocalSearchParams, useFocusEffect } from 'expo-router'
+import { Plus, CheckCircle2 } from 'lucide-react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
-import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { MinimalistTaskRow } from '@/components/tasks/MinimalistTaskRow'
 import { MinimalistTaskModal, TaskModalMode } from '@/components/tasks/MinimalistTaskModal'
 import { MinimalistConfetti } from '@/components/effects/MinimalistConfetti'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLocalSearchParams, useFocusEffect } from 'expo-router'
-import {
-  CheckSquare,
-  Plus,
-  Search,
-  CheckCircle2,
-  X,
-  SlidersHorizontal,
-  ChevronDown,
-  Check,
-} from 'lucide-react-native'
+import { TasksHeader } from '@/components/tasks/TasksHeader'
+import { TasksSegmentControl } from '@/components/tasks/TasksSegmentControl'
+import { TasksSubjectFilterModal } from '@/components/tasks/TasksSubjectFilterModal'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import {
   cancelTaskReminder,
   scheduleTaskReminder,
-  syncAllNotifications,
 } from '@/lib/personalNotifications'
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -73,12 +57,31 @@ export default function TasksScreen() {
     })
   })
 
-  // Filtros
+  // Filtros y Búsqueda
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'pending' | 'completed' | 'all'>('pending')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [showSubjectMenu, setShowSubjectMenu] = useState(false)
 
+  // Confetti
+  const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
+
+  // Modal Unificado de Tareas
+  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+
+  // Transiciones y Scroll
+  const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
+  const [isScrollEnabled, setIsScrollEnabled] = useState(true)
+  const tasksRef = useRef(tasks)
+  tasksRef.current = tasks
+
+  // FAB animation
+  const fabScaleAnim = useRef(new Animated.Value(1)).current
+
+  // Debounce para búsqueda fluida
   useEffect(() => {
     if (!searchQuery) {
       setDebouncedQuery('')
@@ -90,39 +93,16 @@ export default function TasksScreen() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Estado del Buscador Dinámico
-  const [isSearchActive, setIsSearchActive] = useState(false)
-  const searchInputRef = useRef<TextInput>(null)
-  const searchScaleAnim = useRef(new Animated.Value(0.9)).current
-  const searchOpacityAnim = useRef(new Animated.Value(0)).current
-
-  // Estado del Menú de Filtro de Materia
-  const [showSubjectMenu, setShowSubjectMenu] = useState(false)
-  const [subjMenuVisible, setSubjMenuVisible] = useState(false)
-  const menuFadeAnim = useRef(new Animated.Value(0)).current
-  const menuSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current
-
-  // Disparador de Confetti
-  const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
-
-  // Modal Unificado de Tareas (Detalle, Crear y Editar en una sola arquitectura)
-  const [taskModalMode, setTaskModalMode] = useState<TaskModalMode>('none')
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
-
-  // IDs de tareas en transición animada
-  const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
-  const [isScrollEnabled, setIsScrollEnabled] = useState(true)
-  const tasksRef = useRef(tasks)
-  tasksRef.current = tasks
-
-  // Segmented Control
-  const [segmentContainerWidth, setSegmentContainerWidth] = useState(SCREEN_WIDTH - 32)
-  const segmentWidth = Math.max(0, (segmentContainerWidth - 6) / 3)
-  const statusIndex = statusFilter === 'pending' ? 0 : statusFilter === 'completed' ? 1 : 2
-  const slideAnim = useRef(new Animated.Value(0)).current
-
-  // FAB animation
-  const fabScaleAnim = useRef(new Animated.Value(1)).current
+  // Cerrar búsqueda al ocultar teclado si está vacío
+  useEffect(() => {
+    if (!isSearchActive) return
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
+      if (searchQuery.trim() === '') {
+        setIsSearchActive(false)
+      }
+    })
+    return () => hideListener.remove()
+  }, [isSearchActive, searchQuery])
 
   const loadData = useCallback(async () => {
     const [cachedTasks, cachedSubjs] = await Promise.all([
@@ -130,7 +110,6 @@ export default function TasksScreen() {
       personalStorage.getSubjects(),
     ])
 
-    // Resolver materias actualizadas para todas las tareas (si la materia fue eliminada pasa a General)
     const resolvedTasks = cachedTasks.map((t) => {
       if (!t.subject_id) {
         return { ...t, subject: null }
@@ -147,122 +126,46 @@ export default function TasksScreen() {
     setSubjects(cachedSubjs)
   }, [])
 
-  // Recargar datos cada vez que la pestaña Tareas entra en pantalla
   useFocusEffect(
     useCallback(() => {
       loadData()
     }, [loadData])
   )
 
-  // Estado de Tarea Resaltada (brillo y elevación animada)
-  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
-
-  const params = useLocalSearchParams<{ taskId?: string; highlightTimestamp?: string }>()
-
   useEffect(() => {
-    loadData()
     const unsubscribe = subscribeToPersonalStorage(() => {
       loadData()
     })
-    return unsubscribe
+    return () => unsubscribe()
   }, [loadData])
 
+  // Parámetros de ruta
+  const params = useLocalSearchParams<{
+    filter?: string
+    highlight?: string
+    openNewTask?: string
+  }>()
+
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
+
   useEffect(() => {
-    if (params.taskId && tasks.length > 0) {
-      const found = tasks.find((t) => t.id === params.taskId)
-      if (found) {
-        // Asegurar que la tarea sea visible si ya estaba completada
-        if (found.status === 'completed' && statusFilter === 'pending') {
-          setStatusFilter('all')
-        }
-        // Reiniciar estado brevemente para garantizar la animación si es la misma tarea
-        setHighlightedTaskId(null)
-        const frameTimer = setTimeout(() => {
-          setHighlightedTaskId(found.id)
-        }, 20)
-
-        const clearTimer = setTimeout(() => {
-          setHighlightedTaskId(null)
-        }, 2800)
-
-        return () => {
-          clearTimeout(frameTimer)
-          clearTimeout(clearTimer)
-        }
-      }
+    if (params.filter === 'pending' || params.filter === 'completed' || params.filter === 'all') {
+      setStatusFilter(params.filter)
     }
-  }, [params.taskId, params.highlightTimestamp, tasks])
-
-  useEffect(() => {
-    if (showSubjectMenu) {
-      setSubjMenuVisible(true)
-      Animated.parallel([
-        Animated.timing(menuFadeAnim, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.spring(menuSlideAnim, {
-          toValue: 0,
-          stiffness: 480,
-          damping: 32,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(menuFadeAnim, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(menuSlideAnim, {
-          toValue: SCREEN_HEIGHT,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setSubjMenuVisible(false)
-      })
+    if (params.highlight) {
+      setHighlightedTaskId(params.highlight)
+      const timer = setTimeout(() => setHighlightedTaskId(null), 3000)
+      return () => clearTimeout(timer)
     }
-  }, [showSubjectMenu, menuFadeAnim, menuSlideAnim])
-
-  useEffect(() => {
-    if (!isSearchActive) return
-
-    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
-      if (searchQuery.trim() === '') {
-        setIsSearchActive(false)
-      }
-    })
-
-    return () => {
-      hideListener.remove()
+    if (params.openNewTask === 'true') {
+      setActiveTask(null)
+      setTaskModalMode('create')
     }
-  }, [isSearchActive, searchQuery])
+  }, [params.filter, params.highlight, params.openNewTask])
 
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: statusIndex * segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
-    }).start()
-  }, [statusIndex, segmentWidth, slideAnim])
-
+  // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    const targetIdx = newStatus === 'pending' ? 0 : newStatus === 'completed' ? 1 : 2
-    Animated.spring(slideAnim, {
-      toValue: targetIdx * segmentWidth,
-      stiffness: 750,
-      damping: 28,
-      mass: 0.5,
-      useNativeDriver: true,
-    }).start()
-
     LayoutAnimation.configureNext({
       duration: 220,
       update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
@@ -270,123 +173,62 @@ export default function TasksScreen() {
     setStatusFilter(newStatus)
   }
 
-  const handleOpenSearch = () => {
-    setIsSearchActive(true)
-    searchScaleAnim.setValue(0.88)
-    searchOpacityAnim.setValue(0)
+  const handleToggleStatus = useCallback(
+    async (taskId: string, currentStatus: string) => {
+      const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
 
-    Animated.parallel([
-      Animated.spring(searchScaleAnim, {
-        toValue: 1,
-        stiffness: 550,
-        damping: 22,
-        mass: 0.7,
-        useNativeDriver: true,
-      }),
-      Animated.timing(searchOpacityAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      searchInputRef.current?.focus()
-    })
-  }
-
-  const handleCloseSearch = () => {
-    Keyboard.dismiss()
-    setSearchQuery('')
-
-    Animated.parallel([
-      Animated.spring(searchScaleAnim, {
-        toValue: 0.9,
-        stiffness: 500,
-        damping: 24,
-        useNativeDriver: true,
-      }),
-      Animated.timing(searchOpacityAnim, {
-        toValue: 0,
-        duration: 140,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setIsSearchActive(false)
-    })
-  }
-
-  const handleToggleStatus = useCallback(async (taskId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
-
-    if (nextStatus === 'completed') {
-      cancelTaskReminder(taskId)
-      personalStorage.getPreferences().then((prefs) => {
-        if (prefs.confetti_enabled) {
-          setConfettiBurstTrigger((prev) => prev + 1)
+      if (nextStatus === 'completed') {
+        cancelTaskReminder(taskId)
+        personalStorage.getPreferences().then((prefs) => {
+          if (prefs.confetti_enabled) {
+            setConfettiBurstTrigger((prev) => prev + 1)
+          }
+        })
+      } else {
+        const taskObj = tasksRef.current.find((t) => t.id === taskId)
+        if (taskObj) {
+          personalStorage.getPreferences().then((p) =>
+            scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
+          )
         }
-      })
-    } else {
-      const taskObj = tasksRef.current.find((t) => t.id === taskId)
-      if (taskObj) {
-        personalStorage.getPreferences().then((p) =>
-          scheduleTaskReminder({ ...taskObj, status: 'pending' }, p)
-        )
       }
-    }
 
-    if (statusFilter === 'pending' && nextStatus === 'completed') {
-      setTransitioningTaskIds((prev) => [...prev, taskId])
+      if (statusFilter === 'pending' && nextStatus === 'completed') {
+        setTransitioningTaskIds((prev) => [...prev, taskId])
 
-      setTasks((prevTasks) => {
-        const updated = prevTasks.map((t) =>
-          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
-        )
-        personalStorage.setTasks(updated)
-        return updated
-      })
-
-      setTimeout(() => {
-        LayoutAnimation.configureNext({
-          duration: 220,
-          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-          update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        setTasks((prevTasks) => {
+          const updated = prevTasks.map((t) =>
+            t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
+          )
+          personalStorage.setTasks(updated)
+          return updated
         })
-        setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
-      }, 160)
-    } else if (statusFilter === 'completed' && nextStatus === 'pending') {
-      setTransitioningTaskIds((prev) => [...prev, taskId])
 
-      setTasks((prevTasks) => {
-        const updated = prevTasks.map((t) =>
-          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
-        )
-        personalStorage.setTasks(updated)
-        return updated
-      })
-
-      setTimeout(() => {
+        setTimeout(() => {
+          LayoutAnimation.configureNext({
+            duration: 220,
+            create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+            update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
+            delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          })
+          setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
+        }, 160)
+      } else {
         LayoutAnimation.configureNext({
-          duration: 220,
-          create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+          duration: 200,
           update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-          delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
         })
-        setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
-      }, 160)
-    } else {
-      LayoutAnimation.configureNext({
-        duration: 200,
-        update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-      })
-      setTasks((prevTasks) => {
-        const updated = prevTasks.map((t) =>
-          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
-        )
-        personalStorage.setTasks(updated)
-        return updated
-      })
-    }
-  }, [statusFilter])
+        setTasks((prevTasks) => {
+          const updated = prevTasks.map((t) =>
+            t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
+          )
+          personalStorage.setTasks(updated)
+          return updated
+        })
+      }
+    },
+    [statusFilter]
+  )
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     cancelTaskReminder(taskId)
@@ -402,46 +244,47 @@ export default function TasksScreen() {
     })
   }, [])
 
+  // Filtrado de Tareas
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       if (selectedSubjectId !== 'all' && task.subject_id !== selectedSubjectId) {
         return false
       }
 
-      if (debouncedQuery.trim()) {
-        const q = debouncedQuery.toLowerCase()
-        const matchTitle = task.title?.toLowerCase().includes(q)
-        const matchSubj = task.subject?.name?.toLowerCase().includes(q)
-        if (!matchTitle && !matchSubj) return false
+      if (statusFilter === 'pending' && task.status !== 'pending') {
+        return false
+      }
+      if (statusFilter === 'completed' && task.status !== 'completed') {
+        return false
       }
 
-      const isTransitioning = transitioningTaskIds.includes(task.id)
-      if (statusFilter === 'pending') {
-        if (task.status === 'completed' && !isTransitioning) return false
+      if (statusFilter === 'pending' && transitioningTaskIds.includes(task.id)) {
+        return false
       }
-      if (statusFilter === 'completed') {
-        if (task.status !== 'completed' && !isTransitioning) return false
+
+      if (debouncedQuery.trim()) {
+        const query = debouncedQuery.toLowerCase().trim()
+        const matchesTitle = task.title.toLowerCase().includes(query)
+        const matchesDesc = (task.description || '').toLowerCase().includes(query)
+        const matchesSubject = (task.subject?.name || '').toLowerCase().includes(query)
+        return matchesTitle || matchesDesc || matchesSubject
       }
 
       return true
-    }).sort((a, b) => {
-      if (a.due_date && b.due_date) {
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-      }
-      if (a.due_date && !b.due_date) return -1
-      if (!a.due_date && b.due_date) return 1
-      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
-  }, [tasks, selectedSubjectId, debouncedQuery, statusFilter, transitioningTaskIds])
+  }, [tasks, selectedSubjectId, statusFilter, transitioningTaskIds, debouncedQuery])
 
-  const selectedSubject = subjects.find((s) => s.id === selectedSubjectId)
-  const isSelectedWhite = isWhiteColor(selectedSubject?.color)
+  const selectedSubject = useMemo(
+    () => subjects.find((s) => s.id === selectedSubjectId) || null,
+    [subjects, selectedSubjectId]
+  )
 
+  // Animación del FAB
   const handleFabPressIn = () => {
     Animated.spring(fabScaleAnim, {
-      toValue: 0.9,
-      stiffness: 600,
-      damping: 25,
+      toValue: 0.88,
+      speed: 60,
+      bounciness: 0,
       useNativeDriver: true,
     }).start()
   }
@@ -455,7 +298,7 @@ export default function TasksScreen() {
     }).start()
   }
 
-  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
+  // Animaciones de Entrada Escalonada
   const cardEntranceAnims = useRef([
     new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
     new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
@@ -545,248 +388,38 @@ export default function TasksScreen() {
   const renderListHeader = useMemo(() => {
     return (
       <View style={styles.headerContainer}>
-        {!isSearchActive ? (
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <View>
-                <Text style={styles.title}>Tareas</Text>
-                <Text style={styles.subtitle}>Entregas, exámenes y pendientes</Text>
-              </View>
-
-              <Pressable
-                onPress={handleOpenSearch}
-                style={styles.searchIconButton}
-                hitSlop={10}
-              >
-                <Search size={16} color="#FFFFFF" />
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <Animated.View
-            style={[
-              styles.dynamicSearchContainer,
-              {
-                opacity: searchOpacityAnim,
-                transform: [{ scale: searchScaleAnim }],
-              },
-            ]}
-          >
-            <View style={styles.dynamicSearchInputWrapper}>
-              <Search size={15} color="#A1A1AA" style={styles.searchIcon} />
-              <TextInput
-                ref={searchInputRef}
-                placeholder="Buscar por tarea o materia..."
-                placeholderTextColor="#71717A"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={() => Keyboard.dismiss()}
-                style={styles.dynamicSearchInput}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection')
-                    setSearchQuery('')
-                  }}
-                  hitSlop={10}
-                  style={styles.clearSearchBtn}
-                >
-                  <X size={12} color="#FFFFFF" />
-                </Pressable>
-              )}
-            </View>
-
-            <Pressable
-              onPress={handleCloseSearch}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={styles.cancelSearchBtn}
-            >
-              <Text style={styles.cancelSearchText}>Cancelar</Text>
-            </Pressable>
-          </Animated.View>
-        )}
-
-        {/* Card 0: Botón Desplegable para Filtrar por Materia */}
-        <Animated.View
-          style={{
-            opacity: cardEntranceAnims[0].interpolate({
-              inputRange: [0, 0.4, 1],
-              outputRange: [0, 0.7, 1],
-            }),
-            transform: [
-              {
-                translateY: cardEntranceAnims[0].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-36, 0],
-                }),
-              },
-              {
-                scale: cardEntranceAnims[0].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.96, 1],
-                }),
-              },
-            ],
+        {/* Cabecera y Buscador */}
+        <TasksHeader
+          isSearchActive={isSearchActive}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          onOpenSearch={() => setIsSearchActive(true)}
+          onCloseSearch={() => {
+            setIsSearchActive(false)
+            setSearchQuery('')
           }}
-        >
-          <View style={styles.filterButtonRow}>
-            <Pressable
-              onPress={() => {
-                setShowSubjectMenu(true)
-              }}
-              style={[
-                styles.subjectDropdownButton,
-                selectedSubjectId !== 'all' && {
-                  borderColor: isSelectedWhite
-                    ? '#FFFFFF'
-                    : selectedSubject?.color || '#FFFFFF',
-                  backgroundColor: isSelectedWhite
-                    ? 'rgba(255, 255, 255, 0.15)'
-                    : `${selectedSubject?.color || '#FFFFFF'}1F`,
-                },
-              ]}
-            >
-              <View style={styles.dropdownBtnLeft}>
-                <SlidersHorizontal size={13} color="#A1A1AA" />
-                {selectedSubject ? (
-                  <View style={styles.selectedSubjectInfo}>
-                    <View
-                      style={[
-                        styles.dot,
-                        { backgroundColor: selectedSubject.color || '#FFFFFF' },
-                        isSelectedWhite && styles.whiteDotBorder,
-                      ]}
-                    />
-                    <Text style={styles.dropdownBtnTextActive} numberOfLines={1}>
-                      {selectedSubject.name}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.dropdownBtnText}>Todas las materias</Text>
-                )}
-              </View>
+          selectedSubject={selectedSubject}
+          selectedSubjectId={selectedSubjectId}
+          onOpenSubjectMenu={() => setShowSubjectMenu(true)}
+          onResetSubjectFilter={() => setSelectedSubjectId('all')}
+          cardEntranceAnim={cardEntranceAnims[0]}
+        />
 
-              <ChevronDown size={14} color="#A1A1AA" />
-            </Pressable>
-
-            {selectedSubjectId !== 'all' && (
-              <Pressable
-                onPress={() => {
-                  setSelectedSubjectId('all')
-                }}
-                style={styles.resetFilterBtn}
-              >
-                <Text style={styles.resetFilterText}>Ver todas</Text>
-              </Pressable>
-            )}
-          </View>
-        </Animated.View>
-
-        {/* Card 1: Segmented Control iOS con Glassmorfismo Nativo (BlurView) */}
-        <Animated.View
-          style={{
-            opacity: cardEntranceAnims[1].interpolate({
-              inputRange: [0, 0.4, 1],
-              outputRange: [0, 0.7, 1],
-            }),
-            transform: [
-              {
-                translateY: cardEntranceAnims[1].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [-36, 0],
-                }),
-              },
-              {
-                scale: cardEntranceAnims[1].interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.96, 1],
-                }),
-              },
-            ],
-          }}
-        >
-          <BlurView
-            intensity={Platform.OS === 'ios' ? 55 : 90}
-            tint="dark"
-            style={styles.segmentedContainer}
-            onLayout={(e: LayoutChangeEvent) => {
-              const w = e.nativeEvent.layout.width
-              if (w > 0 && Math.abs(w - segmentContainerWidth) > 1) {
-                setSegmentContainerWidth(w)
-              }
-            }}
-          >
-            {/* Indicador Deslizante Suave */}
-            <Animated.View
-              style={[
-                styles.activeSegmentPill,
-                {
-                  width: segmentWidth,
-                  transform: [{ translateX: slideAnim }],
-                },
-              ]}
-            />
-
-            <Pressable
-              onPressIn={() => handleStatusChange('pending')}
-              style={styles.segmentButton}
-            >
-              <Text
-                style={[
-                  styles.segmentButtonText,
-                  statusFilter === 'pending' && styles.segmentButtonTextActive,
-                ]}
-              >
-                Pendientes
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPressIn={() => handleStatusChange('completed')}
-              style={styles.segmentButton}
-            >
-              <Text
-                style={[
-                  styles.segmentButtonText,
-                  statusFilter === 'completed' && styles.segmentButtonTextActive,
-                ]}
-              >
-                Completadas
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPressIn={() => handleStatusChange('all')}
-              style={styles.segmentButton}
-            >
-              <Text
-                style={[
-                  styles.segmentButtonText,
-                  statusFilter === 'all' && styles.segmentButtonTextActive,
-                ]}
-              >
-                Todas
-              </Text>
-            </Pressable>
-          </BlurView>
-        </Animated.View>
+        {/* Segmented Control iOS */}
+        <TasksSegmentControl
+          statusFilter={statusFilter}
+          onStatusChange={handleStatusChange}
+          cardEntranceAnim={cardEntranceAnims[1]}
+        />
       </View>
     )
   }, [
-    cardEntranceAnims,
     isSearchActive,
-    searchOpacityAnim,
-    searchScaleAnim,
     searchQuery,
-    selectedSubjectId,
-    isSelectedWhite,
     selectedSubject,
-    segmentContainerWidth,
-    segmentWidth,
-    slideAnim,
+    selectedSubjectId,
     statusFilter,
+    cardEntranceAnims,
   ])
 
   const renderEmptyComponent = useMemo(() => {
@@ -855,107 +488,14 @@ export default function TasksScreen() {
       />
 
       {/* Modal Desplegable de Filtro de Materia */}
-      {subjMenuVisible && (
-        <Modal
-          visible={subjMenuVisible}
-          transparent={true}
-          animationType="none"
-          onRequestClose={() => setShowSubjectMenu(false)}
-        >
-          <View style={styles.modalRoot}>
-            <Animated.View style={[styles.menuBackdrop, { opacity: menuFadeAnim }]}>
-              <Pressable
-                style={styles.menuBackdropTouch}
-                onPress={() => setShowSubjectMenu(false)}
-              />
-            </Animated.View>
-
-            <Animated.View
-              style={[
-                styles.menuSheet,
-                { transform: [{ translateY: menuSlideAnim }] },
-              ]}
-            >
-              <View style={styles.menuHeader}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.menuTitle}>Filtrar por Materia</Text>
-                <Pressable
-                  onPress={() => setShowSubjectMenu(false)}
-                  hitSlop={12}
-                  style={styles.menuCloseBtn}
-                >
-                  <X size={18} color="#A1A1AA" />
-                </Pressable>
-              </View>
-
-              <ScrollView style={styles.menuList} showsVerticalScrollIndicator={false}>
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection')
-                    setSelectedSubjectId('all')
-                    setShowSubjectMenu(false)
-                  }}
-                  style={[
-                    styles.menuItem,
-                    selectedSubjectId === 'all' && styles.menuItemActive,
-                  ]}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View style={[styles.dot, { backgroundColor: '#FFFFFF' }]} />
-                    <Text style={styles.menuItemText}>Todas las materias</Text>
-                    <Text style={styles.menuItemCount}>({tasks.length})</Text>
-                  </View>
-
-                  {selectedSubjectId === 'all' && (
-                    <Check size={16} color="#FFFFFF" strokeWidth={2.5} />
-                  )}
-                </Pressable>
-
-                {subjects.map((subj) => {
-                  const isSelected = selectedSubjectId === subj.id
-                  const isWhite = isWhiteColor(subj.color)
-                  const count = tasks.filter((t) => t.subject_id === subj.id).length
-
-                  return (
-                    <Pressable
-                      key={subj.id}
-                      onPress={() => {
-                        triggerHaptic('selection')
-                        setSelectedSubjectId(subj.id)
-                        setShowSubjectMenu(false)
-                      }}
-                      style={[
-                        styles.menuItem,
-                        isSelected && styles.menuItemActive,
-                      ]}
-                    >
-                      <View style={styles.menuItemLeft}>
-                        <View
-                          style={[
-                            styles.dot,
-                            { backgroundColor: subj.color || '#FFFFFF' },
-                            isWhite && styles.whiteDotBorder,
-                          ]}
-                        />
-                        <Text style={styles.menuItemText}>{subj.name}</Text>
-                        <Text style={styles.menuItemCount}>({count})</Text>
-                      </View>
-
-                      {isSelected && (
-                        <Check
-                          size={16}
-                          color={subj.color || '#FFFFFF'}
-                          strokeWidth={2.5}
-                        />
-                      )}
-                    </Pressable>
-                  )
-                })}
-              </ScrollView>
-            </Animated.View>
-          </View>
-        </Modal>
-      )}
+      <TasksSubjectFilterModal
+        visible={showSubjectMenu}
+        subjects={subjects}
+        tasks={tasks}
+        selectedSubjectId={selectedSubjectId}
+        onSelectSubject={setSelectedSubjectId}
+        onClose={() => setShowSubjectMenu(false)}
+      />
 
       {/* Botón Flotante (+) */}
       <Animated.View
@@ -981,7 +521,7 @@ export default function TasksScreen() {
         </Pressable>
       </Animated.View>
 
-      {/* Modal Unificado de Tareas (Detalle, Crear y Editar) */}
+      {/* Modal Unificado de Tareas */}
       {user && (
         <MinimalistTaskModal
           mode={taskModalMode}
@@ -1016,186 +556,11 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 8,
   },
-  header: {
-    paddingHorizontal: 2,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    color: '#71717A',
-    fontSize: 12.5,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  searchIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dynamicSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 2,
-  },
-  dynamicSearchInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    height: 42,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  dynamicSearchInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 13.5,
-  },
-  clearSearchBtn: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelSearchBtn: {
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-  },
-  cancelSearchText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  filterButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  subjectDropdownButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  dropdownBtnLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  selectedSubjectInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  dropdownBtnText: {
-    color: '#D4D4D8',
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  dropdownBtnTextActive: {
-    color: '#FFFFFF',
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  resetFilterBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    borderRadius: 10,
-  },
-  resetFilterText: {
-    color: '#A1A1AA',
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  segmentedContainer: {
-    flexDirection: 'row',
-    position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    padding: 3,
-    height: 42,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  activeSegmentPill: {
-    position: 'absolute',
-    top: 3,
-    bottom: 3,
-    left: 3,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  segmentButton: {
-    flex: 1,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  segmentButtonText: {
-    color: '#71717A',
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  segmentButtonTextActive: {
-    color: '#09090B',
-    fontWeight: '800',
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  whiteDotBorder: WHITE_DOT_BORDER,
-  tasksListWrapper: {
-    marginTop: 4,
-  },
-  openTaskRows: {
-    paddingHorizontal: 2,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 56,
-    gap: 8,
+    paddingVertical: 64,
+    gap: 10,
   },
   emptyTitle: {
     color: '#E4E4E7',
@@ -1208,83 +573,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 36,
     lineHeight: 17,
-  },
-  modalRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  menuBackdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.72)',
-  },
-  menuBackdropTouch: {
-    flex: 1,
-  },
-  menuSheet: {
-    backgroundColor: '#0E0E11',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    maxHeight: '65%',
-    paddingBottom: 36,
-  },
-  menuHeader: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 10,
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  dragHandle: {
-    width: 36,
-    height: 4.5,
-    borderRadius: 3,
-    backgroundColor: '#3F3F46',
-    marginBottom: 6,
-  },
-  menuTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  menuCloseBtn: {
-    position: 'absolute',
-    right: 18,
-    top: 14,
-    padding: 4,
-  },
-  menuList: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    marginBottom: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  menuItemActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  menuItemText: {
-    color: '#FFFFFF',
-    fontSize: 13.5,
-    fontWeight: '600',
-  },
-  menuItemCount: {
-    color: '#71717A',
-    fontSize: 12,
   },
   fabWrapper: {
     position: 'absolute',

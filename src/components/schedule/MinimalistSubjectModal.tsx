@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
+import { generateId } from '@/lib/idGenerator'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -233,7 +234,7 @@ export function MinimalistSubjectModal({
         resetForm()
       } else {
         const newSubject: Subject = {
-          id: `subj_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          id: generateId('subj'),
           user_id: userId || 'local_user',
           name: name.trim(),
           teacher_name: teacher.trim() || undefined,

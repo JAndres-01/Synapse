@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { BarChart2 } from 'lucide-react-native'
+import { APPLE_EASING } from '@/constants/animations'
+import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 type ScopeFilter = 'pending' | 'all'
 
@@ -14,8 +16,6 @@ interface SubjectStat {
   count: number
   percentage: number
 }
-import { APPLE_EASING } from '@/constants/animations'
-import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 const TOGGLE_WIDTH = 70
 

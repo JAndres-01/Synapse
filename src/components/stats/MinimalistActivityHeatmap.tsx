@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -15,11 +15,11 @@ import { generateHeatmapGrid, type HeatmapDay } from '@/lib/heatmapUtils'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { Flame, Calendar, CheckCircle2 } from 'lucide-react-native'
 import { useFocusEffect } from 'expo-router'
+import { APPLE_EASING } from '@/constants/animations'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
-import { APPLE_EASING } from '@/constants/animations'
 
 const CELL_SIZE = 11
 const CELL_GAP = 3

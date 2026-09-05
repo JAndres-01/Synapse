@@ -43,5 +43,7 @@ export function triggerHaptic(type: HapticType = 'light') {
         Haptics.selectionAsync()
         break
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[personalHaptics] Error ejecutando haptic:', err)
+  }
 }

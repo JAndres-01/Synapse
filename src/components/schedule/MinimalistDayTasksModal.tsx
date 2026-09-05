@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -166,7 +166,7 @@ export function MinimalistDayTasksModal({
     })
   ).current
 
-  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
   const targetDayDate = academicWeek.getDayDate(day)
 
   // FILTRADO ESTRICTO: ÚNICAMENTE tareas cuya fecha de entrega cae en la fecha exacta de este día de la semana activa

@@ -23,9 +23,13 @@ try {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#FFFFFF',
       sound: 'default',
-    }).catch(() => {})
+    }).catch((err) => {
+      console.warn('[personalNotifications] Error configurando canal de notificaciones:', err)
+    })
   }
-} catch {}
+} catch (err) {
+  console.warn('[personalNotifications] Error inicializando notification handler:', err)
+}
 
 /**
  * Solicita permisos de notificación al sistema operativo (iOS / Android)
@@ -57,7 +61,9 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 export async function cancelTaskReminder(taskId: string): Promise<void> {
   try {
     await Notifications.cancelScheduledNotificationAsync(`task_adv_${taskId}`)
-  } catch {}
+  } catch (err) {
+    console.warn('[personalNotifications] Error cancelando recordatorio de tarea:', err)
+  }
 }
 
 /**
@@ -143,7 +149,9 @@ async function scheduleClassReminders(
         await Notifications.cancelScheduledNotificationAsync(notif.identifier)
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[personalNotifications] Error cancelando notificaciones de clases previas:', err)
+  }
 
   if (!prefs.class_reminder_enabled) return
 

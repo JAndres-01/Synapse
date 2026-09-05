@@ -3,6 +3,7 @@ import { useShareIntent } from 'expo-share-intent'
 import * as Linking from 'expo-linking'
 import type { TaskAttachment } from '@/types/personal'
 import { triggerHaptic } from './personalHaptics'
+import { generateId } from './idGenerator'
 
 function cleanFileNameToTitle(fileName: string): string {
   if (!fileName) return ''
@@ -74,7 +75,7 @@ export function useIncomingShareIntent() {
         const cleanName = file.fileName || (isImage ? `Imagen ${index + 1}` : isPdf ? `Documento PDF ${index + 1}` : `Archivo ${index + 1}`)
 
         attachments.push({
-          id: `share_att_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 6)}`,
+          id: generateId('share_att'),
           file_name: cleanName,
           file_url: file.path,
           file_type: isImage ? 'image' : 'document',
@@ -90,7 +91,7 @@ export function useIncomingShareIntent() {
     const candidateUrl = shareIntent.webUrl || (shareIntent.text?.startsWith('http') ? shareIntent.text : null)
     if (candidateUrl && !attachments.some((a) => a.file_url === candidateUrl)) {
       attachments.push({
-        id: `share_link_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: generateId('share_link'),
         file_name: shareIntent.meta?.title || 'Enlace web',
         file_url: candidateUrl,
         file_type: 'link',
@@ -135,7 +136,7 @@ export function useIncomingShareIntent() {
           const attachments: TaskAttachment[] = []
           if (uri) {
             attachments.push({
-              id: `dl_att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              id: generateId('dl_att'),
               file_name: name,
               file_url: uri,
               file_type: type === 'image' ? 'image' : type === 'link' ? 'link' : 'document',
@@ -143,7 +144,6 @@ export function useIncomingShareIntent() {
           }
 
           const cleanTitle = title || deriveCleanTitle(name, null, text)
-
           if (attachments.length > 0 || cleanTitle || text) {
             triggerHaptic('medium')
             setIncomingAttachments(attachments)
@@ -160,7 +160,9 @@ export function useIncomingShareIntent() {
     // Comprobar URL inicial si la app fue abierta en frío por deep link
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink({ url })
-    }).catch(() => {})
+    }).catch((err) => {
+      console.warn('[useIncomingShareIntent] Error leyendo getInitialURL:', err)
+    })
 
     const subscription = Linking.addEventListener('url', handleDeepLink)
     return () => {

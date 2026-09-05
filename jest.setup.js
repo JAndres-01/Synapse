@@ -71,11 +71,15 @@ jest.mock('expo-router', () => ({
 
 // Mock Expo Notifications
 jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
   getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
   scheduleNotificationAsync: jest.fn().mockResolvedValue('notif-id-123'),
   cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+  cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
   getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
+  AndroidImportance: { MAX: 5 },
   SchedulableTriggerInputTypes: {
     CALENDAR: 'calendar',
     TIME_INTERVAL: 'timeInterval',

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -29,11 +29,9 @@ import {
   scheduleTaskReminder,
 } from '@/lib/personalNotifications'
 import { useRouter, useFocusEffect } from 'expo-router'
+import { useCardEntrance } from '@/hooks/useCardEntrance'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
-
-// Control de entrada única por sesión en la pantalla Horario
-let hasPlayedScheduleEntrance = false
 
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()
@@ -68,7 +66,7 @@ export default function ScheduleScreen() {
   })
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
-  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
   const [selectedDay, setSelectedDay] = useState<number>(academicWeek.defaultSelectedDay)
 
   // Modales
@@ -222,30 +220,8 @@ export default function ScheduleScreen() {
     }, 120)
   }, [router])
 
-  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
-  const cardEntranceAnims = useRef([
-    new Animated.Value(hasPlayedScheduleEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedScheduleEntrance ? 1 : 0),
-  ]).current
-
-  useEffect(() => {
-    if (!hasPlayedScheduleEntrance) {
-      hasPlayedScheduleEntrance = true
-      cardEntranceAnims.forEach((anim) => anim.setValue(0))
-
-      const staggerAnims = cardEntranceAnims.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          stiffness: 320,
-          damping: 24,
-          mass: 0.7,
-          useNativeDriver: true,
-        })
-      )
-
-      Animated.stagger(100, staggerAnims).start()
-    }
-  }, [])
+  // Animaciones de Entrada Escalonada hacia abajo
+  const cardEntranceAnims = useCardEntrance(2, 'schedule')
 
   return (
     <View style={styles.screenWrapper}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -29,9 +29,7 @@ import { SystemSettingsModal } from '@/components/settings/SystemSettingsModal'
 import { EditProfileModal } from '@/components/settings/EditProfileModal'
 import { ReminderTimeModal } from '@/components/settings/ReminderTimeModal'
 import { formatDateKey } from '@/lib/heatmapUtils'
-
-// Control de entrada única por sesión en la pantalla de Perfil
-let hasPlayedProfileEntrance = false
+import { useCardEntrance } from '@/hooks/useCardEntrance'
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
@@ -58,33 +56,8 @@ export default function ProfileScreen() {
   const [springEnd, setSpringEnd] = useState(`${currentYear}-06-30`)
 
   // Animaciones de Entrada Escalonada
-  const cardEntranceAnims = useRef([
-    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedProfileEntrance ? 1 : 0),
-  ]).current
-
+  const cardEntranceAnims = useCardEntrance(4, 'settings')
   const gearScaleAnim = useRef(new Animated.Value(1)).current
-
-  useEffect(() => {
-    if (!hasPlayedProfileEntrance) {
-      hasPlayedProfileEntrance = true
-      cardEntranceAnims.forEach((anim) => anim.setValue(0))
-
-      const staggerAnims = cardEntranceAnims.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          stiffness: 320,
-          damping: 24,
-          mass: 0.7,
-          useNativeDriver: true,
-        })
-      )
-
-      Animated.stagger(100, staggerAnims).start()
-    }
-  }, [])
 
   const loadData = useCallback(async () => {
     const prefs = await personalStorage.getPreferences()

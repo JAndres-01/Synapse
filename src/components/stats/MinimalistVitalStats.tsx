@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { View, Text, StyleSheet, Animated } from 'react-native'
 import Svg, { Circle, G } from 'react-native-svg'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'

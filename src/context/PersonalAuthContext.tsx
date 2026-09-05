@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react'
 import { personalStorage } from '@/lib/personalStorage'
 import { cancelAllNotifications } from '@/lib/personalNotifications'
 import type { PersonalProfile } from '@/types/personal'
@@ -13,7 +13,7 @@ interface PersonalAuthContextType {
 
 const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(undefined)
 
-export function PersonalAuthProvider({ children }: { children: React.ReactNode }) {
+export function PersonalAuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
 
   const loadLocalProfile = async () => {

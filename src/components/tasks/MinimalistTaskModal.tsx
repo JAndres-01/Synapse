@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ import { MinimalistImageViewerModal } from '@/components/common/MinimalistImageV
 import { APPLE_EASING } from '@/constants/animations'
 import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT } from '@/constants/dates'
+import { generateId } from '@/lib/idGenerator'
 import { TaskDetailView } from './modal/TaskDetailView'
 import { TaskSubjectPicker } from './modal/TaskSubjectPicker'
 import { TaskDatePicker } from './modal/TaskDatePicker'
@@ -359,7 +360,7 @@ export function MinimalistTaskModal({
         })
       } else {
         const fullTask: Task = {
-          id: Math.random().toString(36).substring(7),
+          id: generateId('task'),
           user_id: userId || 'local_user',
           ...payload,
           status: 'pending',
@@ -409,7 +410,7 @@ export function MinimalistTaskModal({
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const asset = result.assets[0]
       const newAttachment: TaskAttachment = {
-        id: Math.random().toString(36).substring(7),
+        id: generateId('att'),
         file_name: asset.fileName || 'Imagen',
         file_url: asset.uri,
         file_type: 'image',
@@ -437,7 +438,7 @@ export function MinimalistTaskModal({
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const asset = result.assets[0]
       const newAttachment: TaskAttachment = {
-        id: Math.random().toString(36).substring(7),
+        id: generateId('att'),
         file_name: 'Imagen',
         file_url: asset.uri,
         file_type: 'image',
@@ -470,7 +471,7 @@ export function MinimalistTaskModal({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const doc = result.assets[0]
         const newAttachment: TaskAttachment = {
-          id: Math.random().toString(36).substring(7),
+          id: generateId('att'),
           file_name: doc.name || 'Documento',
           file_url: doc.uri,
           file_type: 'document',

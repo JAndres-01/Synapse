@@ -1,4 +1,4 @@
-import React, { useEffect, useState, memo } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { View, StyleSheet, Animated, Dimensions } from 'react-native'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, memo } from 'react'
+import { useRef, useEffect, useState, useMemo, memo } from 'react'
 import {
   View,
   Text,
@@ -195,7 +195,7 @@ export function MinimalistDayView({
   onAssignSlot,
 }: MinimalistDayViewProps) {
   const currentDay = new Date().getDay()
-  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
   const targetDayDate = academicWeek.getDayDate(selectedDay)
   const daySchedules = schedules.filter((s) => s.day_of_week === selectedDay)
 

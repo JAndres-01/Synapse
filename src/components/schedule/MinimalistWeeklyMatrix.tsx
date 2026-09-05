@@ -1,4 +1,4 @@
-import React, { useRef, memo } from 'react'
+import { useRef, useMemo, memo } from 'react'
 import {
   View,
   Text,
@@ -130,7 +130,7 @@ export const MinimalistWeeklyMatrix = memo(function MinimalistWeeklyMatrix({
   onAssignSlot,
 }: MinimalistWeeklyMatrixProps) {
   const currentDay = new Date().getDay()
-  const academicWeek = React.useMemo(() => getActiveAcademicWeek(), [])
+  const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
 
   const getPendingTasksForDayAndSubject = (day: number, subjectId?: string | null) => {
     if (!subjectId) return 0

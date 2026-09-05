@@ -1,4 +1,4 @@
-import React, { useRef, memo } from 'react'
+import { useRef, memo } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { Schedule, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'

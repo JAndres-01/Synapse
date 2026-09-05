@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -23,9 +23,7 @@ import {
   cancelTaskReminder,
   scheduleTaskReminder,
 } from '@/lib/personalNotifications'
-
-// Control de entrada única por sesión en la pantalla Hoy
-let hasPlayedTodayEntrance = false
+import { useCardEntrance } from '@/hooks/useCardEntrance'
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets()
@@ -161,31 +159,8 @@ export default function TodayScreen() {
     await personalStorage.setTasks(updatedTasks)
   }, [tasks])
 
-  // Animaciones de Entrada Escalonada hacia abajo (Solo la primera vez que se entra)
-  const cardEntranceAnims = useRef([
-    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedTodayEntrance ? 1 : 0),
-  ]).current
-
-  useEffect(() => {
-    if (!hasPlayedTodayEntrance) {
-      hasPlayedTodayEntrance = true
-      cardEntranceAnims.forEach((anim) => anim.setValue(0))
-
-      const staggerAnims = cardEntranceAnims.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          stiffness: 320,
-          damping: 24,
-          mass: 0.7,
-          useNativeDriver: true,
-        })
-      )
-
-      Animated.stagger(100, staggerAnims).start()
-    }
-  }, [])
+  // Animaciones de Entrada Escalonada hacia abajo
+  const cardEntranceAnims = useCardEntrance(3, 'today')
 
   return (
     <View style={styles.screenWrapper}>

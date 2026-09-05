@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { personalStorage } from '@/lib/personalStorage'
 import { SCHEDULE_DAYS } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
+import { generateId } from '@/lib/idGenerator'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -191,7 +192,7 @@ export function MinimalistAssignSlotModal({
 
     try {
       const slotData: Schedule = {
-        id: existingSchedule?.id || `sched_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        id: existingSchedule?.id || generateId('sched'),
         user_id: userId || 'local_user',
         day_of_week: dayOfWeek,
         block_number: blockNumber,

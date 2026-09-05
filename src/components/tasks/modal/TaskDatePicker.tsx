@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native'
 import { GraduationCap, Calendar, Clock, ChevronRight } from 'lucide-react-native'
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'

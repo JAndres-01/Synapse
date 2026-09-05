@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import type { TaskType } from '@/types/personal'
 import { triggerHaptic } from '@/lib/personalHaptics'

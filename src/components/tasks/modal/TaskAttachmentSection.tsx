@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { X, Image as ImageIcon, FileText } from 'lucide-react-native'
 import type { TaskAttachment } from '@/types/personal'

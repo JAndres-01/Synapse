@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import {
   Bell,
   Clock,
   BookOpen,
-  Calendar,
   RotateCcw,
   IdCard,
   User,
@@ -29,11 +28,11 @@ import {
   Trash2,
   Check,
 } from 'lucide-react-native'
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import type { PersonalProfile } from '@/types/personal'
 import { APPLE_EASING } from '@/constants/animations'
 import { MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { SemesterConfigCard, type SemesterPickerType } from './SemesterConfigCard'
 
 export interface SystemSettingsModalProps {
   visible: boolean
@@ -454,142 +453,52 @@ export function SystemSettingsModal({
               </View>
 
               {/* Semestre Otoño (Ago - Dic) */}
-              <View style={styles.semesterConfigBox}>
-                <View style={styles.semesterTitleRow}>
-                  <Calendar size={14} color="#FF6B00" />
-                  <Text style={styles.semesterBoxTitle}>Otoño (Agosto - Diciembre)</Text>
-                </View>
-
-                <View style={styles.datesPillsRow}>
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setActiveDatePicker(activeDatePicker === 'fall_start' ? null : 'fall_start')
-                    }}
-                    style={[
-                      styles.datePillBtn,
-                      activeDatePicker === 'fall_start' && styles.datePillBtnActive,
-                    ]}
-                  >
-                    <Text style={styles.datePillLabel}>Inicio</Text>
-                    <Text style={styles.datePillValue}>{formatReadableDate(fallStart, '01 Ago')}</Text>
-                  </Pressable>
-
-                  <Text style={styles.datePillArrow}>→</Text>
-
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setActiveDatePicker(activeDatePicker === 'fall_end' ? null : 'fall_end')
-                    }}
-                    style={[
-                      styles.datePillBtn,
-                      activeDatePicker === 'fall_end' && styles.datePillBtnActive,
-                    ]}
-                  >
-                    <Text style={styles.datePillLabel}>Fin</Text>
-                    <Text style={styles.datePillValue}>{formatReadableDate(fallEnd, '31 Dic')}</Text>
-                  </Pressable>
-                </View>
-
-                {/* Inline Date Picker si está activo para Otoño */}
-                {(activeDatePicker === 'fall_start' || activeDatePicker === 'fall_end') && (
-                  <View style={styles.inlinePickerContainer}>
-                    <Text style={styles.inlinePickerHeader}>
-                      {activeDatePicker === 'fall_start'
-                        ? 'Fecha de Inicio (Otoño)'
-                        : 'Fecha de Fin (Otoño)'}
-                    </Text>
-                    <DateTimePicker
-                      value={parseDateString(
-                        activeDatePicker === 'fall_start' ? fallStart : fallEnd,
-                        currentYear,
-                        activeDatePicker === 'fall_start' ? 7 : 11,
-                        activeDatePicker === 'fall_start' ? 1 : 31
-                      )}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                      themeVariant="dark"
-                      locale="es-ES"
-                      onChange={(_: DateTimePickerEvent, d?: Date) => {
-                        if (d) {
-                          onUpdateSemesterDate(activeDatePicker, d)
-                          if (Platform.OS === 'android') setActiveDatePicker(null)
-                        }
-                      }}
-                    />
-                  </View>
-                )}
-              </View>
+              <SemesterConfigCard
+                title="Otoño (Agosto - Diciembre)"
+                color="#FF6B00"
+                startKey="fall_start"
+                endKey="fall_end"
+                startDate={fallStart}
+                endDate={fallEnd}
+                defaultStartText="01 Ago"
+                defaultEndText="31 Dic"
+                startDefaultMonth={7}
+                endDefaultMonth={11}
+                startDefaultDay={1}
+                endDefaultDay={31}
+                activeDatePicker={activeDatePicker}
+                currentYear={currentYear}
+                formatReadableDate={formatReadableDate}
+                parseDateString={parseDateString}
+                onToggleDatePicker={(key) =>
+                  setActiveDatePicker(activeDatePicker === key ? null : key)
+                }
+                onUpdateDate={onUpdateSemesterDate}
+              />
 
               {/* Semestre Primavera (Feb - Jun) */}
-              <View style={styles.semesterConfigBox}>
-                <View style={styles.semesterTitleRow}>
-                  <Calendar size={14} color="#34D399" />
-                  <Text style={styles.semesterBoxTitle}>Primavera (Febrero - Junio)</Text>
-                </View>
-
-                <View style={styles.datesPillsRow}>
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setActiveDatePicker(activeDatePicker === 'spring_start' ? null : 'spring_start')
-                    }}
-                    style={[
-                      styles.datePillBtn,
-                      activeDatePicker === 'spring_start' && styles.datePillBtnActive,
-                    ]}
-                  >
-                    <Text style={styles.datePillLabel}>Inicio</Text>
-                    <Text style={styles.datePillValue}>{formatReadableDate(springStart, '01 Feb')}</Text>
-                  </Pressable>
-
-                  <Text style={styles.datePillArrow}>→</Text>
-
-                  <Pressable
-                    onPress={() => {
-                      triggerHaptic('light')
-                      setActiveDatePicker(activeDatePicker === 'spring_end' ? null : 'spring_end')
-                    }}
-                    style={[
-                      styles.datePillBtn,
-                      activeDatePicker === 'spring_end' && styles.datePillBtnActive,
-                    ]}
-                  >
-                    <Text style={styles.datePillLabel}>Fin</Text>
-                    <Text style={styles.datePillValue}>{formatReadableDate(springEnd, '30 Jun')}</Text>
-                  </Pressable>
-                </View>
-
-                {/* Inline Date Picker si está activo para Primavera */}
-                {(activeDatePicker === 'spring_start' || activeDatePicker === 'spring_end') && (
-                  <View style={styles.inlinePickerContainer}>
-                    <Text style={styles.inlinePickerHeader}>
-                      {activeDatePicker === 'spring_start'
-                        ? 'Fecha de Inicio (Primavera)'
-                        : 'Fecha de Fin (Primavera)'}
-                    </Text>
-                    <DateTimePicker
-                      value={parseDateString(
-                        activeDatePicker === 'spring_start' ? springStart : springEnd,
-                        currentYear,
-                        activeDatePicker === 'spring_start' ? 1 : 5,
-                        activeDatePicker === 'spring_start' ? 1 : 30
-                      )}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                      themeVariant="dark"
-                      locale="es-ES"
-                      onChange={(_: DateTimePickerEvent, d?: Date) => {
-                        if (d) {
-                          onUpdateSemesterDate(activeDatePicker, d)
-                          if (Platform.OS === 'android') setActiveDatePicker(null)
-                        }
-                      }}
-                    />
-                  </View>
-                )}
-              </View>
+              <SemesterConfigCard
+                title="Primavera (Febrero - Junio)"
+                color="#34D399"
+                startKey="spring_start"
+                endKey="spring_end"
+                startDate={springStart}
+                endDate={springEnd}
+                defaultStartText="01 Feb"
+                defaultEndText="30 Jun"
+                startDefaultMonth={1}
+                endDefaultMonth={5}
+                startDefaultDay={1}
+                endDefaultDay={30}
+                activeDatePicker={activeDatePicker}
+                currentYear={currentYear}
+                formatReadableDate={formatReadableDate}
+                parseDateString={parseDateString}
+                onToggleDatePicker={(key) =>
+                  setActiveDatePicker(activeDatePicker === key ? null : key)
+                }
+                onUpdateDate={onUpdateSemesterDate}
+              />
             </View>
 
             <View style={styles.sectionDivider} />
@@ -792,75 +701,6 @@ const styles = StyleSheet.create({
   },
   sectionDivider: {
     height: 16,
-  },
-  semesterConfigBox: {
-    backgroundColor: '#121214',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#222226',
-    padding: 12,
-    gap: 10,
-  },
-  semesterTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  semesterBoxTitle: {
-    color: '#E4E4E7',
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  datesPillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  datePillBtn: {
-    flex: 1,
-    backgroundColor: '#18181B',
-    borderWidth: 1,
-    borderColor: '#27272A',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  datePillBtnActive: {
-    borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  datePillLabel: {
-    color: '#71717A',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  datePillValue: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  datePillArrow: {
-    color: '#52525B',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  inlinePickerContainer: {
-    backgroundColor: '#18181B',
-    borderRadius: 12,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#27272A',
-    alignItems: 'center',
-  },
-  inlinePickerHeader: {
-    color: '#A1A1AA',
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
   },
   clearRow: {
     flexDirection: 'row',

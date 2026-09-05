@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -28,13 +28,11 @@ import {
   cancelTaskReminder,
   scheduleTaskReminder,
 } from '@/lib/personalNotifications'
+import { useCardEntrance } from '@/hooks/useCardEntrance'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
 }
-
-// Control de entrada única por sesión en la pantalla Tareas
-let hasPlayedTasksEntrance = false
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets()
@@ -309,30 +307,7 @@ export default function TasksScreen() {
   }
 
   // Animaciones de Entrada Escalonada
-  const cardEntranceAnims = useRef([
-    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
-    new Animated.Value(hasPlayedTasksEntrance ? 1 : 0),
-  ]).current
-
-  useEffect(() => {
-    if (!hasPlayedTasksEntrance) {
-      hasPlayedTasksEntrance = true
-      cardEntranceAnims.forEach((anim) => anim.setValue(0))
-
-      const staggerAnims = cardEntranceAnims.map((anim) =>
-        Animated.spring(anim, {
-          toValue: 1,
-          stiffness: 320,
-          damping: 24,
-          mass: 0.7,
-          useNativeDriver: true,
-        })
-      )
-
-      Animated.stagger(100, staggerAnims).start()
-    }
-  }, [])
+  const cardEntranceAnims = useCardEntrance(3, 'tasks')
 
   const handleOpenDetail = useCallback((t: Task) => {
     setActiveTask(t)

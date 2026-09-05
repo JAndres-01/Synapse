@@ -277,7 +277,9 @@ export const personalStorage = {
           return { ...parsed }
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('[personalStorage] Error leyendo perfil, usando valor por defecto:', err)
+    }
     const defaultProfile: PersonalProfile = {
       id: 'local_user',
       full_name: 'Estudiante',
@@ -321,7 +323,8 @@ export const personalStorage = {
       }
       _preferencesCache = prefs
       return prefs
-    } catch {
+    } catch (err) {
+      console.warn('[personalStorage] Error leyendo preferencias, usando valores por defecto:', err)
       const currentYear = new Date().getFullYear()
       const defaultPrefs: AppPreferences = {
         haptics_enabled: true,
@@ -385,7 +388,8 @@ export const personalStorage = {
       if (data.profile) await this.setProfile(data.profile)
       if (data.preferences) await this.setPreferences(data.preferences)
       return true
-    } catch {
+    } catch (err) {
+      console.error('[personalStorage] Error procesando backup JSON:', err)
       return false
     }
   },

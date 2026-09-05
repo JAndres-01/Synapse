@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, memo } from 'react'
+import { useEffect, useState, useMemo, memo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import type { Schedule } from '@/types/personal'
 import { calculateLiveClassStatus } from '@/lib/scheduleEngine'

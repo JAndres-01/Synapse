@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import { QrCode, IdCard } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'

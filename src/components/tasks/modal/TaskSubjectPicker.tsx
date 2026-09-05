@@ -1,4 +1,3 @@
-import React from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import { Check } from 'lucide-react-native'
 import type { Subject } from '@/types/personal'

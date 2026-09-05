@@ -36,31 +36,8 @@ export default function ScheduleScreen() {
   const router = useRouter()
 
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
-  const [schedules, setSchedules] = useState<Schedule[]>(() => {
-    const cachedScheds = personalStorage.getCachedSchedules()
-    const cachedSubjs = personalStorage.getCachedSubjects()
-    return cachedScheds
-      .map((s) => {
-        const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
-        return {
-          ...s,
-          subject: foundSubj || null,
-        }
-      })
-      .filter((s) => Boolean(s.subject))
-  })
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const cachedTasks = personalStorage.getCachedTasks()
-    const cachedSubjs = personalStorage.getCachedSubjects()
-    return cachedTasks.map((t) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
-  })
+  const [schedules, setSchedules] = useState<Schedule[]>(() => personalStorage.getCachedSchedulesWithSubjects())
+  const [tasks, setTasks] = useState<Task[]>(() => personalStorage.getCachedTasksWithSubjects())
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day')
 
   const academicWeek = useMemo(() => getActiveAcademicWeek(), [])
@@ -110,29 +87,11 @@ export default function ScheduleScreen() {
   }
 
   const loadData = useCallback(async () => {
-    const [cachedScheds, cachedSubjs, cachedTasks] = await Promise.all([
-      personalStorage.getSchedules(),
+    const [resolvedScheds, cachedSubjs, resolvedTasks] = await Promise.all([
+      personalStorage.getSchedulesWithSubjects(),
       personalStorage.getSubjects(),
-      personalStorage.getTasks(),
+      personalStorage.getTasksWithSubjects(),
     ])
-
-    // Resolver materias dinámicamente y filtrar materias eliminadas
-    const resolvedScheds = cachedScheds.map((s) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
-      return {
-        ...s,
-        subject: foundSubj || null,
-      }
-    }).filter((s) => Boolean(s.subject))
-
-    const resolvedTasks = cachedTasks.map((t) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
 
     setSchedules(resolvedScheds)
     setSubjects(cachedSubjs)

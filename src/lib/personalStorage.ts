@@ -60,6 +60,26 @@ export const personalStorage = {
     return _tasksCache !== null ? sortTasksByDueDate(_tasksCache) : []
   },
 
+  getCachedTasksWithSubjects(): Task[] {
+    const tasks = this.getCachedTasks()
+    const subjects = this.getCachedSubjects()
+    return tasks.map((t) => ({
+      ...t,
+      subject: subjects.find((s) => s.id === t.subject_id) || null,
+    }))
+  },
+
+  getCachedSchedulesWithSubjects(): Schedule[] {
+    const scheds = this.getCachedSchedules()
+    const subjects = this.getCachedSubjects()
+    return scheds
+      .map((s) => ({
+        ...s,
+        subject: subjects.find((subj) => subj.id === s.subject_id) || null,
+      }))
+      .filter((s) => Boolean(s.subject))
+  },
+
   getCachedPreferences(): AppPreferences | null {
     return _preferencesCache !== null ? { ..._preferencesCache } : null
   },
@@ -172,6 +192,16 @@ export const personalStorage = {
     return []
   },
 
+  async getSchedulesWithSubjects(): Promise<Schedule[]> {
+    const [scheds, subjects] = await Promise.all([this.getSchedules(), this.getSubjects()])
+    return scheds
+      .map((s) => ({
+        ...s,
+        subject: subjects.find((subj) => subj.id === s.subject_id) || null,
+      }))
+      .filter((s) => Boolean(s.subject))
+  },
+
   async setSchedules(schedules: Schedule[]): Promise<void> {
     const safeList = Array.isArray(schedules) ? schedules : []
     _schedulesCache = [...safeList]
@@ -230,6 +260,14 @@ export const personalStorage = {
     }
     _tasksCache = []
     return []
+  },
+
+  async getTasksWithSubjects(): Promise<Task[]> {
+    const [tasks, subjects] = await Promise.all([this.getTasks(), this.getSubjects()])
+    return tasks.map((t) => ({
+      ...t,
+      subject: subjects.find((s) => s.id === t.subject_id) || null,
+    }))
   },
 
   async setTasks(tasks: Task[]): Promise<void> {

@@ -39,21 +39,7 @@ export default function TasksScreen() {
   const insets = useSafeAreaInsets()
 
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const cachedTasks = personalStorage.getCachedTasks()
-    const cachedSubjs = personalStorage.getCachedSubjects()
-    return cachedTasks.map((t) => {
-      if (!t.subject_id) {
-        return { ...t, subject: null }
-      }
-      const foundSubj = cachedSubjs.find((s) => s.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
-  })
+  const [tasks, setTasks] = useState<Task[]>(() => personalStorage.getCachedTasksWithSubjects())
 
   // Filtros y Búsqueda
   const [searchQuery, setSearchQuery] = useState('')
@@ -102,22 +88,10 @@ export default function TasksScreen() {
   }, [isSearchActive, searchQuery])
 
   const loadData = useCallback(async () => {
-    const [cachedTasks, cachedSubjs] = await Promise.all([
-      personalStorage.getTasks(),
+    const [resolvedTasks, cachedSubjs] = await Promise.all([
+      personalStorage.getTasksWithSubjects(),
       personalStorage.getSubjects(),
     ])
-
-    const resolvedTasks = cachedTasks.map((t) => {
-      if (!t.subject_id) {
-        return { ...t, subject: null }
-      }
-      const foundSubj = cachedSubjs.find((s) => s.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
 
     setTasks(resolvedTasks)
     setSubjects(cachedSubjs)

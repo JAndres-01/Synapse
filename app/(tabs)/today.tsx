@@ -34,31 +34,10 @@ export default function TodayScreen() {
   }
 
   const [subjects, setSubjects] = useState<Subject[]>(() => personalStorage.getCachedSubjects())
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const cachedTasks = personalStorage.getCachedTasks()
-    const cachedSubjs = personalStorage.getCachedSubjects()
-    return cachedTasks.map((t) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
-  })
+  const [tasks, setTasks] = useState<Task[]>(() => personalStorage.getCachedTasksWithSubjects())
   const [schedulesToday, setSchedulesToday] = useState<Schedule[]>(() => {
     const todayNum = new Date().getDay() === 0 ? 7 : new Date().getDay()
-    const cachedScheds = personalStorage.getCachedSchedules()
-    const cachedSubjs = personalStorage.getCachedSubjects()
-    return cachedScheds
-      .map((s) => {
-        const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
-        return {
-          ...s,
-          subject: foundSubj || null,
-        }
-      })
-      .filter((s) => Boolean(s.subject) && s.day_of_week === todayNum)
+    return personalStorage.getCachedSchedulesWithSubjects().filter((s) => s.day_of_week === todayNum)
   })
   const [confettiBurstTrigger, setConfettiBurstTrigger] = useState(0)
 
@@ -78,34 +57,16 @@ export default function TodayScreen() {
   }
 
   const loadData = useCallback(async () => {
-    const [cachedScheds, cachedTasks, cachedSubjs] = await Promise.all([
-      personalStorage.getSchedules(),
-      personalStorage.getTasks(),
+    const [resolvedScheds, resolvedTasks, subjs] = await Promise.all([
+      personalStorage.getSchedulesWithSubjects(),
+      personalStorage.getTasksWithSubjects(),
       personalStorage.getSubjects(),
     ])
 
     const todayNum = getTodayDayOfWeek()
-
-    const resolvedScheds = cachedScheds.map((s) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === s.subject_id)
-      return {
-        ...s,
-        subject: foundSubj || null,
-      }
-    }).filter((s) => Boolean(s.subject))
-
-    const resolvedTasks = cachedTasks.map((t) => {
-      const foundSubj = cachedSubjs.find((subj) => subj.id === t.subject_id)
-      return {
-        ...t,
-        subject: foundSubj || null,
-        subject_id: foundSubj ? t.subject_id : null,
-      }
-    })
-
     setSchedulesToday(resolvedScheds.filter((s) => s.day_of_week === todayNum))
     setTasks(resolvedTasks)
-    setSubjects(cachedSubjs)
+    setSubjects(subjs)
   }, [])
 
   useFocusEffect(

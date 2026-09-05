@@ -6,6 +6,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { sortTasksByDueDate } from '@/lib/taskSort'
+import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 interface MinimalistTodayTasksProps {
   tasks: Task[]
@@ -134,7 +135,7 @@ const TodayTaskItem = memo(function TodayTaskItem({
                 ]}
               />
               <Text style={styles.subjectName}>
-                {task.subject?.name || 'General'}
+                {task.subject?.name || DEFAULT_SUBJECT_NAME}
               </Text>
             </View>
 

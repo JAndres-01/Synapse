@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   PanResponder,
 } from 'react-native'
 import type { Subject, Schedule } from '@/types/personal'
@@ -17,12 +16,12 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { X, Check, Trash2 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { personalStorage } from '@/lib/personalStorage'
-import { SCHEDULE_DAYS } from '@/constants/dates'
+import { DAYS_NUM_NAME } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
 import { generateId } from '@/lib/idGenerator'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_USER_ID } from '@/constants/defaults'
 
 interface MinimalistAssignSlotModalProps {
   visible: boolean
@@ -35,7 +34,7 @@ interface MinimalistAssignSlotModalProps {
   onScheduleSaved: () => void
 }
 
-const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name }))
+const DAYS = DAYS_NUM_NAME
 
 export function MinimalistAssignSlotModal({
   visible,
@@ -193,7 +192,7 @@ export function MinimalistAssignSlotModal({
     try {
       const slotData: Schedule = {
         id: existingSchedule?.id || generateId('sched'),
-        user_id: userId || 'local_user',
+        user_id: userId || DEFAULT_USER_ID,
         day_of_week: dayOfWeek,
         block_number: blockNumber,
         subject_id: selectedSubjectId,

@@ -10,14 +10,12 @@ import {
   Platform,
   Keyboard,
   Animated,
-  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
 
 export interface EditProfileModalProps {
   visible: boolean

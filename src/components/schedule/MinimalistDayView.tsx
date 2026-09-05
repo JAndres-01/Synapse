@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Animated,
   Platform,
-  Dimensions,
   LayoutChangeEvent,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
@@ -15,11 +14,10 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { User, MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
-import { SCHEDULE_DAYS } from '@/constants/dates'
+import { DAYS_WITH_SHORT } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+import { SCREEN_WIDTH } from '@/constants/layout'
 
 interface MinimalistDayViewProps {
   schedules: Schedule[]
@@ -30,7 +28,7 @@ interface MinimalistDayViewProps {
   onAssignSlot?: (day: number, block: number) => void
 }
 
-const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.short }))
+const DAYS = DAYS_WITH_SHORT
 
 const DayClassRow = memo(function DayClassRow({
   blockDef,

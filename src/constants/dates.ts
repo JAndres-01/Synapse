@@ -22,3 +22,8 @@ export const SCHEDULE_DAYS = [
   { num: 4, name: 'Jueves', short: 'Jue', matrixShort: 'JUE' },
   { num: 5, name: 'Viernes', short: 'Vie', matrixShort: 'VIE' },
 ] as const
+
+export const DAYS_NUM_NAME = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name }))
+export const DAYS_WITH_SHORT = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.short }))
+export const DAYS_WITH_MATRIX_SHORT = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.matrixShort }))
+

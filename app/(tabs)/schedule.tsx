@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Animated,
   LayoutChangeEvent,
-  Dimensions,
   Platform,
   LayoutAnimation,
 } from 'react-native'
@@ -31,8 +30,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
 import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+import { SCREEN_WIDTH } from '@/constants/layout'
 
 export default function ScheduleScreen() {
   const insets = useSafeAreaInsets()

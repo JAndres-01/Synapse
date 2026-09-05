@@ -13,6 +13,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { formatTaskDueDate } from '@/lib/academicDateUtils'
 import { APPLE_EASING } from '@/constants/animations'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 const ACTION_BUTTON_WIDTH = 56
 const TOTAL_ACTIONS_WIDTH = 112
@@ -449,7 +450,7 @@ export const MinimalistTaskRow = memo(function MinimalistTaskRow({
                     isWhiteColor(task.subject?.color) && styles.whiteDotBorder,
                   ]}
                 />
-                <Text style={styles.subjectName}>{task.subject?.name || 'General'}</Text>
+                <Text style={styles.subjectName}>{task.subject?.name || DEFAULT_SUBJECT_NAME}</Text>
               </View>
 
               {/* Vencimiento / Prioridad: Texto tipográfico puro coloreado sin cards */}

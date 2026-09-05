@@ -6,6 +6,7 @@ import type { Schedule, Subject } from '@/types/personal'
 import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
 
 export interface TaskDatePickerProps {
   dueDate: string
@@ -189,7 +190,7 @@ export function TaskDatePicker({
                       <View style={styles.classTimeBox}>
                         <Clock size={11} color="#818CF8" />
                         <Text style={styles.classTimeText}>
-                          {sched.start_time || '07:00'}
+                          {sched.start_time || DEFAULT_CLASS_START_TIME}
                         </Text>
                       </View>
 

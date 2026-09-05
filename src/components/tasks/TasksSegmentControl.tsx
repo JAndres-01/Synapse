@@ -4,14 +4,12 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Dimensions,
   LayoutChangeEvent,
   Platform,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { SPRING_SLIDE_INDICATOR } from '@/constants/animations'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
+import { SCREEN_WIDTH } from '@/constants/layout'
 
 export interface TasksSegmentControlProps {
   statusFilter: 'pending' | 'completed' | 'all'

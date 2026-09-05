@@ -11,7 +11,6 @@ import {
   Alert,
   Platform,
   Animated,
-  Dimensions,
   Keyboard,
   PanResponder,
 } from 'react-native'
@@ -41,12 +40,12 @@ import { TaskSubjectPicker } from './modal/TaskSubjectPicker'
 import { TaskDatePicker } from './modal/TaskDatePicker'
 import { TaskTypePicker } from './modal/TaskTypePicker'
 import { TaskAttachmentSection } from './modal/TaskAttachmentSection'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_USER_ID, DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
 
 export type TaskModalMode = 'none' | 'detail' | 'create' | 'edit'
 
-function getNextClassDate(dayOfWeek: number, timeStr: string = '07:00'): Date {
+function getNextClassDate(dayOfWeek: number, timeStr: string = DEFAULT_CLASS_START_TIME): Date {
   const now = new Date()
   const currentDay = now.getDay()
   const [h, m] = timeStr.split(':').map(Number)
@@ -379,7 +378,7 @@ export function MinimalistTaskModal({
       } else {
         const fullTask: Task = {
           id: generateId('task'),
-          user_id: userId || 'local_user',
+          user_id: userId || DEFAULT_USER_ID,
           ...payload,
           status: 'pending',
           created_at: new Date().toISOString(),
@@ -400,7 +399,7 @@ export function MinimalistTaskModal({
 
   const handleSelectClass = (sched: Schedule, subj?: Subject | null) => {
     triggerHaptic('success')
-    const targetDate = getNextClassDate(sched.day_of_week, sched.start_time || '07:00')
+    const targetDate = getNextClassDate(sched.day_of_week, sched.start_time || DEFAULT_CLASS_START_TIME)
     setDueDate(targetDate.toISOString())
     if (sched.subject_id) {
       setSelectedSubjectId(sched.subject_id)

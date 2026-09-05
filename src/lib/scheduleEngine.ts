@@ -1,4 +1,5 @@
 import type { Schedule } from '@/types/personal'
+import { DEFAULT_CLASS_START_TIME } from '@/constants/defaults'
 
 interface BlockDefinition {
   block: number
@@ -9,7 +10,7 @@ interface BlockDefinition {
 
 // 4 Bloques continuos de 1h30m sin receso
 export const PERSONAL_SCHEDULE_BLOCKS: BlockDefinition[] = [
-  { block: 1, startTime: '07:00', endTime: '08:30', label: 'Clase 1' },
+  { block: 1, startTime: DEFAULT_CLASS_START_TIME, endTime: '08:30', label: 'Clase 1' },
   { block: 2, startTime: '08:30', endTime: '10:00', label: 'Clase 2' },
   { block: 3, startTime: '10:00', endTime: '11:30', label: 'Clase 3' },
   { block: 4, startTime: '11:30', endTime: '13:00', label: 'Clase 4' },
@@ -57,7 +58,7 @@ export function calculateLiveClassStatus(schedulesToday: Schedule[]): LiveStatus
   }
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const schoolStart = timeToMinutes('07:00')
+  const schoolStart = timeToMinutes(DEFAULT_CLASS_START_TIME)
   const schoolEnd = timeToMinutes('13:00')
 
   // Antes de las 7:00 AM

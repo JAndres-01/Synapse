@@ -6,19 +6,18 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_ADVANCE_REMINDER_TIME } from '@/constants/defaults'
 
 const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
   { time: '19:00', label: '7:00 PM', desc: 'Atardecer' },
-  { time: '20:00', label: '8:00 PM', desc: 'Noche (Recomendado)' },
+  { time: DEFAULT_ADVANCE_REMINDER_TIME, label: '8:00 PM', desc: 'Noche (Recomendado)' },
   { time: '21:00', label: '9:00 PM', desc: 'Noche' },
   { time: '22:00', label: '10:00 PM', desc: 'Antes de dormir' },
 ]

@@ -12,7 +12,7 @@ import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
 import { MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
-import { SCHEDULE_DAYS } from '@/constants/dates'
+import { DAYS_WITH_MATRIX_SHORT } from '@/constants/dates'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 
 interface MinimalistWeeklyMatrixProps {
@@ -21,7 +21,7 @@ interface MinimalistWeeklyMatrixProps {
   onAssignSlot: (day: number, block: number, existing?: Schedule | null) => void
 }
 
-const DAYS = SCHEDULE_DAYS.map((d) => ({ num: d.num, name: d.name, short: d.matrixShort }))
+const DAYS = DAYS_WITH_MATRIX_SHORT
 
 const MatrixSlotCard = memo(function MatrixSlotCard({
   blockNum,

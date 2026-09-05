@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useMemo, type ReactNode
 import { personalStorage } from '@/lib/personalStorage'
 import { cancelAllNotifications } from '@/lib/personalNotifications'
 import type { PersonalProfile } from '@/types/personal'
+import { DEFAULT_USER_ID, DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
 interface PersonalAuthContextType {
   user: { id: string } | null
@@ -29,7 +30,7 @@ export function PersonalAuthProvider({ children }: { children: ReactNode }) {
     const current = profile || (await personalStorage.getProfile())
     const updated: PersonalProfile = {
       ...current,
-      full_name: fullName.trim() || 'Estudiante',
+      full_name: fullName.trim() || DEFAULT_STUDENT_NAME,
       updated_at: new Date().toISOString(),
     }
     await personalStorage.setProfile(updated)
@@ -53,8 +54,8 @@ export function PersonalAuthProvider({ children }: { children: ReactNode }) {
     await cancelAllNotifications()
     await personalStorage.clearAll()
     const defaultProfile: PersonalProfile = {
-      id: 'local_user',
-      full_name: 'Estudiante',
+      id: DEFAULT_USER_ID,
+      full_name: DEFAULT_STUDENT_NAME,
       student_credential_url: null,
       student_credential_name: null,
       student_credential_updated_at: null,
@@ -66,7 +67,7 @@ export function PersonalAuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      user: { id: profile?.id || 'local_user' },
+      user: { id: profile?.id || DEFAULT_USER_ID },
       profile,
       updateProfile,
       updateCredential,

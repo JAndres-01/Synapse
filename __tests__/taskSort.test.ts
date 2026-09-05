@@ -82,7 +82,7 @@ describe('sortTasksByDueDate', () => {
     expect(sorted[1].id).toBe('no-date')
   })
 
-  it('prioriza tareas pendientes antes de completadas cuando se listan todas', () => {
+  it('ordena por fecha de entrega más próxima sin importar si están completadas o pendientes', () => {
     const tasks: Task[] = [
       {
         id: 'completed-earlier',
@@ -101,7 +101,8 @@ describe('sortTasksByDueDate', () => {
     ]
 
     const sorted = sortTasksByDueDate(tasks)
-    expect(sorted[0].id).toBe('pending-later')
-    expect(sorted[1].id).toBe('completed-earlier')
+    expect(sorted[0].id).toBe('completed-earlier')
+    expect(sorted[1].id).toBe('pending-later')
   })
 })
+

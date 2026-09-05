@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 import type { Task, Schedule, AppPreferences } from '@/types/personal'
 import { personalStorage } from './personalStorage'
+import { DEFAULT_ADVANCE_REMINDER_TIME, DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 // Configurar comportamiento de notificaciones para iOS y Android
 try {
@@ -94,7 +95,7 @@ export async function scheduleTaskReminder(
     if (isNaN(taskDueDate.getTime())) return
 
     // Obtener hora y minuto configurados en ajustes (ej. "20:00")
-    const [prefHourStr, prefMinStr] = (prefs.advance_reminder_time || '20:00').split(':')
+    const [prefHourStr, prefMinStr] = (prefs.advance_reminder_time || DEFAULT_ADVANCE_REMINDER_TIME).split(':')
     const prefHour = parseInt(prefHourStr, 10) || 20
     const prefMin = parseInt(prefMinStr, 10) || 0
 
@@ -113,7 +114,7 @@ export async function scheduleTaskReminder(
     // Cancelar cualquier recordatorio previo de esta tarea
     await cancelTaskReminder(task.id)
 
-    const subjName = task.subject?.name || 'General'
+    const subjName = task.subject?.name || DEFAULT_SUBJECT_NAME
 
     // Programar notificación limpia
     await Notifications.scheduleNotificationAsync({

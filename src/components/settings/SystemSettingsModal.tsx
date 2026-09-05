@@ -12,11 +12,8 @@ import {
   PanResponder,
   TextInput,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 import {
   X,
   ChevronRight,
@@ -36,6 +33,8 @@ import { APPLE_EASING } from '@/constants/animations'
 import { MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { SemesterConfigCard, type SemesterPickerType } from './SemesterConfigCard'
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
 export interface SystemSettingsModalProps {
   visible: boolean
@@ -298,7 +297,7 @@ export function SystemSettingsModal({
                   <User size={18} color="#A1A1AA" style={styles.itemIcon} />
                   <View style={styles.itemContent}>
                     <Text style={styles.itemTitle}>Nombre de estudiante</Text>
-                    <Text style={styles.itemSubtitle}>{profile?.full_name || 'Estudiante'}</Text>
+                    <Text style={styles.itemSubtitle}>{profile?.full_name || DEFAULT_STUDENT_NAME}</Text>
                   </View>
                   <View style={styles.timeValueRow}>
                     <Text style={styles.timeValueText}>Cambiar</Text>

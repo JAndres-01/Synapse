@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Dimensions,
   Platform,
   Alert,
   ScrollView,
@@ -23,8 +22,8 @@ import {
 } from 'lucide-react-native'
 import * as Sharing from 'expo-sharing'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { SCREEN_WIDTH, SCREEN_HEIGHT } from '@/constants/layout'
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const MIN_SCALE = 1
 const MAX_SCALE = 5
 const DOUBLE_TAP_ZOOM = 2.5

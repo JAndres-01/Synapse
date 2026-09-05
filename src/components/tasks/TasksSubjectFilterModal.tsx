@@ -7,14 +7,12 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Dimensions,
 } from 'react-native'
 import { X, Check } from 'lucide-react-native'
 import type { Subject, Task } from '@/types/personal'
 import { isWhiteColor } from '@/constants/theme'
 import { triggerHaptic } from '@/lib/personalHaptics'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
 
 export interface TasksSubjectFilterModalProps {
   visible: boolean

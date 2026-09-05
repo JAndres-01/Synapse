@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Animated,
-  Dimensions,
   PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,8 +17,8 @@ import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateU
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
 import { APPLE_EASING } from '@/constants/animations'
 import { sortTasksByDueDate } from '@/lib/taskSort'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 interface MinimalistDayTasksModalProps {
   visible: boolean
@@ -299,7 +298,7 @@ export function MinimalistDayTasksModal({
                                 isWhite && styles.whiteDotBorder,
                               ]}
                             />
-                            <Text style={styles.taskSubjName}>{t.subject?.name || 'General'}</Text>
+                            <Text style={styles.taskSubjName}>{t.subject?.name || DEFAULT_SUBJECT_NAME}</Text>
                           </View>
 
                           {Boolean(timeLabel) && <Text style={styles.metaDot}>•</Text>}

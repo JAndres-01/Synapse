@@ -30,6 +30,7 @@ import { EditProfileModal } from '@/components/settings/EditProfileModal'
 import { ReminderTimeModal } from '@/components/settings/ReminderTimeModal'
 import { formatDateKey } from '@/lib/heatmapUtils'
 import { useCardEntrance } from '@/hooks/useCardEntrance'
+import { DEFAULT_ADVANCE_REMINDER_TIME, DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
@@ -45,7 +46,7 @@ export default function ProfileScreen() {
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [confettiEnabled, setConfettiEnabled] = useState(true)
   const [advanceReminderEnabled, setAdvanceReminderEnabled] = useState(true)
-  const [advanceReminderTime, setAdvanceReminderTime] = useState('20:00')
+  const [advanceReminderTime, setAdvanceReminderTime] = useState(DEFAULT_ADVANCE_REMINDER_TIME)
   const [classReminderEnabled, setClassReminderEnabled] = useState(true)
 
   // Periodos de Semestre
@@ -64,7 +65,7 @@ export default function ProfileScreen() {
     setHapticsEnabled(prefs.haptics_enabled)
     setConfettiEnabled(prefs.confetti_enabled)
     setAdvanceReminderEnabled(prefs.advance_reminder_enabled)
-    setAdvanceReminderTime(prefs.advance_reminder_time || '20:00')
+    setAdvanceReminderTime(prefs.advance_reminder_time || DEFAULT_ADVANCE_REMINDER_TIME)
     setClassReminderEnabled(prefs.class_reminder_enabled)
     setGlobalHapticsEnabled(prefs.haptics_enabled)
     if (prefs.semester_fall_start) setFallStart(prefs.semester_fall_start)
@@ -416,7 +417,7 @@ export default function ProfileScreen() {
         visible={showCredentialModal}
         credentialUrl={profile?.student_credential_url || null}
         credentialName={profile?.student_credential_name || null}
-        studentName={profile?.full_name || 'Estudiante'}
+        studentName={profile?.full_name || DEFAULT_STUDENT_NAME}
         onClose={() => setShowCredentialModal(false)}
         onChangeCredential={handlePickCredential}
         onDeleteCredential={handleDeleteCredential}

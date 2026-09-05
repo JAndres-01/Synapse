@@ -21,6 +21,7 @@ import type { Task, TaskAttachment } from '@/types/personal'
 import { isWhiteColor } from '@/constants/theme'
 import { DAYS_SHORT, MONTHS_SHORT } from '@/constants/dates'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 export interface TaskDetailViewProps {
   task: Task | null
@@ -145,7 +146,7 @@ export function TaskDetailView({
                 ]}
               />
               <Text style={styles.detailMetaText}>
-                {task?.subject?.name || 'General'}
+                {task?.subject?.name || DEFAULT_SUBJECT_NAME}
               </Text>
             </View>
 

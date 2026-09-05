@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { Subject, Schedule, Task, PersonalProfile, AppPreferences } from '@/types/personal'
 import { sortTasksByDueDate } from './taskSort'
+import {
+  DEFAULT_USER_ID,
+  DEFAULT_STUDENT_NAME,
+  DEFAULT_ADVANCE_REMINDER_TIME,
+} from '@/constants/defaults'
 
 const KEYS = {
   SUBJECTS: 'synapse_personal_subjects_v2',
@@ -284,8 +289,8 @@ export const personalStorage = {
       console.warn('[personalStorage] Error leyendo perfil, usando valor por defecto:', err)
     }
     const defaultProfile: PersonalProfile = {
-      id: 'local_user',
-      full_name: 'Estudiante',
+      id: DEFAULT_USER_ID,
+      full_name: DEFAULT_STUDENT_NAME,
       created_at: new Date().toISOString(),
     }
     await this.setProfile(defaultProfile)
@@ -317,7 +322,7 @@ export const personalStorage = {
         haptics_enabled: parsed.haptics_enabled ?? true,
         confetti_enabled: parsed.confetti_enabled ?? true,
         advance_reminder_enabled: parsed.advance_reminder_enabled ?? true,
-        advance_reminder_time: parsed.advance_reminder_time || '20:00',
+        advance_reminder_time: parsed.advance_reminder_time || DEFAULT_ADVANCE_REMINDER_TIME,
         class_reminder_enabled: parsed.class_reminder_enabled ?? true,
         semester_fall_start: parsed.semester_fall_start || `${currentYear}-08-01`,
         semester_fall_end: parsed.semester_fall_end || `${currentYear}-12-31`,
@@ -333,7 +338,7 @@ export const personalStorage = {
         haptics_enabled: true,
         confetti_enabled: true,
         advance_reminder_enabled: true,
-        advance_reminder_time: '20:00',
+        advance_reminder_time: DEFAULT_ADVANCE_REMINDER_TIME,
         class_reminder_enabled: true,
         semester_fall_start: `${currentYear}-08-01`,
         semester_fall_end: `${currentYear}-12-31`,

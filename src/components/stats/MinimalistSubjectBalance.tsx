@@ -6,6 +6,7 @@ import { triggerHaptic } from '@/lib/personalHaptics'
 import { BarChart2 } from 'lucide-react-native'
 import { APPLE_EASING, SPRING_SLIDE_INDICATOR } from '@/constants/animations'
 import { isWhiteColor, WHITE_DOT_BORDER } from '@/constants/theme'
+import { DEFAULT_SUBJECT_NAME } from '@/constants/defaults'
 
 type ScopeFilter = 'pending' | 'all'
 
@@ -97,7 +98,7 @@ export function MinimalistSubjectBalance() {
     if (generalCount > 0) {
       result.push({
         subjectId: null,
-        name: 'General',
+        name: DEFAULT_SUBJECT_NAME,
         color: '#71717A',
         count: generalCount,
         percentage: Math.round((generalCount / total) * 100),

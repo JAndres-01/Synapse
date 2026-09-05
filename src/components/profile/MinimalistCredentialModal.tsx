@@ -11,10 +11,7 @@ import {
   Alert,
   PanResponder,
   Platform,
-  Dimensions,
 } from 'react-native'
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 import { WebView } from 'react-native-webview'
 import * as Sharing from 'expo-sharing'
 import * as FileSystem from 'expo-file-system/legacy'
@@ -29,6 +26,8 @@ import {
 } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { APPLE_EASING } from '@/constants/animations'
+import { SCREEN_HEIGHT } from '@/constants/layout'
+import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
 interface MinimalistCredentialModalProps {
   visible: boolean
@@ -44,7 +43,7 @@ export function MinimalistCredentialModal({
   visible,
   credentialUrl,
   credentialName,
-  studentName = 'Estudiante',
+  studentName = DEFAULT_STUDENT_NAME,
   onClose,
   onChangeCredential,
   onDeleteCredential,

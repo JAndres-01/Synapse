@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native'
 import { QrCode, IdCard } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
+import { DEFAULT_STUDENT_NAME } from '@/constants/defaults'
 
 export interface ProfileHeroCardProps {
   fullName?: string
@@ -64,7 +65,7 @@ export function ProfileHeroCard({
 
         <View style={styles.heroProfileInfo}>
           <Text style={styles.heroProfileName} numberOfLines={1}>
-            {fullName || 'Estudiante'}
+            {fullName || DEFAULT_STUDENT_NAME}
           </Text>
         </View>
 

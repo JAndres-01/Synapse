@@ -1,7 +1,6 @@
 import { useEffect, useState, memo } from 'react'
-import { View, StyleSheet, Animated, Dimensions } from 'react-native'
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+import { View, StyleSheet, Animated } from 'react-native'
+import { SCREEN_WIDTH, SCREEN_HEIGHT } from '@/constants/layout'
 
 interface MinimalistConfettiProps {
   burstTrigger: number

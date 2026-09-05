@@ -9,7 +9,6 @@ import {
   LayoutChangeEvent,
   Dimensions,
   Platform,
-  InteractionManager,
   LayoutAnimation,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
@@ -163,10 +162,7 @@ export default function ScheduleScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
-        loadData()
-      })
-      return () => task.cancel()
+      loadData()
     }, [loadData])
   )
 

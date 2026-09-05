@@ -5,7 +5,6 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  InteractionManager,
   Animated,
 } from 'react-native'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
@@ -116,10 +115,7 @@ export default function TodayScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
-        loadData()
-      })
-      return () => task.cancel()
+      loadData()
     }, [loadData])
   )
 

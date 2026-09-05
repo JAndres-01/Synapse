@@ -16,7 +16,6 @@ import {
   Keyboard,
   Easing,
   PanResponder,
-  InteractionManager,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Task, Subject, TaskType, TaskAttachment, Schedule } from '@/types/personal'
@@ -195,17 +194,18 @@ export function MinimalistTaskModal({
     }
   }, [activePicker, datePickerTab, showNativeDatePicker, showNativeTimePicker])
 
-  // Cargar horarios del usuario para el selector de clases (después de interacciones para no bloquear FPS)
+  // Cargar horarios del usuario para el selector de clases
   useEffect(() => {
+    let isMounted = true
     if (modalVisible) {
-      const handle = InteractionManager.runAfterInteractions(() => {
-        personalStorage.getSchedules().then((list) => {
-          if (list && Array.isArray(list)) {
-            setSchedules(list)
-          }
-        })
+      personalStorage.getSchedules().then((list) => {
+        if (isMounted && list && Array.isArray(list)) {
+          setSchedules(list)
+        }
       })
-      return () => handle.cancel()
+    }
+    return () => {
+      isMounted = false
     }
   }, [modalVisible])
 

@@ -15,7 +15,6 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
-  InteractionManager,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { usePersonalAuth } from '@/context/PersonalAuthContext'
@@ -151,10 +150,7 @@ export default function TasksScreen() {
   // Recargar datos cada vez que la pestaña Tareas entra en pantalla
   useFocusEffect(
     useCallback(() => {
-      const task = InteractionManager.runAfterInteractions(() => {
-        loadData()
-      })
-      return () => task.cancel()
+      loadData()
     }, [loadData])
   )
 

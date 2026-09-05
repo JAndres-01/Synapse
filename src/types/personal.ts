@@ -52,10 +52,10 @@ export interface Task {
   subject_id?: string | null
   title: string
   description?: string | null
-  type: TaskType
+  type?: TaskType
   status: TaskStatus
   due_date?: string | null
-  attachments: TaskAttachment[]
+  attachments?: TaskAttachment[]
   created_at?: string
   updated_at?: string
   subject?: Subject | null

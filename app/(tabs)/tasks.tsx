@@ -72,14 +72,16 @@ export default function TasksScreen() {
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   // Transiciones y Scroll
-  const [transitioningTaskIds, setTransitioningTaskIds] = useState<string[]>([])
   const [isScrollEnabled, setIsScrollEnabled] = useState(true)
   const tasksRef = useRef(tasks)
   tasksRef.current = tasks
 
   // FAB animation
   const fabScaleAnim = useRef(new Animated.Value(1)).current
-  const panelBounceAnim = useRef(new Animated.Value(1)).current
+
+  // Animación de desvanecimiento sutil al cambiar panel
+  // Se aplica a cada fila: baja a 0.55 instantáneamente y regresa a 1 con spring suave
+  const panelFadeAnim = useRef(new Animated.Value(1)).current
 
   // Debounce para búsqueda fluida
   useEffect(() => {
@@ -168,19 +170,38 @@ export default function TasksScreen() {
   // Handlers de Tareas
   const handleStatusChange = (newStatus: 'pending' | 'completed' | 'all') => {
     if (newStatus === statusFilter) return
-    setStatusFilter(newStatus)
-  }
 
-  useEffect(() => {
-    panelBounceAnim.setValue(0.92)
-    Animated.spring(panelBounceAnim, {
+    // 1. Desvanecimiento rápido al iniciar cambio de panel
+    panelFadeAnim.setValue(0.55)
+
+    // 2. LayoutAnimation de spring: las filas se deslizan a su nueva posición
+    //    con un pequeño overshoot (rebote) al asentarse — springDamping < 1.0
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+      update: {
+        type: LayoutAnimation.Types.spring,
+        springDamping: 0.78,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+      },
+    })
+    setStatusFilter(newStatus)
+
+    // 3. Recuperación suave de opacidad (spring sobredamped → sin rebote en fade)
+    Animated.spring(panelFadeAnim, {
       toValue: 1,
-      stiffness: 420,
-      damping: 18,
-      mass: 0.6,
+      stiffness: 280,
+      damping: 26,
+      mass: 0.8,
       useNativeDriver: true,
     }).start()
-  }, [statusFilter, panelBounceAnim])
+  }
 
   const handleToggleStatus = useCallback(
     async (taskId: string, currentStatus: string) => {
@@ -202,47 +223,35 @@ export default function TasksScreen() {
         }
       }
 
-      if (statusFilter === 'pending' && nextStatus === 'completed') {
-        setTransitioningTaskIds((prev) => [...prev, taskId])
-
-        setTasks((prevTasks) => {
-          const updated = prevTasks.map((t) =>
-            t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
-          )
-          personalStorage.setTasks(updated)
-          return updated
-        })
-        setActiveTask((prev) =>
-          prev?.id === taskId ? { ...prev, status: nextStatus as 'pending' | 'completed' } : prev
+      // LayoutAnimation inmediato — da el rebote spring a la fila que sale/entra/se reposiciona
+      LayoutAnimation.configureNext({
+        duration: 240,
+        create: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity,
+        },
+        update: {
+          type: LayoutAnimation.Types.spring,
+          springDamping: 0.82,
+        },
+        delete: {
+          type: LayoutAnimation.Types.easeInEaseOut,
+          property: LayoutAnimation.Properties.opacity,
+        },
+      })
+      setTasks((prevTasks) => {
+        const updated = prevTasks.map((t) =>
+          t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
         )
-
-        setTimeout(() => {
-          LayoutAnimation.configureNext({
-            duration: 220,
-            create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-            update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-            delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
-          })
-          setTransitioningTaskIds((prev) => prev.filter((id) => id !== taskId))
-        }, 160)
-      } else {
-        LayoutAnimation.configureNext({
-          duration: 200,
-          update: { type: LayoutAnimation.Types.spring, springDamping: 0.84 },
-        })
-        setTasks((prevTasks) => {
-          const updated = prevTasks.map((t) =>
-            t.id === taskId ? { ...t, status: nextStatus as 'pending' | 'completed' } : t
-          )
-          personalStorage.setTasks(updated)
-          return updated
-        })
-        setActiveTask((prev) =>
-          prev?.id === taskId ? { ...prev, status: nextStatus as 'pending' | 'completed' } : prev
-        )
-      }
+        personalStorage.setTasks(updated)
+        return updated
+      })
+      setActiveTask((prev) =>
+        prev?.id === taskId ? { ...prev, status: nextStatus as 'pending' | 'completed' } : prev
+      )
     },
-    [statusFilter]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   )
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
@@ -275,10 +284,6 @@ export default function TasksScreen() {
         return false
       }
 
-      if (statusFilter === 'pending' && transitioningTaskIds.includes(task.id)) {
-        return false
-      }
-
       if (debouncedQuery.trim()) {
         const query = debouncedQuery.toLowerCase().trim()
         const matchesTitle = task.title.toLowerCase().includes(query)
@@ -290,7 +295,7 @@ export default function TasksScreen() {
       return true
     })
     return sortTasksByDueDate(list)
-  }, [tasks, selectedSubjectId, statusFilter, transitioningTaskIds, debouncedQuery])
+  }, [tasks, selectedSubjectId, statusFilter, debouncedQuery])
 
   const selectedSubject = useMemo(
     () => subjects.find((s) => s.id === selectedSubjectId) || null,
@@ -333,10 +338,14 @@ export default function TasksScreen() {
     ({ item, index }: { item: Task; index: number }) => (
       <Animated.View
         style={{
-          opacity: cardEntranceAnims[2].interpolate({
-            inputRange: [0, 0.4, 1],
-            outputRange: [0, 0.7, 1],
-          }),
+          // Opacidad combinada: animación de entrada escalonada × fade de transición de panel
+          opacity: Animated.multiply(
+            cardEntranceAnims[2].interpolate({
+              inputRange: [0, 0.4, 1],
+              outputRange: [0, 0.7, 1],
+            }),
+            panelFadeAnim
+          ),
           transform: [
             {
               translateY: cardEntranceAnims[2].interpolate({
@@ -349,9 +358,6 @@ export default function TasksScreen() {
                 inputRange: [0, 1],
                 outputRange: [0.96, 1],
               }),
-            },
-            {
-              scale: panelBounceAnim,
             },
           ],
         }}
@@ -371,6 +377,7 @@ export default function TasksScreen() {
     ),
     [
       cardEntranceAnims,
+      panelFadeAnim,
       statusFilter,
       filteredTasks.length,
       highlightedTaskId,
@@ -464,6 +471,7 @@ export default function TasksScreen() {
 
       <FlatList
         data={filteredTasks}
+        extraData={statusFilter}
         renderItem={renderTaskItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={renderListHeader}
@@ -482,7 +490,7 @@ export default function TasksScreen() {
         initialNumToRender={12}
         maxToRenderPerBatch={10}
         windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
+        removeClippedSubviews={false}
       />
 
       {/* Modal Desplegable de Filtro de Materia */}

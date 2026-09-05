@@ -10,7 +10,6 @@ import {
 import { BlurView } from 'expo-blur'
 import { Home, Calendar, CheckSquare, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { triggerHaptic } from '@/lib/personalHaptics'
 
 export type TabKey = 'today' | 'schedule' | 'tasks' | 'settings'
 

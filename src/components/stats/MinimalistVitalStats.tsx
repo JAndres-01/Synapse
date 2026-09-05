@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native'
+import { View, Text, StyleSheet, Animated } from 'react-native'
 import Svg, { Circle, G } from 'react-native-svg'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'

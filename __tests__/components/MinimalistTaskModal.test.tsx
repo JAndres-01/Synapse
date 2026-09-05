@@ -1,24 +1,12 @@
 import React from 'react'
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native'
 import { MinimalistTaskModal } from '@/components/tasks/MinimalistTaskModal'
-import type { Task, Subject, Schedule } from '@/types/personal'
+import type { Task, Subject } from '@/types/personal'
 
 describe('MinimalistTaskModal Component', () => {
   const mockSubjects: Subject[] = [
     { id: 'subj-1', name: 'Álgebra Lineal', color: '#10B981' },
     { id: 'subj-2', name: 'Programación Orientada a Objetos', color: '#3B82F6' },
-  ]
-
-  const mockSchedules: Schedule[] = [
-    {
-      id: 'sched-1',
-      subject_id: 'subj-1',
-      day_of_week: 1,
-      block_number: 1,
-      start_time: '07:00',
-      end_time: '08:40',
-      subject: mockSubjects[0],
-    },
   ]
 
   test('en modo creación permite escribir el título y descripción', async () => {

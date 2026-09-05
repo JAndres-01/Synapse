@@ -120,7 +120,7 @@ export async function scheduleTaskReminder(
 /**
  * Programa los avisos de próximas clases (10 minutos antes con la materia correspondiente)
  */
-export async function scheduleClassReminders(
+async function scheduleClassReminders(
   schedules: Schedule[],
   prefs: AppPreferences
 ): Promise<void> {

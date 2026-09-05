@@ -11,7 +11,7 @@ import {
   PanResponder,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { Task, Schedule, Subject } from '@/types/personal'
+import type { Task, Schedule } from '@/types/personal'
 import { X, Check, Clock, Paperclip, ChevronRight } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'

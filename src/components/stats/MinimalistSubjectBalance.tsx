@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
-import { View, Text, StyleSheet, Pressable, Animated, Easing } from 'react-native'
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native'
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
 import type { Task, Subject } from '@/types/personal'
 import { triggerHaptic } from '@/lib/personalHaptics'

@@ -13,7 +13,7 @@ import {
 import { BlurView } from 'expo-blur'
 import type { Schedule, Subject, Task } from '@/types/personal'
 import { PERSONAL_SCHEDULE_BLOCKS } from '@/lib/scheduleEngine'
-import { User, MapPin, Clock, CheckSquare, Plus } from 'lucide-react-native'
+import { User, MapPin, CheckSquare, Plus } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek, isTaskForAcademicDay } from '@/lib/academicDateUtils'
 import { SCHEDULE_DAYS } from '@/constants/dates'

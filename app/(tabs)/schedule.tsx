@@ -21,7 +21,7 @@ import { MinimalistSubjectModal } from '@/components/schedule/MinimalistSubjectM
 import { MinimalistAssignSlotModal } from '@/components/schedule/MinimalistAssignSlotModal'
 import { MinimalistDayTasksModal } from '@/components/schedule/MinimalistDayTasksModal'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Calendar, LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
+import { LayoutGrid, CalendarDays, BookOpen } from 'lucide-react-native'
 import { triggerHaptic } from '@/lib/personalHaptics'
 import { getActiveAcademicWeek } from '@/lib/academicDateUtils'
 import {

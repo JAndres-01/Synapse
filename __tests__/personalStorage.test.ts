@@ -1,5 +1,5 @@
 import { personalStorage, subscribeToPersonalStorage } from '@/lib/personalStorage'
-import type { Task, Subject, AppPreferences } from '@/types/personal'
+import type { Task, Subject } from '@/types/personal'
 
 describe('personalStorage Local-First Engine', () => {
   beforeEach(async () => {

@@ -16,12 +16,12 @@ export interface HeatmapDay {
   formattedLabel: string
 }
 
-export interface HeatmapMonthLabel {
+interface HeatmapMonthLabel {
   monthName: string
   colIndex: number
 }
 
-export interface HeatmapGridData {
+interface HeatmapGridData {
   weeks: HeatmapDay[][]
   monthLabels: HeatmapMonthLabel[]
   totalCompletions: number

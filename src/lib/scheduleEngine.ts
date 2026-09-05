@@ -1,6 +1,6 @@
 import type { Schedule } from '@/types/personal'
 
-export interface BlockDefinition {
+interface BlockDefinition {
   block: number
   startTime: string // "07:00"
   endTime: string   // "08:30"
@@ -20,14 +20,14 @@ function timeToMinutes(timeStr: string): number {
   return h * 60 + m
 }
 
-export type LiveClassStatus =
+type LiveClassStatus =
   | 'active'
   | 'before_school'
   | 'after_school'
   | 'weekend'
   | 'free'
 
-export interface LiveStatusResult {
+interface LiveStatusResult {
   status: LiveClassStatus
   activeSchedule: Schedule | null
   nextSchedule: Schedule | null

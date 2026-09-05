@@ -12,7 +12,7 @@ import { X, Check } from 'lucide-react-native'
 import { APPLE_EASING } from '@/constants/animations'
 import { triggerHaptic } from '@/lib/personalHaptics'
 
-export const PRESET_HOURS = [
+const PRESET_HOURS = [
   { time: '18:00', label: '6:00 PM', desc: 'Tarde' },
   { time: '19:00', label: '7:00 PM', desc: 'Atardecer' },
   { time: '20:00', label: '8:00 PM', desc: 'Noche (Recomendado)' },

@@ -9,8 +9,6 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
-  Platform,
-  Easing,
   PanResponder,
 } from 'react-native'
 import { WebView } from 'react-native-webview'

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Animated,
   PanResponder,
-  Easing,
 } from 'react-native'
 import type { Task } from '@/types/personal'
 import { Check, Paperclip, Edit2, Trash2, RotateCcw } from 'lucide-react-native'

@@ -1,4 +1,4 @@
-export interface AcademicWeekInfo {
+interface AcademicWeekInfo {
   isCurrentWeek: boolean
   weekLabel: string // "Semana actual" | "Próxima semana"
   weekRangeText: string // "1 - 5 Sep"
@@ -93,9 +93,9 @@ export function isTaskForAcademicDay(taskDueDate?: string | null, targetDayDate?
   }
 }
 
-export type TaskUrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'future'
+type TaskUrgencyLevel = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'future'
 
-export interface TaskDueInfo {
+interface TaskDueInfo {
   text: string
   isPast: boolean
   isToday: boolean
@@ -248,7 +248,7 @@ export function formatTaskDueDate(
   }
 }
 
-export interface AcademicVitalStats {
+interface AcademicVitalStats {
   completedTasksCount: number
   pendingTasksCount: number
   totalTasksCount: number

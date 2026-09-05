@@ -6,8 +6,6 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Easing,
-  LayoutAnimation,
   Platform,
   UIManager,
 } from 'react-native'
@@ -68,14 +66,13 @@ export function MinimalistActivityHeatmap() {
   const currentYear = new Date().getFullYear()
 
   // Resolver fechas de inicio y fin según el semestre activo y preferencias
-  const { startDateStr, endDateStr, semesterLabel } = useMemo(() => {
+  const { startDateStr, endDateStr } = useMemo(() => {
     if (activeSemester === 'fall') {
       const start = prefs?.semester_fall_start || `${currentYear}-08-01`
       const end = prefs?.semester_fall_end || `${currentYear}-12-31`
       return {
         startDateStr: start,
         endDateStr: end,
-        semesterLabel: 'Otoño (Ago - Dic)',
       }
     } else {
       const start = prefs?.semester_spring_start || `${currentYear}-02-01`
@@ -83,7 +80,6 @@ export function MinimalistActivityHeatmap() {
       return {
         startDateStr: start,
         endDateStr: end,
-        semesterLabel: 'Primavera (Feb - Jun)',
       }
     }
   }, [activeSemester, prefs, currentYear])

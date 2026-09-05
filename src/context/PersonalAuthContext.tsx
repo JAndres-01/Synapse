@@ -5,10 +5,8 @@ import type { PersonalProfile } from '@/types/personal'
 interface PersonalAuthContextType {
   user: { id: string } | null
   profile: PersonalProfile | null
-  loading: boolean
   updateProfile: (fullName: string, email?: string) => Promise<void>
   updateCredential: (credentialUrl: string | null, credentialName?: string | null) => Promise<void>
-  refreshProfile: () => Promise<void>
   clearData: () => Promise<void>
 }
 
@@ -16,15 +14,10 @@ const PersonalAuthContext = createContext<PersonalAuthContextType | undefined>(u
 
 export function PersonalAuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<PersonalProfile | null>(null)
-  const [loading, setLoading] = useState(true)
 
   const loadLocalProfile = async () => {
-    try {
-      const p = await personalStorage.getProfile()
-      setProfile(p)
-    } finally {
-      setLoading(false)
-    }
+    const p = await personalStorage.getProfile()
+    setProfile(p)
   }
 
   useEffect(() => {
@@ -56,11 +49,6 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     setProfile(updated)
   }
 
-  const refreshProfile = async () => {
-    const p = await personalStorage.getProfile()
-    setProfile(p)
-  }
-
   const clearData = async () => {
     await personalStorage.clearAll()
     const defaultProfile: PersonalProfile = {
@@ -79,13 +67,11 @@ export function PersonalAuthProvider({ children }: { children: React.ReactNode }
     () => ({
       user: { id: profile?.id || 'local_user' },
       profile,
-      loading,
       updateProfile,
       updateCredential,
-      refreshProfile,
       clearData,
     }),
-    [profile, loading]
+    [profile]
   )
 
   return (

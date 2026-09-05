@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { PersonalAuthProvider } from '@/context/PersonalAuthContext'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
 import { personalStorage } from '@/lib/personalStorage'
 

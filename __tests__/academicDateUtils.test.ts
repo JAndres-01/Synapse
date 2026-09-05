@@ -47,4 +47,11 @@ describe('academicDateUtils', () => {
     expect(stats.pendingTasksCount).toBe(2)
     expect(stats.completionRate).toBe(33)
   })
+
+  test('identifica si una tarea pertenece a un día académico específico', () => {
+    const targetDate = new Date('2026-09-02T10:00:00')
+    expect(isTaskForAcademicDay('2026-09-02T15:30:00', targetDate)).toBe(true)
+    expect(isTaskForAcademicDay('2026-09-03T10:00:00', targetDate)).toBe(false)
+    expect(isTaskForAcademicDay(null, targetDate)).toBe(false)
+  })
 })
